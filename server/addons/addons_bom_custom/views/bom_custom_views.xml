@@ -1,0 +1,119 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+    <data>
+        <!-- Inherit View for Bill of Materials -->
+        <record id="view_mrp_bom_form_custom" model="ir.ui.view">
+            <field name="name">mrp.bom.form.inherit</field>
+            <field name="model">mrp.bom</field>
+            <field name="inherit_id" ref="mrp.mrp_bom_form_view"/>
+            <field name="arch" type="xml">
+
+                <!-- Tambahkan Tab Baru di Dalam Notebook -->
+                <xpath expr="//sheet/notebook" position="inside">
+<!--                    &lt;!&ndash; Tab Baru: Perhitungan Kebutuhan &ndash;&gt;-->
+<!--                    <page string="Perhitungan Kebutuhan">-->
+<!--                        <group>-->
+<!--                            <group>-->
+<!--                                <field name="kebutuhan_rim_isi"/>-->
+<!--                                <field name="kebutuhan_kg_isi"/>-->
+<!--                                <field name="kebutuhan_rim_cover"/>-->
+<!--                                <field name="kebutuhan_kg_cover"/>-->
+<!--                                <field name="isi_box"/>-->
+<!--                            </group>-->
+<!--                        </group>-->
+<!--                    </page>-->
+                    <!-- Tab Informasi Dasar -->
+                    <page string="Informasi Dasar">
+                        <group>
+                            <group>
+                                <field name="ukuran_buku"/>
+                                <field name="gramasi_kertas_isi"/>
+                                <field name="gramasi_kertas_cover"/>
+                                <field name="jmlh_halaman_buku"/>
+                                <field name="qty_buku"/>
+                                <field name="isi_box" widget="float" string="Isi Box (Buku/Box)"/>
+                            </group>
+                        </group>
+                    </page>
+
+                    <!-- Tab Harga Bahan Baku -->
+                    <page string="Harga Bahan Baku">
+                        <group>
+                            <group>
+                                <field name="hrg_kertas_isi"/>
+                                <field name="hrg_kertas_cover"/>
+                                <field name="hrg_plate_isi"/>
+                                <field name="hrg_plate_cover"/>
+                                <field name="hrg_box"/>
+                                <field name="hrg_uv"/>
+                            </group>
+                        </group>
+                    </page>
+
+                    <!-- Tab Biaya Jasa Produksi -->
+                    <page string="Biaya Jasa Produksi">
+                        <group>
+                            <group>
+                                <field name="jasa_cetak_isi"/>
+                                <field name="jasa_cetak_cover"/>
+                                <field name="jasa_jilid"/>
+                            </group>
+                        </group>
+                    </page>
+
+                    <!-- Tab Perhitungan Total -->
+                    <page string="Perhitungan Total">
+                        <group>
+                            <!-- Biaya Bahan Baku -->
+                            <group string="Biaya Bahan Baku">
+                                <field name="total_biaya_kertas_isi" readonly="1"/>
+                                <field name="total_biaya_kertas_cover" readonly="1"/>
+                                <field name="total_biaya_plate_isi" readonly="1"/>
+                                <field name="total_biaya_plate_cover" readonly="1"/>
+                                <field name="total_biaya_box" readonly="1"/>
+                                <field name="total_biaya_bahan_baku" readonly="1"/>
+                            </group>
+
+                            <!-- Biaya Jasa Produksi -->
+                            <group string="Biaya Jasa Produksi">
+                                <field name="total_biaya_cetak_isi" readonly="1"/>
+                                <field name="total_biaya_cetak_cover" readonly="1"/>
+                                <field name="total_biaya_uv" readonly="1"/>
+                                <field name="total_biaya_jilid" readonly="1"/>
+                                <field name="total_biaya_jasa" readonly="1"/>
+                            </group>
+
+                            <!-- Total Keseluruhan -->
+                            <group string="Total Keseluruhan">
+                                <field name="overhead" readonly="1"/>
+                                <field name="ppn" readonly="1"/>
+                                <field name="hpp_total" readonly="1"/>
+                                <field name="hpp_per_unit" readonly="1"/>
+                            </group>
+                        </group>
+                    </page>
+                </xpath>
+
+            </field>
+        </record>
+         <!-- Perbaikan untuk BOM Line (komponen BOM) -->
+        <record id="view_mrp_bom_line_form_custom" model="ir.ui.view">
+            <field name="name">mrp.bom.line.form.inherit</field>
+            <field name="model">mrp.bom.line</field>
+            <field name="inherit_id" ref="mrp.mrp_bom_line_view_form"/>
+            <field name="arch" type="xml">
+                <xpath expr="//group" position="inside">
+                    <group>
+                        <field name="kebutuhan_rim_isi"/>
+                        <field name="kebutuhan_kg_isi"/>
+                        <field name="kebutuhan_rim_cover"/>
+                        <field name="kebutuhan_kg_cover"/>
+                        <field name="isi_box"/>
+                    </group>
+                </xpath>
+            </field>
+        </record>
+
+    </data>
+</odoo>
+
