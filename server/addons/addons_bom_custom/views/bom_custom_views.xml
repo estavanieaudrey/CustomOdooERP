@@ -1,6 +1,24 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <odoo>
     <data>
+        <!-- Inherit View for Components -->
+        <record id="view_mrp_bom_line_form_custom" model="ir.ui.view">
+            <field name="name">mrp.bom.line.form.inherit</field>
+            <field name="model">mrp.bom.line</field>
+            <field name="inherit_id" ref="mrp.mrp_bom_line_view_form"/>
+            <field name="arch" type="xml">
+                <xpath expr="//group" position="inside">
+                    <group string="Data Perhitungan HPP">
+                        <field name="kebutuhan_rim_isi" readonly="1"/>
+                        <field name="kebutuhan_kg_isi" readonly="1"/>
+                        <field name="kebutuhan_rim_cover" readonly="1"/>
+                        <field name="kebutuhan_kg_cover" readonly="1"/>
+                        <field name="isi_box" readonly="1"/>
+                    </group>
+                </xpath>
+            </field>
+        </record>
+
         <!-- Inherit View for Bill of Materials -->
         <record id="view_mrp_bom_form_custom" model="ir.ui.view">
             <field name="name">mrp.bom.form.inherit</field>
@@ -8,20 +26,19 @@
             <field name="inherit_id" ref="mrp.mrp_bom_form_view"/>
             <field name="arch" type="xml">
 
-                <!-- Tambahkan Tab Baru di Dalam Notebook -->
+                <!-- Menambahkan Tab Baru di dalam Notebook -->
                 <xpath expr="//sheet/notebook" position="inside">
-<!--                    &lt;!&ndash; Tab Baru: Perhitungan Kebutuhan &ndash;&gt;-->
-<!--                    <page string="Perhitungan Kebutuhan">-->
-<!--                        <group>-->
-<!--                            <group>-->
-<!--                                <field name="kebutuhan_rim_isi"/>-->
-<!--                                <field name="kebutuhan_kg_isi"/>-->
-<!--                                <field name="kebutuhan_rim_cover"/>-->
-<!--                                <field name="kebutuhan_kg_cover"/>-->
-<!--                                <field name="isi_box"/>-->
-<!--                            </group>-->
-<!--                        </group>-->
-<!--                    </page>-->
+                    <page string="Hasil Perhitungan HPP">
+                        <group>
+                            <field name="kebutuhan_rim_isi"/>
+                            <field name="kebutuhan_kg_isi"/>
+                            <field name="kebutuhan_kertasIsi"/>
+                            <field name="kebutuhan_rim_cover"/>
+                            <field name="kebutuhan_kg_cover"/>
+                            <field name="kebutuhan_kertasCover"/>
+                        </group>
+                    </page>
+
                     <!-- Tab Informasi Dasar -->
                     <page string="Informasi Dasar">
                         <group>
@@ -33,6 +50,15 @@
                                 <field name="qty_buku"/>
                                 <field name="isi_box" widget="float" string="Isi Box (Buku/Box)"/>
                             </group>
+                            <group>
+                                <field name="overhead_percentage"/>
+                                <field name="ppn_percentage"/>
+                                <field name="waste_percentage"/>
+                            </group>
+                        </group>
+                        <group string="Jenis Cetakan">
+                            <field name="jenis_cetakan_isi" widget="radio" string="Cetakan Kertas Isi"/>
+                            <field name="jenis_cetakan_cover" widget="radio" string="Cetakan Kertas Cover"/>
                         </group>
                     </page>
 
@@ -96,7 +122,7 @@
 
             </field>
         </record>
-         <!-- Perbaikan untuk BOM Line (komponen BOM) -->
+        <!-- Perbaikan untuk BOM Line (komponen BOM) -->
         <record id="view_mrp_bom_line_form_custom" model="ir.ui.view">
             <field name="name">mrp.bom.line.form.inherit</field>
             <field name="model">mrp.bom.line</field>
