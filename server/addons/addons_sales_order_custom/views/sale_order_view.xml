@@ -1,17 +1,87 @@
 <odoo>
+    <!-- Form View for Sale Order -->
     <record id="view_order_form_custom" model="ir.ui.view">
         <field name="name">sale.order.form.custom</field>
         <field name="model">sale.order</field>
         <field name="inherit_id" ref="sale.view_order_form"/>
         <field name="arch" type="xml">
-            <sheet>
-                <group string="Custom Agreement Details">
-                    <field name="agreement_title"/>
-                    <field name="validity_date"/>
-                    <field name="customer_signature"/>
-                    <field name="is_signed"/>
-                </group>
-            </sheet>
+            <!-- Hapus Notebook Customer Signature -->
+<!--            <xpath expr="//page[@string='Customer Signature']" position="attributes">-->
+<!--                <attribute name="invisible">1</attribute>-->
+<!--            </xpath>-->
+
+            <xpath expr="//sheet" position="inside">
+                <notebook>
+                    <page string="Bill of Materials dan HPP">
+                        <group>
+                            <field name="bom_id" options="{'no_create': True}"/>
+                            <field name="ukuran_buku"/>
+                            <field name="jenis_cetakan_isi"/>
+                            <field name="jenis_cetakan_cover"/>
+                            <field name="jmlh_halaman_buku"/>
+                            <field name="jasa_jilid"/>
+                            <field name="isi_box"/>
+                            <field name="qty_buku"/>
+                            <field name="hpp_per_unit"/>
+                            <field name="hpp_total"/>
+                            <field name="ppn"/>
+                        </group>
+                        <group>
+                            <field name="draft_perjanjian" filename="draft_perjanjian_name"/>
+                            <field name="is_signed"/>
+                            <field name="signature_date"/>
+                        </group>
+                        <button name="action_generate_pdf" string="Generate PDF" type="object" class="btn-primary"/>
+                        <button name="action_convert_to_sales_order" string="Convert to Sales Order" type="object"
+                                class="btn-secondary"/>
+                    </page>
+
+                     <!-- PASAL 1 -->
+                    <page string="Pasal 1">
+                        <group>
+                            <field name="ruang_lingkup"/>
+                        </group>
+                    </page>
+
+                    <!-- PASAL 2 -->
+                    <page string="Pasal 2">
+                        <group>
+                            <field name="ukuran_buku"/>
+                            <field name="detail_isi"/>
+                            <field name="detail_cover"/>
+                            <field name="detail_design"/>
+                            <field name="detail_jilid"/>
+                            <field name="detail_packing"/>
+                            <field name="detail_quantity"/>
+                        </group>
+                    </page>
+
+                    <!-- PASAL 3 -->
+                    <page string="Pasal 3">
+                        <group string="Harga dan Down Payment">
+                            <field name="price_unit"/>
+                            <field name="total_amount"/>
+                            <field name="down_payment_yes_no"/>
+                            <field name="down_payment_percentage"/>
+                            <field name="down_payment_nominal"/>
+                        </group>
+                        <group string="Transfer Rekening">
+                            <field name="transfer_rekening_name"/>
+                            <field name="transfer_rekening_bank"/>
+                            <field name="transfer_rekening_number"/>
+                            <field name="transfer_rekening_branch"/>
+                        </group>
+                    </page>
+
+                    <!-- PASAL 4 -->
+                    <page string="Pasal 4">
+                        <group>
+                            <field name="expired_date"/>
+                            <field name="customer_signature" widget="image" options="{'preview_image': 'customer_signature'}"/>
+                        </group>
+                    </page>
+                </notebook>
+            </xpath>
         </field>
     </record>
 </odoo>

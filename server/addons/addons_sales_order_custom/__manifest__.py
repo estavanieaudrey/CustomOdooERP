@@ -1,14 +1,14 @@
 {
-    'name': 'Custom Sales Order',
+    'name': 'SO Customization',
     'version': '1.0',
-    'author': 'Custom SO Odre',
+    'author': 'Your Name',
     'category': 'Sales',
-    'depends': ['sale'],  # Modul yang diwarisi
+    'depends': ['sale', 'mrp', 'web', 'base'],
     'data': [
         'views/sale_order_view.xml',
-        'report/sale_order_report.xml',  # krn ada laporan
+        'report/draft_perjanjian_template.xml',
     ],
     'installable': True,
     'application': False,
-    'license': 'LGPL-3',
 }
+
