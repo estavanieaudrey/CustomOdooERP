@@ -1,5 +1,7 @@
 from odoo import models, fields, api
 from odoo.exceptions import ValidationError
+from io import BytesIO
+import base64
 
 class SaleOrderCustom(models.Model):
     _inherit = 'sale.order'
@@ -56,18 +58,27 @@ class SaleOrderCustom(models.Model):
         """
         for record in self:
             if record.bom_id:
-                # Ambil produk isi berdasarkan default_code
+                # Detail Isi
                 isi_lines = record.bom_id.bom_line_ids.filtered(
-                    lambda l: l.product_id.default_code == "KERTAS_ISI"
+                    lambda l: "Kertas Isi" in l.product_id.name
                 )
-                record.detail_isi = ", ".join(isi_lines.mapped('product_id.name')) if isi_lines else "Tidak Ada"
+                if isi_lines:
+                    # Hanya ambil nama produk tanpa informasi tambahan
+                    record.detail_isi = ", ".join(isi_lines.mapped('product_id.name'))
+                else:
+                    record.detail_isi = "Tidak Ada"
 
-                # Ambil produk cover berdasarkan default_code
+                # Detail Cover
                 cover_lines = record.bom_id.bom_line_ids.filtered(
-                    lambda l: l.product_id.default_code == "KERTAS_COVER"
+                    lambda l: "Kertas Cover" in l.product_id.name
                 )
-                record.detail_cover = ", ".join(cover_lines.mapped('product_id.name')) if cover_lines else "Tidak Ada"
+                if cover_lines:
+                    # Hanya ambil nama produk tanpa informasi tambahan
+                    record.detail_cover = ", ".join(cover_lines.mapped('product_id.name'))
+                else:
+                    record.detail_cover = "Tidak Ada"
             else:
+                # Jika BoM tidak ada, set nilai default
                 record.detail_isi = "Tidak Ada"
                 record.detail_cover = "Tidak Ada"
 
@@ -77,6 +88,8 @@ class SaleOrderCustom(models.Model):
         for record in self:
             if record.bom_id.isi_box:
                 record.detail_packing = f"{record.bom_id.isi_box} /box"
+            else:
+                record.detail_packing = "Tidak Ada"
 
     @api.depends('down_payment_percentage', 'hpp_total')
     def _compute_down_payment_nominal(self):
@@ -113,11 +126,7 @@ class SaleOrderCustom(models.Model):
     is_signed = fields.Boolean(string="Telah Ditandatangani", default=False)
     signature_date = fields.Date(string="Tanggal Tanda Tangan")
 
-    def action_generate_pdf(self):
-        """
-        Generate the draft agreement PDF.
-        """
-        return self.env.ref('addons_sales_order_custom.action_report_draft_perjanjian').report_action(self)
+    is_confirmed = fields.Boolean(string="Confirmed", default=False)
 
     def action_convert_to_sales_order(self):
         """
@@ -125,4 +134,163 @@ class SaleOrderCustom(models.Model):
         """
         if not self.is_signed:
             raise ValidationError("Draft perjanjian belum ditandatangani!")
-        self.action_confirm()  # Memanfaatkan metode bawaan Odoo untuk konfirmasi SO.
+        self.action_confirm()  # Confirm the sales order using Odoo's built-in method
+        self.is_confirmed = True  # Mark the sales order as confirmed
+
+    def action_generate_pdf(self):
+        # Fetch the report template
+        report_template = self.env.ref('addons_sales_order_custom.action_report_draft_perjanjian')
+        if not report_template:
+            raise ValueError("Template laporan tidak ditemukan.")
+        return report_template.report_action(self)
+
+        # Render the report as PDF
+        report_pdf, _ = report_template._render_qweb_pdf([self.id])
+
+        # Convert PDF content to base64
+        pdf_base64 = base64.b64encode(report_pdf)
+
+        # Create an attachment record
+        attachment_values = {
+            'name': "ID_Card.pdf",
+            'type': 'binary',
+            'datas': pdf_base64,
+            'mimetype': 'application/pdf',
+            'res_model': self._name,
+            'res_id': self.id,
+        }
+        attachment = self.env['ir.attachment'].create(attachment_values)
+
+        # Assign the attachment to the binary field
+        self.report_file = attachment.id
+
+        return True
+
+    down_payment_percentage = fields.Float(
+        string="Down Payment Percentage",
+        default=10.0,  # Default ke 10% jika belum ada
+        help="Percentage of the down payment for the order."
+    )
+
+    down_payment_yes_no = fields.Boolean(
+        string="Enable Down Payment",
+        default=True,
+        help="Enable or disable down payment for this sales order."
+    )
+
+class SaleAdvancePaymentInv(models.TransientModel):
+    _inherit = 'sale.advance.payment.inv'
+    nominal = fields.Float(string="Nominal", readonly=True, help="Computed Down Payment Nominal")
+
+    def _compute_advance_payment_method_selection(self):
+        """
+        Remove 'fixed' option dynamically from the selection.
+        """
+        selection = [
+            ('all', 'Regular invoice'),
+            ('percentage', 'Down payment (percentage)'),
+            # Do not include 'fixed' here
+        ]
+        return selection
+
+    # Override the selection for advance_payment_method
+    advance_payment_method = fields.Selection(
+        selection=_compute_advance_payment_method_selection,
+        string='Create Invoice',
+        default='all',
+        required=True,
+    )
+
+
+    @api.onchange('advance_payment_method')
+    def _onchange_advance_payment_method(self):
+        """
+        Automatically populate 'amount' (percentage) and 'nominal' (calculated nominal)
+        based on the selected sales order.
+        """
+        sale_order_id = self.env.context.get('active_id')
+        if sale_order_id:
+            sale_order = self.env['sale.order'].browse(sale_order_id)
+
+            if self.advance_payment_method == 'percentage':
+                # Set the percentage value (amount field)
+                self.amount = sale_order.down_payment_percentage
+
+                # Compute the nominal value
+                if sale_order.down_payment_yes_no and sale_order.down_payment_percentage:
+                    self.nominal = (sale_order.hpp_total * sale_order.down_payment_percentage) / 100
+                else:
+                    self.nominal = 0.0
+            else:
+                # Reset fields for "Regular Invoice"
+                self.amount = 0.0
+                self.nominal = 0.0
+
+
+    # def action_generate_pdf(self):
+    #     self.ensure_one()
+    #     try:
+    #         # Fetch the report using the correct report ID
+    #         report = self.env.ref('addons_sales_order_custom.action_report_draft_perjanjian')
+    #
+    #         # Generate the PDF content
+    #         pdf_content, content_type = report.render_qweb_pdf([self.id])
+    #
+    #         # Convert the PDF content to Base64
+    #         pdf_base64 = base64.b64encode(pdf_content)
+    #
+    #         # Remove any existing attachments for this record
+    #         existing_attachments = self.env['ir.attachment'].search([
+    #             ('res_model', '=', self._name),
+    #             ('res_id', '=', self.id),
+    #             ('name', '=', f"Draft_Perjanjian_{self.name}.pdf")
+    #         ])
+    #         existing_attachments.unlink()
+    #
+    #         # Save the generated PDF as an attachment
+    #         attachment = self.env['ir.attachment'].create({
+    #             'name': f"Draft_Perjanjian_{self.name}.pdf",
+    #             'type': 'binary',
+    #             'datas': pdf_base64,
+    #             'res_model': self._name,
+    #             'res_id': self.id,
+    #             'mimetype': 'application/pdf'
+    #         })
+    #
+    #         # Return a download link for the generated PDF
+    #         return {
+    #             'type': 'ir.actions.act_url',
+    #             'url': f'/web/content/{attachment.id}?download=true',
+    #             'target': 'self',
+    #         }
+    #     except Exception as e:
+    #         raise ValidationError(f"Error generating PDF: {e}")
+
+    # def action_generate_pdf(self):
+    #     """
+    #     Generate PDF for the custom report and return it as an action.
+    #     """
+    #     return self.env.ref('addons_sales_order_custom.action_report_draft_perjanjian').report_action(self)
+    #
+    # def action_quotation_send(self):
+    #     """
+    #     Override Odoo's quotation send to include custom PDF attachment.
+    #     """
+    #     action = super(SaleOrderCustom, self).action_quotation_send()
+    #     if action.get('context'):
+    #         # Render the PDF for the current sale order
+    #         pdf_content = self.env.ref('addons_sales_order_custom.action_report_draft_perjanjian')._render_qweb_pdf(self.id)[0]
+    #         pdf_base64 = base64.b64encode(pdf_content)  # Convert PDF to base64
+    #
+    #         # Generate attachment name
+    #         attachment_name = f"Quotation - {self.name or 'Draft'}.pdf"
+    #
+    #         # Add the attachment to the context
+    #         action['context']['default_attachment_ids'] = [(0, 0, {
+    #             'name': attachment_name,  # Name of the file (mandatory)
+    #             'datas': pdf_base64,      # Data of the file in base64
+    #             'res_model': 'sale.order',
+    #             'res_id': self.id,
+    #             'mimetype': 'application/pdf',
+    #         })]
+    #     return action

@@ -1,0 +1,11 @@
+<odoo>
+    <report
+        id="report_draft_perjanjian"
+        model="sale.order"
+        string="Draft Perjanjian"
+        report_type="qweb-pdf"
+        name="addons_sales_order_custom.report_draft_perjanjian"
+        file="addons_sales_order_custom.report_draft_perjanjian"
+        print_report_name="'Draft_Perjanjian_%s' % (object.name)"
+    />
+</odoo>

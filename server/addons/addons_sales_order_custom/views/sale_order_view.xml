@@ -5,10 +5,16 @@
         <field name="model">sale.order</field>
         <field name="inherit_id" ref="sale.view_order_form"/>
         <field name="arch" type="xml">
-            <!-- Hapus Notebook Customer Signature -->
-<!--            <xpath expr="//page[@string='Customer Signature']" position="attributes">-->
-<!--                <attribute name="invisible">1</attribute>-->
-<!--            </xpath>-->
+
+            <xpath expr="//header" position="inside">
+                <button name="action_generate_pdf" string="Generate Draft PDF" type="object" class="oe_highlight"/>
+                <button name="action_convert_to_sales_order"
+                        string="Confirm as Sales Order"
+                        type="object"
+                        class="btn-secondary"
+                        invisible="is_confirmed"/>
+            </xpath>
+
 
             <xpath expr="//sheet" position="inside">
                 <notebook>
@@ -16,8 +22,6 @@
                         <group>
                             <field name="bom_id" options="{'no_create': True}"/>
                             <field name="ukuran_buku"/>
-                            <field name="jenis_cetakan_isi"/>
-                            <field name="jenis_cetakan_cover"/>
                             <field name="jmlh_halaman_buku"/>
                             <field name="jasa_jilid"/>
                             <field name="isi_box"/>
@@ -31,12 +35,9 @@
                             <field name="is_signed"/>
                             <field name="signature_date"/>
                         </group>
-                        <button name="action_generate_pdf" string="Generate PDF" type="object" class="btn-primary"/>
-                        <button name="action_convert_to_sales_order" string="Convert to Sales Order" type="object"
-                                class="btn-secondary"/>
                     </page>
 
-                     <!-- PASAL 1 -->
+                    <!-- PASAL 1 -->
                     <page string="Pasal 1">
                         <group>
                             <field name="ruang_lingkup"/>
@@ -48,7 +49,9 @@
                         <group>
                             <field name="ukuran_buku"/>
                             <field name="detail_isi"/>
+                            <field name="jenis_cetakan_isi"/>
                             <field name="detail_cover"/>
+                            <field name="jenis_cetakan_cover"/>
                             <field name="detail_design"/>
                             <field name="detail_jilid"/>
                             <field name="detail_packing"/>
@@ -77,11 +80,35 @@
                     <page string="Pasal 4">
                         <group>
                             <field name="expired_date"/>
-                            <field name="customer_signature" widget="image" options="{'preview_image': 'customer_signature'}"/>
+                            <field name="customer_signature" widget="image"
+                                   options="{'preview_image': 'customer_signature'}"/>
                         </group>
                     </page>
                 </notebook>
             </xpath>
         </field>
     </record>
+
+    <record id="view_advance_payment_inv_form_inherit" model="ir.ui.view">
+        <field name="name">sale.advance.payment.inv.form.inherit</field>
+        <field name="model">sale.advance.payment.inv</field>
+        <field name="inherit_id" ref="sale.view_sale_advance_payment_inv"/>
+        <field name="arch" type="xml">
+            <!-- Make Down Payment (amount) read-only -->
+            <xpath expr="//field[@name='amount']" position="attributes">
+                <attribute name="readonly">0</attribute>
+            </xpath>
+            <!-- Memasukkan nominal ke dalam field nya selection create invoice-->
+            <xpath expr="//field[@name='advance_payment_method']" position="after">
+                <!-- Nominal Field -->
+                <div class="o_row" style="margin-top: 10px;">
+                    <span style="font-weight: bold;">Nominal:</span>
+                    <field name="nominal" readonly="1" options="{'widget': 'float'}"/>
+                </div>
+            </xpath>
+        </field>
+    </record>
+
+
 </odoo>
+
