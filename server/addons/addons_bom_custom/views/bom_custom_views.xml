@@ -28,17 +28,6 @@
 
                 <!-- Menambahkan Tab Baru di dalam Notebook -->
                 <xpath expr="//sheet/notebook" position="inside">
-                    <page string="Hasil Perhitungan HPP">
-                        <group>
-                            <field name="kebutuhan_rim_isi"/>
-                            <field name="kebutuhan_kg_isi"/>
-                            <field name="kebutuhan_kertasIsi"/>
-                            <field name="kebutuhan_rim_cover"/>
-                            <field name="kebutuhan_kg_cover"/>
-                            <field name="kebutuhan_kertasCover"/>
-                        </group>
-                    </page>
-
                     <!-- Tab Informasi Dasar -->
                     <page string="Informasi Dasar">
                         <group>
@@ -54,6 +43,8 @@
                                 <field name="overhead_percentage"/>
                                 <field name="ppn_percentage"/>
                                 <field name="waste_percentage"/>
+                                <field name="jenis_jilid"/>
+                                <field name="jenis_uv"/>
                             </group>
                         </group>
                         <group string="Jenis Cetakan">
@@ -115,6 +106,16 @@
                                 <field name="ppn" readonly="1"/>
                                 <field name="hpp_total" readonly="1"/>
                                 <field name="hpp_per_unit" readonly="1"/>
+                            </group>
+
+                            <!-- Hasil Perhitungan HPP -->
+                            <group string="Hasil Perhitungan HPP">
+                                <field name="kebutuhan_rim_isi"/>
+                                <field name="kebutuhan_kg_isi"/>
+                                <field name="kebutuhan_kertasIsi"/>
+                                <field name="kebutuhan_rim_cover"/>
+                                <field name="kebutuhan_kg_cover"/>
+                                <field name="kebutuhan_kertasCover"/>
                             </group>
                         </group>
                     </page>

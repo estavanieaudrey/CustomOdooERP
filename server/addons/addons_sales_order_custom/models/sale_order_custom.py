@@ -11,13 +11,27 @@ class SaleOrderCustom(models.Model):
 
     # PASAL 2: Detail Produk
     # detail_ukuran = fields.Selection(related="bom_id.ukuran_buku", string="Ukuran Buku", readonly=True)
-    detail_isi = fields.Char(string="Isi", compute="_compute_detail_isi_cover", store=True)
-    detail_cover = fields.Char(string="Cover", compute="_compute_detail_isi_cover", store=True)
+    detail_isi = fields.Char(
+        string="Detail Isi",
+        compute="_compute_detail_isi",
+        store=True
+    )
+    detail_cover = fields.Char(
+        string="Detail Cover",
+        compute="_compute_detail_cover",
+        store=True
+    )
     detail_design = fields.Char(string="Design")
-    detail_jilid = fields.Selection([
-        ('jahit_kawat', 'Jahit Kawat'),
-        ('lem', 'Lem')
-    ], string="Jilid")
+    jenis_jilid = fields.Selection([
+        ('perfect_binding', 'Perfect Binding (Lem)'),
+        ('stitching', 'Stitching (Kawat)')
+    ], string="Jenis Jilid", compute="_compute_jenis_jilid", store=True)
+
+    jenis_uv = fields.Selection([
+        ('glossy', 'Glossy'),
+        ('matte', 'Matte (Doff)')
+    ], string="Jenis UV", compute="_compute_jenis_uv", store=True)
+
     detail_packing = fields.Char(string="Packing", compute="_compute_detail_packing", readonly=True)
     detail_quantity = fields.Float(related="bom_id.qty_buku", string="Quantity Buku", readonly=True)
 
@@ -52,35 +66,81 @@ class SaleOrderCustom(models.Model):
     ppn = fields.Float(related="bom_id.ppn", string="PPn", readonly=True)
 
     @api.depends('bom_id.bom_line_ids')
-    def _compute_detail_isi_cover(self):
-        """
-        Ambil produk untuk Isi dan Cover berdasarkan BoM.
-        """
+    def _compute_detail_isi(self):
         for record in self:
             if record.bom_id:
-                # Detail Isi
+                # Filter baris dengan nama produk "Kertas Isi"
                 isi_lines = record.bom_id.bom_line_ids.filtered(
                     lambda l: "Kertas Isi" in l.product_id.name
                 )
                 if isi_lines:
-                    # Hanya ambil nama produk tanpa informasi tambahan
-                    record.detail_isi = ", ".join(isi_lines.mapped('product_id.name'))
+                    # Gabungkan nama produk dengan variannya
+                    detail_isi_list = [
+                        f"{line.product_id.name} ({', '.join(line.product_id.product_template_variant_value_ids.mapped('name'))})"
+                        for line in isi_lines
+                    ]
+                    record.detail_isi = ", ".join(detail_isi_list)
                 else:
                     record.detail_isi = "Tidak Ada"
+            else:
+                record.detail_isi = "Tidak Ada"
 
-                # Detail Cover
+    @api.depends('bom_id.bom_line_ids')
+    def _compute_detail_cover(self):
+        for record in self:
+            if record.bom_id:
                 cover_lines = record.bom_id.bom_line_ids.filtered(
                     lambda l: "Kertas Cover" in l.product_id.name
                 )
                 if cover_lines:
-                    # Hanya ambil nama produk tanpa informasi tambahan
-                    record.detail_cover = ", ".join(cover_lines.mapped('product_id.name'))
+                    detail_cover_list = [
+                        f"{line.product_id.name} ({', '.join(line.product_id.product_template_variant_value_ids.mapped('name'))})"
+                        for line in cover_lines
+                    ]
+                    record.detail_cover = ", ".join(detail_cover_list)
                 else:
                     record.detail_cover = "Tidak Ada"
             else:
-                # Jika BoM tidak ada, set nilai default
-                record.detail_isi = "Tidak Ada"
                 record.detail_cover = "Tidak Ada"
+
+    @api.onchange('bom_id')
+    def _onchange_bom_id(self):
+        """
+        Ketika BoM dipilih, hitung ulang `detail_isi` dan `detail_cover`.
+        """
+        for record in self:
+            if record.bom_id:
+                # Hitung ulang field compute
+                record._compute_detail_isi()
+                record._compute_detail_cover()
+
+                # Simpan hasil compute ke database
+                record.write({
+                    'detail_isi': record.detail_isi,
+                    'detail_cover': record.detail_cover,
+                })
+
+    # untuk mengambil jenis jilid dari bom
+    @api.depends('bom_id.jenis_jilid')
+    def _compute_jenis_jilid(self):
+        for record in self:
+            if record.bom_id:
+                # Ambil nilai jenis_jilid dari BoM
+                record.jenis_jilid = record.bom_id.jenis_jilid
+            else:
+                # Default jika tidak ada BoM
+                record.jenis_jilid = False
+
+    # untuk mengambil jenis uv dari bom
+    @api.depends('bom_id.jenis_uv')
+    def _compute_jenis_uv(self):
+        for record in self:
+            if record.bom_id:
+                # Ambil nilai jenis_jilid dari BoM
+                record.jenis_uv = record.bom_id.jenis_uv
+            else:
+                # Default jika tidak ada BoM
+                record.jenis_uv = False
 
     @api.depends('bom_id.isi_box')
     def _compute_detail_packing(self):
@@ -177,6 +237,22 @@ class SaleOrderCustom(models.Model):
         default=True,
         help="Enable or disable down payment for this sales order."
     )
+
+    # Override Method action_confirm di sale.order: Tambahkan logika untuk menghubungkan SO dengan MO melalui field sale_id.
+    def action_confirm(self):
+        res = super(SaleOrderCustom, self).action_confirm()
+        for order in self:
+            if order.bom_id:
+                mo_vals = {
+                    'product_id': order.bom_id.product_tmpl_id.id,
+                    'product_qty': order.qty_buku,
+                    'bom_id': order.bom_id.id,
+                    'sale_id': order.id,  # Hubungkan MO dengan SO
+                    'date_planned_start': fields.Datetime.now(),
+                    'origin': order.name,
+                }
+                self.env['mrp.production'].create(mo_vals)
+        return res
 
 class SaleAdvancePaymentInv(models.TransientModel):
     _inherit = 'sale.advance.payment.inv'

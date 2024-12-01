@@ -45,6 +45,14 @@ class MrpBomCustom(models.Model):
     jmlh_halaman_buku = fields.Integer(string="Jumlah Halaman Buku", default=160)
     qty_buku = fields.Float(string="Quantity Buku", default=1.0)
     isi_box = fields.Float(string="Isi Box (Jumlah Buku/Box)", default=60.0)
+    jenis_jilid = fields.Selection([
+        ('perfect_binding', 'Perfect Binding (Lem)'),
+        ('stitching', 'Stitching (Kawat)')
+    ], string="Jenis Jilid", default='perfect_binding')
+    jenis_uv = fields.Selection([
+        ('glossy', 'Glossy'),
+        ('matte', 'Matte (Doff)')
+    ], string="Jenis UV", default='glossy')
 
     hrg_kertas_isi = fields.Float(string="Harga Kertas Isi (Rp)")
     hrg_kertas_cover = fields.Float(string="Harga Kertas Cover (Rp)")

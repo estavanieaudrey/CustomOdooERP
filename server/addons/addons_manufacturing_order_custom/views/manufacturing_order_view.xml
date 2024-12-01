@@ -1,0 +1,70 @@
+<odoo>
+    <data>
+        <record id="view_mrp_production_form_inherit" model="ir.ui.view">
+            <field name="name">mrp.production.form.inherit</field>
+            <field name="model">mrp.production</field>
+            <field name="inherit_id" ref="mrp.mrp_production_form_view"/>
+            <field name="arch" type="xml">
+                <xpath expr="//sheet" position="inside">
+                    <group>
+                        <field name="sale_id" options="{'no_create': True}" placeholder="Pilih Sales Order"
+                               required="1"/>
+                        <field name="tanggal_spk"/>
+                        <field name="nama_customer" readonly="1"/>
+                        <field name="nomor_pesanan" readonly="1"/>
+                    </group>
+                </xpath>
+                <!-- Menambahkan notebook baru -->
+                <xpath expr="//notebook" position="inside">
+                    <!-- Notebook: Spesifikasi Umum -->
+                    <page string="Spesifikasi Umum">
+                        <group>
+                            <field name="item_product"/>
+                            <field name="jumlah_halaman"/>
+<!--                            <field name="ukuran_produk_jadi"/>-->
+<!--                            <field name="total_produk"/>-->
+                            <field name="waktu_pengiriman_pertama"/>
+                        </group>
+                    </page>
+
+                    <!-- Notebook: Spesifikasi Teknis -->
+                    <page string="Spesifikasi Teknis">
+                        <group string="Cetak Cover">
+                            <field name="mesin_cetak_cover"/>
+                            <field name="konfigurasi_warna_cetak"/>
+                            <field name="format_cetak"/>
+                            <field name="jumlah_plat"/>
+                            <field name="finishing_cetak"/>
+                        </group>
+                        <group string="Bahan Cover">
+                            <field name="jenis_kertas_cover" readonly="1"/>
+<!--                            <field name="ukuran_bahan_kertas"/>-->
+<!--                            <field name="ukuran_cetak"/>-->
+<!--                            <field name="jumlah_up_per_lembar"/>-->
+<!--                            <field name="kebutuhan_kertas_cover"/>-->
+                        </group>
+                        <group string="Cetak Isi">
+<!--                            <field name="mesin_cetak_isi"/>-->
+<!--                            <field name="bahan_kertas_isi"/>-->
+<!--                            <field name="ukuran_bahan_kertas_isi"/>-->
+<!--                            <field name="kebutuhan_kertas_isi"/>-->
+                        </group>
+                    </page>
+
+                    <!-- Notebook: Keterangan Lain -->
+                    <page string="Keterangan Lain">
+                        <group string="Keterangan Tambahan">
+<!--                            <field name="toleransi_bb"/>-->
+<!--                            <field name="warna_rulling"/>-->
+<!--                            <field name="packing"/>-->
+                        </group>
+                        <group string="Tanda Tangan">
+<!--                            <field name="ttd_pihak_percetakan"/>-->
+<!--                            <field name="ttd_pihak_customer"/>-->
+                        </group>
+                    </page>
+                </xpath>
+            </field>
+        </record>
+    </data>
+</odoo>

@@ -15,8 +15,7 @@
                         invisible="is_confirmed"/>
             </xpath>
 
-
-            <xpath expr="//sheet" position="inside">
+            <xpath expr="//group" position="inside">
                 <notebook>
                     <page string="Bill of Materials dan HPP">
                         <group>
@@ -52,8 +51,9 @@
                             <field name="jenis_cetakan_isi"/>
                             <field name="detail_cover"/>
                             <field name="jenis_cetakan_cover"/>
+                            <field name="jenis_jilid"/>
+                            <field name="jenis_uv"/>
                             <field name="detail_design"/>
-                            <field name="detail_jilid"/>
                             <field name="detail_packing"/>
                             <field name="detail_quantity"/>
                         </group>

@@ -1,5 +1,5 @@
 {
-    'name': 'BOM Customization',
+    'name': 'Bill Of Material Customization',
     'version': '1.0.0',
     'summary': 'Customize BOM to include cost and price calculation',
     'description': 'Add custom fields and logic to BOM (Bill of Materials).',
