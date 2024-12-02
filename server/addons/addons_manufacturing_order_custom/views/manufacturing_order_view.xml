@@ -1,11 +1,13 @@
 <odoo>
     <data>
+        <!-- Inherit Manufacturing Order Form -->
         <record id="view_mrp_production_form_inherit" model="ir.ui.view">
             <field name="name">mrp.production.form.inherit</field>
             <field name="model">mrp.production</field>
             <field name="inherit_id" ref="mrp.mrp_production_form_view"/>
             <field name="arch" type="xml">
-                <xpath expr="//sheet" position="inside">
+                <!-- Tambahkan field tambahan ke dalam group -->
+                <xpath expr="//group" position="inside">
                     <group>
                         <field name="sale_id" options="{'no_create': True}" placeholder="Pilih Sales Order"
                                required="1"/>
@@ -14,15 +16,15 @@
                         <field name="nomor_pesanan" readonly="1"/>
                     </group>
                 </xpath>
-                <!-- Menambahkan notebook baru -->
+                <!-- Tambahkan notebook baru -->
                 <xpath expr="//notebook" position="inside">
                     <!-- Notebook: Spesifikasi Umum -->
                     <page string="Spesifikasi Umum">
                         <group>
                             <field name="item_product"/>
                             <field name="jumlah_halaman"/>
-<!--                            <field name="ukuran_produk_jadi"/>-->
-<!--                            <field name="total_produk"/>-->
+                            <field name="ukuran_produk_jadi"/>
+                            <field name="total_produk"/>
                             <field name="waktu_pengiriman_pertama"/>
                         </group>
                     </page>
@@ -38,33 +40,48 @@
                         </group>
                         <group string="Bahan Cover">
                             <field name="jenis_kertas_cover" readonly="1"/>
-<!--                            <field name="ukuran_bahan_kertas"/>-->
-<!--                            <field name="ukuran_cetak"/>-->
-<!--                            <field name="jumlah_up_per_lembar"/>-->
-<!--                            <field name="kebutuhan_kertas_cover"/>-->
+                            <field name="ukuran_bahan_kertas"/>
+                            <field name="ukuran_cetak"/>
+                            <field name="jumlah_up_per_lembar"/>
+                            <field name="kebutuhan_kertas_cover"/>
                         </group>
                         <group string="Cetak Isi">
-<!--                            <field name="mesin_cetak_isi"/>-->
-<!--                            <field name="bahan_kertas_isi"/>-->
-<!--                            <field name="ukuran_bahan_kertas_isi"/>-->
-<!--                            <field name="kebutuhan_kertas_isi"/>-->
+                            <field name="mesin_cetak_isi"/>
+                            <field name="bahan_kertas_isi"/>
+                            <field name="ukuran_bahan_kertas_isi"/>
+                            <field name="kebutuhan_kertas_isi"/>
                         </group>
                     </page>
 
                     <!-- Notebook: Keterangan Lain -->
                     <page string="Keterangan Lain">
                         <group string="Keterangan Tambahan">
-<!--                            <field name="toleransi_bb"/>-->
-<!--                            <field name="warna_rulling"/>-->
-<!--                            <field name="packing"/>-->
+                            <field name="toleransi_bb"/>
+                            <field name="warna_rulling"/>
+                            <field name="packing"/>
                         </group>
                         <group string="Tanda Tangan">
-<!--                            <field name="ttd_pihak_percetakan"/>-->
-<!--                            <field name="ttd_pihak_customer"/>-->
+                            <field name="ttd_pihak_percetakan"/>
+                            <field name="ttd_pihak_customer"/>
                         </group>
                     </page>
                 </xpath>
             </field>
         </record>
+
+        <!-- Mengubah Work Order List View -->
+        <record id="view_mrp_workorder_tree_custom_inherit" model="ir.ui.view">
+            <field name="name">mrp.workorder.tree.custom</field>
+            <field name="model">mrp.workorder</field>
+            <field name="inherit_id" ref="mrp.mrp_production_workorder_tree_editable_view_mo_form"/>
+            <field name="arch" type="xml">
+                <!-- Tambahkan kolom custom_qty_to_produce setelah workcenter_id -->
+                <xpath expr="//field[@name='workcenter_id']" position="after">
+                    <field name="custom_qty_to_produce" string="Custom Quantity To Produce"/>
+                </xpath>
+            </field>
+        </record>
+
+
     </data>
 </odoo>
