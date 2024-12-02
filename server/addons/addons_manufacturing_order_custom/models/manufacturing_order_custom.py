@@ -388,7 +388,6 @@ class MrpProductionCustom(models.Model):
             else:
                 production.ukuran_bahan_kertas_isi = "Tidak Diketahui"
 
-
 class MrpWorkorderCustom(models.Model):
     _inherit = "mrp.workorder"
 

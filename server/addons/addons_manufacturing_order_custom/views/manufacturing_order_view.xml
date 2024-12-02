@@ -68,7 +68,6 @@
                 </xpath>
             </field>
         </record>
-
         <!-- Mengubah Work Order List View -->
         <record id="view_mrp_workorder_tree_custom_inherit" model="ir.ui.view">
             <field name="name">mrp.workorder.tree.custom</field>
@@ -81,7 +80,6 @@
                 </xpath>
             </field>
         </record>
-
 
     </data>
 </odoo>
