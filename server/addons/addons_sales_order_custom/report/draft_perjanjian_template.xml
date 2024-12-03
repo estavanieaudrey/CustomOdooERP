@@ -1,42 +1,44 @@
 <odoo>
-    <template id="report_draft_perjanjian_template">
-        <t t-name="addons_sales_order_custom.report_draft_perjanjian">
+    <template id="draft_perjanjian_report">
+        <t t-call="web.basic_layout">
             <div class="page">
                 <h1>Draft Perjanjian</h1>
                 <p>Ukuran Buku:
-                    <t t-esc="doc.ukuran_buku or 'Tidak Ada Ukuran Buku'"/>
+                    <t t-esc="docs.ukuran_buku or 'Tidak Ada Ukuran Buku'"/>
                 </p>
                 <p>Nomor Pesanan:
-                    <t t-esc="doc.name or 'Draft'"/>
+                    <t t-esc="docs.name or 'Draft'"/>
                 </p>
                 <p>Nama Customer:
-                    <t t-esc="doc.partner_id.name or 'Unknown Customer'"/>
+                    <t t-esc="docs.partner_id.name or 'Unknown Customer'"/>
                 </p>
                 <p>Alamat Customer:
-                    <t t-esc="doc.partner_id.contact_address or 'No Address Available'"/>
+                    <t t-esc="docs.partner_id.contact_address or 'No Address Available'"/>
                 </p>
                 <p>Ukuran Buku:
-                    <t t-esc="doc.ukuran_buku or 'Tidak Ada'"/>
+                    <t t-esc="docs.ukuran_buku or 'Tidak Ada'"/>
                 </p>
                 <p>Jenis Cetakan Isi:
-                    <t t-esc="doc.jenis_cetakan_isi or 'Tidak Ada'"/>
+                    <t t-esc="docs.jenis_cetakan_isi or 'Tidak Ada'"/>
                 </p>
                 <p>HPP per Unit:
-                    <t t-esc="doc.hpp_per_unit or 0.0"/>
+                    <t t-esc="docs.hpp_per_unit or 0.0"/>
                 </p>
                 <p>Total Keseluruhan:
-                    <t t-esc="doc.hpp_total or 0.0"/>
+                    <t t-esc="docs.hpp_total or 0.0"/>
                 </p>
-
             </div>
         </t>
     </template>
 
-    <record id="action_report_draft_perjanjian" model="ir.actions.report">
-        <field name="name">Draft Perjanjian</field>
-        <field name="model">sale.order</field>
-        <field name="report_type">qweb-pdf</field>
-        <field name="report_name">addons_sales_order_custom.report_draft_perjanjian</field>
-    </record>
+    <report
+        id="report_draft_perjanjian"
+        model="sale.order"
+        string="Draft Perjanjian"
+        report_type="qweb-pdf"
+        name="addons_sales_order_custom.report_draft_perjanjian"
+        file="addons_sales_order_custom.report_draft_perjanjian"
+        print_report_name="'Draft_Perjanjian_%s' % (object.name)"
+    />
 
 </odoo>

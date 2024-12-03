@@ -1,0 +1,10 @@
+<odoo>
+    <data>
+        <record id="action_report_draft_perjanjian" model="ir.actions.report">
+            <field name="name">Draft Perjanjian</field>
+            <field name="model">sale.order</field>
+            <field name="report_type">qweb-pdf</field>
+            <field name="report_name">addons_sales_order_custom.draft_perjanjian_report</field>
+        </record>
+    </data>
+</odoo>

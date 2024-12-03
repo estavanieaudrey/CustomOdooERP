@@ -342,31 +342,31 @@ class SaleAdvancePaymentInv(models.TransientModel):
     #     except Exception as e:
     #         raise ValidationError(f"Error generating PDF: {e}")
 
-    # def action_generate_pdf(self):
-    #     """
-    #     Generate PDF for the custom report and return it as an action.
-    #     """
-    #     return self.env.ref('addons_sales_order_custom.action_report_draft_perjanjian').report_action(self)
-    #
-    # def action_quotation_send(self):
-    #     """
-    #     Override Odoo's quotation send to include custom PDF attachment.
-    #     """
-    #     action = super(SaleOrderCustom, self).action_quotation_send()
-    #     if action.get('context'):
-    #         # Render the PDF for the current sale order
-    #         pdf_content = self.env.ref('addons_sales_order_custom.action_report_draft_perjanjian')._render_qweb_pdf(self.id)[0]
-    #         pdf_base64 = base64.b64encode(pdf_content)  # Convert PDF to base64
-    #
-    #         # Generate attachment name
-    #         attachment_name = f"Quotation - {self.name or 'Draft'}.pdf"
-    #
-    #         # Add the attachment to the context
-    #         action['context']['default_attachment_ids'] = [(0, 0, {
-    #             'name': attachment_name,  # Name of the file (mandatory)
-    #             'datas': pdf_base64,      # Data of the file in base64
-    #             'res_model': 'sale.order',
-    #             'res_id': self.id,
-    #             'mimetype': 'application/pdf',
-    #         })]
-    #     return action
+    def action_generate_pdf(self):
+        """
+        Generate PDF for the custom report and return it as an action.
+        """
+        return self.env.ref('addons_sales_order_custom.action_report_draft_perjanjian').report_action(self)
+
+    def action_quotation_send(self):
+        """
+        Override Odoo's quotation send to include custom PDF attachment.
+        """
+        action = super(SaleOrderCustom, self).action_quotation_send()
+        if action.get('context'):
+            # Render the PDF for the current sale order
+            pdf_content = self.env.ref('addons_sales_order_custom.action_report_draft_perjanjian')._render_qweb_pdf(self.id)[0]
+            pdf_base64 = base64.b64encode(pdf_content)  # Convert PDF to base64
+
+            # Generate attachment name
+            attachment_name = f"Quotation - {self.name or 'Draft'}.pdf"
+
+            # Add the attachment to the context
+            action['context']['default_attachment_ids'] = [(0, 0, {
+                'name': attachment_name,  # Name of the file (mandatory)
+                'datas': pdf_base64,      # Data of the file in base64
+                'res_model': 'sale.order',
+                'res_id': self.id,
+                'mimetype': 'application/pdf',
+            })]
+        return action

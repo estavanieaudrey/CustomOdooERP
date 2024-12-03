@@ -7,7 +7,12 @@
         <field name="arch" type="xml">
 
             <xpath expr="//header" position="inside">
-                <button name="action_generate_pdf" string="Generate Draft PDF" type="object" class="oe_highlight"/>
+<!--                <button name="action_generate_pdf" string="Generate Draft PDF" type="object" class="oe_highlight"/>-->
+                <button name="action_generate_pdf"
+                            type="object"
+                            string="Generate Draft Perjanjian"
+                            class="btn-primary"
+                            icon="fa-pencil-square-o"/>
                 <button name="action_convert_to_sales_order"
                         string="Confirm as Sales Order"
                         type="object"

@@ -8,7 +8,7 @@
         'security/ir.model.access.csv',
         'views/sale_order_view.xml',
         'report/draft_perjanjian_template.xml',
-        'report/report_draft_perjanjian.xml',
+        'views/draft_perjanjian_view.xml',
     ],
     'installable': True,
     'application': False,
