@@ -1,0 +1,10 @@
+<odoo>
+    <data>
+        <record id="action_report_nota_permintaan_barang" model="ir.actions.report">
+            <field name="name">Nota Permintaan Barang</field>
+            <field name="model">mrp.production</field>
+            <field name="report_type">qweb-pdf</field>
+            <field name="report_name">addons_manufacturing_order_custom.nota_permintaan_barang_report</field>
+        </record>
+    </data>
+</odoo>

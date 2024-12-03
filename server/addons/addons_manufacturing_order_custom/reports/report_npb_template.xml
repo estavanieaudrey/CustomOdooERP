@@ -1,0 +1,31 @@
+<odoo>
+    <data>
+        <template id="nota_permintaan_barang_report">
+            <t t-call="web.basic_layout">
+                <div class="page">
+                    <h2>Nota Permintaan Barang</h2>
+                    <table class="table table-bordered">
+                        <thead>
+                            <tr>
+                                <th>Product</th>
+                                <th>Quantity</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr t-foreach="docs.move_raw_ids" t-as="line">
+                                <td>
+                                    <span t-field="line.product_id.name"/>
+                                </td>
+                                <td>
+                                    <span t-field="line.product_uom_qty"/>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </t>
+        </template>
+
+
+    </data>
+</odoo>

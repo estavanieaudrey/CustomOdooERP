@@ -259,14 +259,67 @@ class MrpBomCustom(models.Model):
             record.qty_buku = record.product_qty
 
 
+# INI ANEH GABISA KL MASUKIN BYK PRODUCT -> QTY TDK KE SAVE.... TAPI SEBELUMNYA GAPAPA?!
+# class MrpBomLineCustom(models.Model):
+#     _inherit = 'mrp.bom.line'
+#
+#     # Field tambahan di baris component
+#     kebutuhan_rim_isi = fields.Float(string="Kebutuhan Rim Isi", help="Hasil Perhitungan Rim Kertas Isi dari HPP", compute="_compute_line_values", store=True)
+#     kebutuhan_kg_isi = fields.Float(string="Kebutuhan KG Isi", help="Hasil Perhitungan KG Kertas Isi dari HPP", compute="_compute_line_values", store=True)
+#     kebutuhan_rim_cover = fields.Float(string="Kebutuhan Rim Cover", help="Hasil Perhitungan Rim Kertas Cover dari HPP", compute="_compute_line_values", store=True)
+#     kebutuhan_kg_cover = fields.Float(string="Kebutuhan KG Cover", help="Hasil Perhitungan KG Kertas Cover dari HPP", compute="_compute_line_values", store=True)
+#     isi_box = fields.Float(string="Isi Box", compute="_compute_line_values", store=True)
+#     qty_buku = fields.Float(related='bom_id.qty_buku', string="Quantity Buku", store=True)
+#
+#     @api.depends('bom_id')
+#     def _compute_line_values(self):
+#         """Ambil nilai kebutuhan dari mrp.bom."""
+#         for line in self:
+#             bom = line.bom_id
+#             line.kebutuhan_rim_isi = bom.kebutuhan_rim_isi
+#             line.kebutuhan_kg_isi = bom.kebutuhan_kg_isi
+#             line.kebutuhan_rim_cover = bom.kebutuhan_rim_cover
+#             line.kebutuhan_kg_cover = bom.kebutuhan_kg_cover
+#             line.isi_box = bom.isi_box
+#
+#     @api.onchange('product_id')
+#     def _onchange_product_id(self):
+#         """Update otomatis field quantity (product_qty) berdasarkan product_id."""
+#         for line in self:
+#             if line.product_id:
+#                 product_name = line.product_id.name
+#                 # Logika untuk Kertas Isi
+#                 if "Kertas Isi" in product_name:
+#                     line.product_qty = line.kebutuhan_rim_isi * line.kebutuhan_kg_isi
+#                 # Logika untuk Kertas Cover
+#                 elif "Kertas Cover" in product_name:
+#                     line.product_qty = line.kebutuhan_rim_cover * line.kebutuhan_kg_cover
+#                 # Logika untuk Box
+#                 elif "Box" in product_name:
+#                     line.product_qty = line.qty_buku / line.isi_box if line.isi_box > 0 else 0.0
+#                 else:
+#                     line.product_qty = 1.0  # Default jika tidak ada aturan
+#
+#     @api.model
+#     def create(self, vals):
+#         product = self.env['product.product'].browse(vals.get('product_id'))
+#         if product:
+#             if "Kertas Isi" in product.name:
+#                 vals['product_qty'] = vals.get('kebutuhan_rim_isi', 0.0) * vals.get('kebutuhan_kg_isi', 0.0)
+#             elif "Kertas Cover" in product.name:
+#                 vals['product_qty'] = vals.get('kebutuhan_rim_cover', 0.0) * vals.get('kebutuhan_kg_cover', 0.0)
+#             elif "Box" in product.name:
+#                 vals['product_qty'] = vals.get('qty_buku', 0.0) / vals.get('isi_box', 1.0)
+#         return super(MrpBomLineCustom, self).create(vals)
+
 class MrpBomLineCustom(models.Model):
     _inherit = 'mrp.bom.line'
 
     # Field tambahan di baris component
-    kebutuhan_rim_isi = fields.Float(string="Kebutuhan Rim Isi", help="Hasil Perhitungan Rim Kertas Isi dari HPP", compute="_compute_line_values", store=True)
-    kebutuhan_kg_isi = fields.Float(string="Kebutuhan KG Isi", help="Hasil Perhitungan KG Kertas Isi dari HPP", compute="_compute_line_values", store=True)
-    kebutuhan_rim_cover = fields.Float(string="Kebutuhan Rim Cover", help="Hasil Perhitungan Rim Kertas Cover dari HPP", compute="_compute_line_values", store=True)
-    kebutuhan_kg_cover = fields.Float(string="Kebutuhan KG Cover", help="Hasil Perhitungan KG Kertas Cover dari HPP", compute="_compute_line_values", store=True)
+    kebutuhan_rim_isi = fields.Float(string="Kebutuhan Rim Isi", compute="_compute_line_values", store=True)
+    kebutuhan_kg_isi = fields.Float(string="Kebutuhan KG Isi", compute="_compute_line_values", store=True)
+    kebutuhan_rim_cover = fields.Float(string="Kebutuhan Rim Cover", compute="_compute_line_values", store=True)
+    kebutuhan_kg_cover = fields.Float(string="Kebutuhan KG Cover", compute="_compute_line_values", store=True)
     isi_box = fields.Float(string="Isi Box", compute="_compute_line_values", store=True)
     qty_buku = fields.Float(related='bom_id.qty_buku', string="Quantity Buku", store=True)
 
@@ -286,27 +339,48 @@ class MrpBomLineCustom(models.Model):
         """Update otomatis field quantity (product_qty) berdasarkan product_id."""
         for line in self:
             if line.product_id:
+                bom = line.bom_id
+                waste_factor = 1 + (bom.waste_percentage / 100)
                 product_name = line.product_id.name
+
                 # Logika untuk Kertas Isi
                 if "Kertas Isi" in product_name:
-                    line.product_qty = line.kebutuhan_rim_isi * line.kebutuhan_kg_isi
+                    line.product_qty = (line.kebutuhan_rim_isi * line.kebutuhan_kg_isi) * waste_factor
                 # Logika untuk Kertas Cover
                 elif "Kertas Cover" in product_name:
-                    line.product_qty = line.kebutuhan_rim_cover * line.kebutuhan_kg_cover
+                    line.product_qty = (line.kebutuhan_rim_cover * line.kebutuhan_kg_cover) * waste_factor
                 # Logika untuk Box
                 elif "Box" in product_name:
                     line.product_qty = line.qty_buku / line.isi_box if line.isi_box > 0 else 0.0
-                else:
-                    line.product_qty = 1.0  # Default jika tidak ada aturan
 
     @api.model
     def create(self, vals):
+        """Pastikan product_qty dihitung dengan benar saat record dibuat."""
+        bom = self.env['mrp.bom'].browse(vals.get('bom_id'))
         product = self.env['product.product'].browse(vals.get('product_id'))
-        if product:
+        if bom and product:
+            waste_factor = 1 + (bom.waste_percentage / 100)
             if "Kertas Isi" in product.name:
-                vals['product_qty'] = vals.get('kebutuhan_rim_isi', 0.0) * vals.get('kebutuhan_kg_isi', 0.0)
+                vals['product_qty'] = (vals.get('kebutuhan_rim_isi', 0.0) * vals.get('kebutuhan_kg_isi',
+                                                                                     0.0)) * waste_factor
             elif "Kertas Cover" in product.name:
-                vals['product_qty'] = vals.get('kebutuhan_rim_cover', 0.0) * vals.get('kebutuhan_kg_cover', 0.0)
+                vals['product_qty'] = (vals.get('kebutuhan_rim_cover', 0.0) * vals.get('kebutuhan_kg_cover',
+                                                                                       0.0)) * waste_factor
             elif "Box" in product.name:
                 vals['product_qty'] = vals.get('qty_buku', 0.0) / vals.get('isi_box', 1.0)
         return super(MrpBomLineCustom, self).create(vals)
+
+    def write(self, vals):
+        """Pastikan product_qty dihitung dengan benar saat record diperbarui."""
+        for line in self:
+            bom = line.bom_id
+            product = line.product_id
+            if bom and product:
+                waste_factor = 1 + (bom.waste_percentage / 100)
+                if "Kertas Isi" in product.name:
+                    vals['product_qty'] = (line.kebutuhan_rim_isi * line.kebutuhan_kg_isi) * waste_factor
+                elif "Kertas Cover" in product.name:
+                    vals['product_qty'] = (line.kebutuhan_rim_cover * line.kebutuhan_kg_cover) * waste_factor
+                elif "Box" in product.name:
+                    vals['product_qty'] = line.qty_buku / line.isi_box if line.isi_box > 0 else 0.0
+        return super(MrpBomLineCustom, self).write(vals)
