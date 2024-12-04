@@ -248,43 +248,58 @@ class MrpProductionCustom(models.Model):
         ).report_action(self)
         # return report_action
 
+
+# untuk mengedit custom quantity di bagian work order di Manufacturing Order
 class MrpWorkorderCustom(models.Model):
     _inherit = "mrp.workorder"
 
     custom_qty_to_produce = fields.Float(
         string="Custom Quantity To Produce",
         compute="_compute_custom_qty_to_produce",
-        store=True
+        store=True,
     )
 
-    @api.depends('production_id.bom_id', 'operation_id.name')
+    @api.depends(
+        'production_id.bom_id',
+        'production_id.bom_id.kebutuhan_rim_isi',
+        'production_id.bom_id.kebutuhan_kg_isi',
+        'production_id.bom_id.kebutuhan_rim_cover',
+        'production_id.bom_id.kebutuhan_kg_cover',
+        'operation_id.name'
+    )
     def _compute_custom_qty_to_produce(self):
         """
-        Menghitung custom_qty_to_produce berdasarkan logika yang telah dijelaskan.
+        Menghitung custom_qty_to_produce berdasarkan kebutuhan di BoM dan operasi workorder.
         """
         for workorder in self:
             bom = workorder.production_id.bom_id
             if bom:
-                # Logika berdasarkan nama operation
+                waste_factor = 1 + (bom.waste_percentage / 100)
+
+                # Identifikasi operasi dan tentukan quantity berdasarkan nama
                 if "Produksi Cetak Cover" in workorder.operation_id.name:
-                    workorder.custom_qty_to_produce = bom.kebutuhan_kertasCover or 0.0
-                elif "Mengirimkan ke UV Varnish" in workorder.operation_id.name:
-                    workorder.custom_qty_to_produce = 0.0
-                elif "Menerima Cetak Cover dari UV Varnish" in workorder.operation_id.name:
-                    workorder.custom_qty_to_produce = 0.0
+                    # Menggunakan perhitungan kertas cover
+                    custom_qty = (bom.kebutuhan_rim_cover * bom.kebutuhan_kg_cover) * waste_factor
+                    workorder.custom_qty_to_produce = custom_qty or 0.0
+
                 elif "Produksi Cetak Isi" in workorder.operation_id.name:
-                    workorder.custom_qty_to_produce = bom.kebutuhan_kertasIsi or 0.0
-                elif "Join Cetak Cover dan Isi" in workorder.operation_id.name:
-                    workorder.custom_qty_to_produce = 0.0
-                elif "Pemotongan Akhir" in workorder.operation_id.name:
-                    workorder.custom_qty_to_produce = 0.0
+                    # Menggunakan perhitungan kertas isi
+                    custom_qty = (bom.kebutuhan_rim_isi * bom.kebutuhan_kg_isi) * waste_factor
+                    workorder.custom_qty_to_produce = custom_qty or 0.0
+
                 elif "Packing Buku kedalam Box" in workorder.operation_id.name:
-                    workorder.custom_qty_to_produce = 0.0
+                    # Menggunakan perhitungan packing box
+                    if bom.isi_box > 0:
+                        custom_qty = bom.qty_buku / bom.isi_box
+                    else:
+                        custom_qty = 0.0
+                    workorder.custom_qty_to_produce = custom_qty or 0.0
+
                 else:
+                    # Default untuk operasi lain
                     workorder.custom_qty_to_produce = 0.0
             else:
                 workorder.custom_qty_to_produce = 0.0
-
 
 class MrpBomLine(models.Model):
     _inherit = 'mrp.bom.line'

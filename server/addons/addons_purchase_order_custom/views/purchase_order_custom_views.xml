@@ -1,0 +1,20 @@
+<odoo>
+    <record id="view_purchase_order_custom_form" model="ir.ui.view">
+        <field name="name">purchase.order.custom.form</field>
+        <field name="model">purchase.order</field>
+        <field name="inherit_id" ref="purchase.purchase_order_form"/>
+        <field name="arch" type="xml">
+            <!-- Add Sales Order and Manufacturing Order -->
+            <xpath expr="//field[@name='partner_id']" position="after">
+                <field name="sale_order_id" options="{'no_create': True}" placeholder="Link Sales Order"/>
+                <field name="manufacturing_order_id" options="{'no_create': True}"
+                       placeholder="Link Manufacturing Order"/>
+            </xpath>
+            <!-- Add Vendor Address -->
+            <xpath expr="//field[@name='partner_id']" position="after">
+                <field name="vendor_address" readonly="1"/>
+            </xpath>
+
+        </field>
+    </record>
+</odoo>
