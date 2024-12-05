@@ -20,7 +20,7 @@ class PurchaseOrderCustom(models.Model):
     @api.onchange('manufacturing_order_id')
     def _onchange_manufacturing_order_id(self):
         """
-        Auto-fill Products tab and fetch unit price from BoM.
+        Auto-fill Products tab and fetch unit price from BoM dynamically.
         """
         if self.manufacturing_order_id:
             bom = self.manufacturing_order_id.bom_id
@@ -35,7 +35,6 @@ class PurchaseOrderCustom(models.Model):
             for line in self.manufacturing_order_id.move_raw_ids:
                 price_unit = self._get_price_from_bom(line.product_id, bom)
                 new_lines.append((0, 0, {
-                    'order_id': self.id,  # Explicitly set the order_id
                     'product_id': line.product_id.id,
                     'product_qty': line.product_uom_qty,
                     'price_unit': price_unit,
@@ -43,6 +42,10 @@ class PurchaseOrderCustom(models.Model):
                 }))
 
             self.order_line = new_lines
+            # Trigger UI update for each order line
+            # Force UI update
+            # for line in self.order_line:
+            #     line.price_unit = self._get_price_from_bom(line.product_id, bom)
 
     def _get_price_from_bom(self, product_id, bom):
         """
@@ -74,19 +77,38 @@ class PurchaseOrderLineCustom(models.Model):
     @api.onchange('product_id', 'order_id.manufacturing_order_id')
     def _onchange_product_id(self):
         """
-        Set price_unit based on BoM whenever product_id or manufacturing_order_id changes.
+        Set price_unit based on BoM dynamically whenever product_id or manufacturing_order_id changes.
         """
         if self.product_id and self.order_id.manufacturing_order_id:
             bom = self.order_id.manufacturing_order_id.bom_id
             self.price_unit = self.order_id._get_price_from_bom(self.product_id, bom)
+            self.write({'price_unit': self.price_unit})  # Write back to enforce update
 
+    # def _update_ui_price_unit(self):
+    #     """
+    #     Helper method to ensure price_unit is updated on UI dynamically.
+    #     """
+    #     self.ensure_one()
+    #     self.write({'price_unit': self.price_unit})
 
-    @api.onchange('partner_id')
-    def _onchange_partner_id(self):
+    @api.model
+    def default_get(self, fields):
+        res = super(PurchaseOrderLineCustom, self).default_get(fields)
+        if self.env.context.get('default_order_id'):
+            order = self.env['purchase.order'].browse(self.env.context['default_order_id'])
+            if order.manufacturing_order_id:
+                bom = order.manufacturing_order_id.bom_id
+                res['price_unit'] = order._get_price_from_bom(res.get('product_id'), bom)
+        return res
+
+    @api.onchange('order_id.manufacturing_order_id')
+    def _onchange_order_id_manufacturing_order_id(self):
         """
-        Override vendor price influence. Prevent price_unit from being updated by partner.
+        Update price_unit when Manufacturing Order changes.
         """
-        pass  # Do nothing to ensure price_unit is not affected by vendor pricelist.
+        if self.order_id.manufacturing_order_id:
+            bom = self.order_id.manufacturing_order_id.bom_id
+            self.price_unit = self.order_id._get_price_from_bom(self.product_id, bom)
 
     @api.model
     def create(self, vals):
@@ -110,4 +132,28 @@ class PurchaseOrderLineCustom(models.Model):
                     bom = line.order_id.manufacturing_order_id.bom_id
                     line.price_unit = line.order_id._get_price_from_bom(line.product_id, bom)
         return res
+
+    @api.onchange('product_uom')
+    def _onchange_product_uom(self):
+        """
+        Ensure price_unit remains consistent with BoM when UoM changes
+        and validate UoM rounding.
+        """
+        if self.product_uom:
+            # Validate rounding for UoM
+            if not self.product_uom.rounding or self.product_uom.rounding <= 0:
+                self.product_uom.rounding = 0.01  # Set default rounding if not set
+
+            # Ensure price_unit consistency with BoM
+            if self.order_id.manufacturing_order_id:
+                bom = self.order_id.manufacturing_order_id.bom_id
+                if bom:
+                    self.price_unit = self.order_id._get_price_from_bom(self.product_id, bom)
+
+            # Log for debugging
+            import logging
+            _logger = logging.getLogger(__name__)
+            _logger.info(f"UoM changed: {self.product_uom.name}, Price Unit: {self.price_unit}")
+
+
 

@@ -14,6 +14,9 @@
             <xpath expr="//field[@name='partner_id']" position="after">
                 <field name="vendor_address" readonly="1"/>
             </xpath>
+            <xpath expr="//field[@name='order_line']/form" position="inside">
+                <field name="price_unit" readonly="0"/>
+            </xpath>
 
         </field>
     </record>
