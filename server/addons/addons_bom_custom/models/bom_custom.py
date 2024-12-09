@@ -99,6 +99,25 @@ class MrpBomCustom(models.Model):
 
     isi_box = fields.Float(string="Isi Box", default=60.0)
 
+    # menambahkan field baru untuk melakukan kalkulasi quantity buku yang ditambah persentase waste
+    qty_buku_plus_waste = fields.Float(
+        string="Quantity Buku Plus Waste",
+        compute="_compute_qty_buku_plus_waste",
+        store=True,
+        help="Jumlah buku yang disiapkan termasuk tambahan waste."
+    )
+
+    @api.depends('qty_buku', 'waste_percentage')
+    def _compute_qty_buku_plus_waste(self):
+        """
+        Menghitung jumlah buku yang harus disiapkan dengan waste percentage.
+        """
+        for bom in self:
+            if bom.qty_buku and bom.waste_percentage >= 0:
+                bom.qty_buku_plus_waste = bom.qty_buku * (1 + (bom.waste_percentage / 100))
+            else:
+                bom.qty_buku_plus_waste = bom.qty_buku  # Default ke qty_buku jika waste_percentage tidak valid
+
     @api.depends('jmlh_halaman_buku', 'qty_buku', 'gramasi_kertas_isi', 'gramasi_kertas_cover', 'ukuran_buku')
     def _compute_hpp_values(self):
         """Hitung kebutuhan rim dan kg berdasarkan formula HPP"""

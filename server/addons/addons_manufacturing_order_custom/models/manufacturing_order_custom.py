@@ -259,6 +259,23 @@ class MrpWorkorderCustom(models.Model):
         store=True,
     )
 
+    # Override qty_remaining -> untuk maksa quantity to be produce mengikuti custom_qty_to_produce
+    custom_qty_remaining = fields.Float(
+        string="Custom Quantity Remaining",
+        compute="_compute_qty_remaining",
+        store=True
+    )
+
+    @api.depends('custom_qty_to_produce')
+    def _compute_qty_remaining(self):
+        """
+        Mengatur qty_remaining agar sesuai dengan custom_qty_to_produce.
+        """
+        for work_order in self:
+            work_order.qty_remaining = work_order.custom_qty_to_produce
+
+    
+
     @api.depends(
         'production_id.bom_id',
         'production_id.bom_id.kebutuhan_rim_isi',
@@ -267,6 +284,7 @@ class MrpWorkorderCustom(models.Model):
         'production_id.bom_id.kebutuhan_kg_cover',
         'operation_id.name'
     )
+
     def _compute_custom_qty_to_produce(self):
         """
         Menghitung custom_qty_to_produce berdasarkan kebutuhan di BoM dan operasi workorder.
