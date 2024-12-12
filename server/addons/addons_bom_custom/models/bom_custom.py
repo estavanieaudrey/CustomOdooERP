@@ -157,18 +157,18 @@ class MrpBomCustom(models.Model):
         for record in self:
             # Perhitungan untuk cari HPP Produksi
             # Hitung Waste Factor
-            waste_factor = 1 + (record.waste_percentage / 100)
+            waste_factor = (record.waste_percentage / 100)
             # Kertas Isi
             kebutuhan_rim_isi = (record.jmlh_halaman_buku / 16 * record.qty_buku) / 500
             kebutuhan_kg_isi = (((63 * 86 * record.gramasi_kertas_isi) / 20000) if record.ukuran_buku == 'a4'
                                    else ((54.6 * 73 * record.gramasi_kertas_isi) / 20000))
-            record.total_biaya_kertas_isi = (kebutuhan_rim_isi * kebutuhan_kg_isi * record.hrg_kertas_isi) * waste_factor
+            record.total_biaya_kertas_isi = (kebutuhan_rim_isi * kebutuhan_kg_isi * record.hrg_kertas_isi) + ((kebutuhan_rim_isi * kebutuhan_kg_isi * record.hrg_kertas_isi) * waste_factor)
 
             # Kertas Cover
             kebutuhan_rim_cover = (record.qty_buku / 4) / 500
             kebutuhan_kg_cover = (((65 * 100 * record.gramasi_kertas_cover) / 20000) if record.ukuran_buku == 'a4'
                                      else (79 * 55 * record.gramasi_kertas_cover) / 20000)
-            record.total_biaya_kertas_cover = (kebutuhan_rim_cover * kebutuhan_kg_cover * record.hrg_kertas_cover) * waste_factor
+            record.total_biaya_kertas_cover = (kebutuhan_rim_cover * kebutuhan_kg_cover * record.hrg_kertas_cover) + ((kebutuhan_rim_cover * kebutuhan_kg_cover * record.hrg_kertas_cover) * waste_factor)
 
             # Plate Isi
             if record.jenis_cetakan_isi == '1_sisi':  # Jika 1 sisi
@@ -209,16 +209,16 @@ class MrpBomCustom(models.Model):
             )
 
     # Perhitungan Biaya Jasa
-    @api.depends('jasa_cetak_isi', 'jasa_cetak_cover', 'jasa_jilid', 'hrg_uv')
+    @api.depends('kebutuhan_rim_isi', 'kebutuhan_rim_cover','jasa_cetak_isi', 'jasa_cetak_cover', 'jasa_jilid', 'hrg_uv')
     def _compute_biaya_jasa(self):
         for record in self:
             # Cetak Isi
-            kebutuhan_rim_isi = (record.jmlh_halaman_buku / 16 * record.qty_buku) / 500
-            record.total_biaya_cetak_isi = kebutuhan_rim_isi * record.jasa_cetak_isi
+            # kebutuhan_isiRim = (record.jmlh_halaman_buku / 16 * record.qty_buku) / 500
+            record.total_biaya_cetak_isi = record.kebutuhan_rim_isi * record.jasa_cetak_isi
 
             # Cetak Cover
-            kebutuhan_rim_cover = (record.qty_buku / 4) / 500
-            record.total_biaya_cetak_cover = kebutuhan_rim_cover * record.jasa_cetak_cover
+            # kebutuhan_rim_cover = (record.qty_buku / 4) / 500
+            record.total_biaya_cetak_cover = record.kebutuhan_rim_cover * record.jasa_cetak_cover
 
             # UV
             if record.ukuran_buku == 'a4':
@@ -234,7 +234,7 @@ class MrpBomCustom(models.Model):
             record.total_biaya_uv = (
                     (ukuran_cover * record.hrg_uv)  # Harga UV per cm
                     * 500  # 1 rim
-                    * (kebutuhan_rim_cover  # Jumlah rim
+                    * (record.kebutuhan_rim_cover  # Jumlah rim
                     + waste_factor)  # Tambah 10% Waste Produksi
             )
 
@@ -260,9 +260,9 @@ class MrpBomCustom(models.Model):
             # Hitung Overhead berdasarkan input user
             record.overhead = total * (record.overhead_percentage / 100)
             # Hitung PPn berdasarkan input user
-            record.ppn = total * (record.ppn_percentage / 100)
-            record.hpp_total = total + record.overhead + record.ppn
-            record.hpp_per_unit = record.hpp_total / record.qty_buku if record.qty_buku > 0 else 0.0
+            record.ppn = (total + record.overhead) * (record.ppn_percentage / 100)
+            record.hpp_total = total + record.ppn
+            record.hpp_per_unit = record.hpp_total / record.qty_buku #if record.qty_buku > 0 else 0.0
 
     '''Ini untuk menyamakan antara qty_buku yang ada dicustom dengan product_qty yang ada di BOM template'''
     # Sinkronisasi Qty Buku ke Quantity Bawaan BOM
