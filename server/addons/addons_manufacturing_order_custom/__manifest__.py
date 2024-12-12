@@ -12,6 +12,7 @@
         'views/manufacturing_order_view.xml',
         'views/nota_permintaan_barang_view.xml',
         'reports/report_npb_template.xml',
+        'security/ir.model.access.csv',
     ],
     'installable': True,
     'application': False,

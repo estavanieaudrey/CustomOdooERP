@@ -1,5 +1,5 @@
-from odoo import models, fields, api
-from odoo.exceptions import UserError
+from odoo import models, fields, api, _
+from odoo.exceptions import ValidationError
 
 class MrpProductionCustom(models.Model):
     _inherit = 'mrp.production'
@@ -253,6 +253,68 @@ class MrpProductionCustom(models.Model):
 class MrpWorkorderCustom(models.Model):
     _inherit = "mrp.workorder"
 
+    # Input Fields
+    jumlah_bahan_baku = fields.Float(
+        string="Jumlah Bahan Baku Digunakan",
+        help="Input jumlah bahan baku yang digunakan pada proses ini."
+    )
+
+    # Production Output Fields
+    hasil_produksi_cover = fields.Float(string="Hasil Produksi Cover")
+    hasil_produksi_isi = fields.Float(string="Hasil Produksi Isi")
+    hasil_join_cetak_isi = fields.Float(string="Hasil Join Cetak Isi")
+    hasil_pemotongan_akhir = fields.Float(string="Hasil Pemotongan Akhir")
+    qty_realita_buku = fields.Float(string="Qty Realita Buku")
+    qty_realita_box = fields.Float(string="Qty Realita Box")
+    qty_buku_dalam_box = fields.Float(string="Qty Buku dalam 1 Box")
+    
+    # UV Process Fields
+    qty_kirim_ke_uv = fields.Float(string="Qty Kirim ke UV")
+    qty_terima_dari_uv = fields.Float(string="Qty Terima dari UV")
+
+    # Unit Selection for Results
+    unit_type = fields.Selection([
+        ('kg', 'Kg'),
+        ('pcs', 'Pcs')
+    ], string="Unit Type", default='pcs')
+
+    # Waste Calculation
+    selisih_qty_buku = fields.Float(
+        string="Selisih Qty Buku",
+        compute="_compute_waste_difference",
+        store=True
+    )
+    warning_message = fields.Char(
+        string="Warning Message", 
+        readonly=True
+    )
+
+    @api.depends('qty_realita_buku', 'production_id.bom_id.qty_buku')
+    def _compute_waste_difference(self):
+        for record in self:
+            expected_qty = record.production_id.bom_id.qty_buku
+            if expected_qty and record.qty_realita_buku:
+                record.selisih_qty_buku = record.qty_realita_buku - expected_qty
+
+                if record.selisih_qty_buku < 0:
+                    record.warning_message = _("Permintaan buku tidak tercukupi!")
+                elif record.selisih_qty_buku > 0:
+                    record.warning_message = _("Permintaan buku tercukupi!")
+                else:
+                    record.warning_message = _("Jumlah buku sesuai permintaan.")
+
+    @api.constrains('jumlah_bahan_baku', 'workcenter_id')
+    def _check_bahan_baku(self):
+        for record in self:
+            if record.workcenter_id.name in ['Produksi Cetak Cover', 'Produksi Cetak Isi']:
+                if record.jumlah_bahan_baku < 0:
+                    raise ValidationError(_("Jumlah bahan baku tidak boleh kurang dari 0!"))
+                if record.jumlah_bahan_baku > record.custom_qty_to_produce:
+                    raise ValidationError(_(
+                        f"Jumlah bahan baku melebihi kebutuhan untuk {record.workcenter_id.name}!\n"
+                        f"Maksimal: {record.custom_qty_to_produce}"
+                    ))
+
     custom_qty_to_produce = fields.Float(
         string="Custom Quantity To Produce",
         compute="_compute_custom_qty_to_produce",
@@ -273,8 +335,6 @@ class MrpWorkorderCustom(models.Model):
         """
         for work_order in self:
             work_order.qty_remaining = work_order.custom_qty_to_produce
-
-    
 
     @api.depends(
         'production_id.bom_id',
@@ -319,6 +379,24 @@ class MrpWorkorderCustom(models.Model):
             else:
                 workorder.custom_qty_to_produce = 0.0
 
+    @api.onchange('jumlah_bahan_baku')
+    def _onchange_jumlah_bahan_baku(self):
+        if self.workcenter_id.name in ['Produksi Cetak Cover', 'Produksi Cetak Isi']:
+            if self.jumlah_bahan_baku and self.custom_qty_to_produce:
+                usage_percentage = (self.jumlah_bahan_baku / self.custom_qty_to_produce) * 100
+                if usage_percentage < 80:
+                    return {
+                        'warning': {
+                            'title': _('Peringatan Penggunaan Bahan Baku'),
+                            'message': _(
+                                f"Jumlah bahan baku yang diinput ({self.jumlah_bahan_baku}) "
+                                f"kurang dari 80% dari kebutuhan yang dihitung ({self.custom_qty_to_produce}). "
+                                f"Pastikan jumlah ini sudah benar."
+                            )
+                        }
+                    }
+
+
 class MrpBomLine(models.Model):
     _inherit = 'mrp.bom.line'
 
@@ -331,3 +409,8 @@ class MrpBomLine(models.Model):
         # _logger.info(f"Updating BoM Line {self.id}: {vals}")
         return super(MrpBomLine, self).write(vals)
 
+class MrpWorkorderWizard(models.TransientModel):
+    _name = 'mrp.workorder.wizard'
+    _description = 'MRP Workorder Wizard'
+
+    name = fields.Char(string="Name")
