@@ -1,5 +1,6 @@
 from odoo import models, fields, api, _
-from odoo.exceptions import ValidationError
+from odoo.exceptions import UserError
+from datetime import timedelta
 
 class MrpProductionCustom(models.Model):
     _inherit = 'mrp.production'
@@ -309,10 +310,10 @@ class MrpWorkorderCustom(models.Model):
             if record.workcenter_id.name in ['Produksi Cetak Cover', 'Produksi Cetak Isi']:
                 if record.jumlah_bahan_baku < 0:
                     raise ValidationError(_("Jumlah bahan baku tidak boleh kurang dari 0!"))
-                if record.jumlah_bahan_baku > record.custom_qty_to_produce:
+                if record.jumlah_bahan_baku > record.production_id.bom_id.qty_buku:
                     raise ValidationError(_(
                         f"Jumlah bahan baku melebihi kebutuhan untuk {record.workcenter_id.name}!\n"
-                        f"Maksimal: {record.custom_qty_to_produce}"
+                        f"Maksimal: {record.production_id.bom_id.qty_buku}"
                     ))
 
     custom_qty_to_produce = fields.Float(
@@ -321,6 +322,20 @@ class MrpWorkorderCustom(models.Model):
         store=True,
     )
 
+    # Override qty_remaining -> untuk mencegah quantity mengikuti custom_qty_to_produce
+    # qty_remaining = fields.Float(
+    #     'Quantity To Be Produced',
+    #     compute='_compute_qty_remaining',
+    #     digits=(16, 0),
+    #     store=True
+    # )
+
+    # @api.depends('qty_production', 'qty_produced')
+    # def _compute_qty_remaining(self):
+    #     for wo in self:
+    #         # Jangan menggunakan custom_qty_to_produce
+    #         wo.qty_remaining = max(wo.qty_production - wo.qty_produced, 0)
+    
     # Override qty_remaining -> untuk maksa quantity to be produce mengikuti custom_qty_to_produce
     custom_qty_remaining = fields.Float(
         string="Custom Quantity Remaining",
@@ -330,11 +345,9 @@ class MrpWorkorderCustom(models.Model):
 
     @api.depends('custom_qty_to_produce')
     def _compute_qty_remaining(self):
-        """
-        Mengatur qty_remaining agar sesuai dengan custom_qty_to_produce.
-        """
         for work_order in self:
             work_order.qty_remaining = work_order.custom_qty_to_produce
+
 
     @api.depends(
         'production_id.bom_id',
@@ -382,19 +395,43 @@ class MrpWorkorderCustom(models.Model):
     @api.onchange('jumlah_bahan_baku')
     def _onchange_jumlah_bahan_baku(self):
         if self.workcenter_id.name in ['Produksi Cetak Cover', 'Produksi Cetak Isi']:
-            if self.jumlah_bahan_baku and self.custom_qty_to_produce:
-                usage_percentage = (self.jumlah_bahan_baku / self.custom_qty_to_produce) * 100
+            # Mengakses qty_buku melalui production_id.bom_id
+            if self.jumlah_bahan_baku and self.production_id.bom_id.qty_buku:
+                usage_percentage = (self.jumlah_bahan_baku / self.production_id.bom_id.qty_buku) * 100
                 if usage_percentage < 80:
                     return {
                         'warning': {
                             'title': _('Peringatan Penggunaan Bahan Baku'),
                             'message': _(
                                 f"Jumlah bahan baku yang diinput ({self.jumlah_bahan_baku}) "
-                                f"kurang dari 80% dari kebutuhan yang dihitung ({self.custom_qty_to_produce}). "
+                                f"kurang dari 80% dari kebutuhan yang dihitung ({self.production_id.bom_id.qty_buku}). "
                                 f"Pastikan jumlah ini sudah benar."
                             )
                         }
                     }
+
+    # untuk mengupdate qty_producing
+    @api.depends('qty_production', 'qty_produced')
+    def _update_qty_producing(self, quantity=False):
+        if not quantity:
+            quantity = self.qty_production - self.qty_produced
+            if self.production_id.product_id.tracking == 'serial':
+                quantity = 1.0 if float_compare(quantity, 0, precision_rounding=self.production_id.product_uom_id.rounding) > 0 else 0
+        # Tidak menggunakan custom_qty_to_produce
+        self.qty_producing = quantity
+        return quantity
+
+    def button_start(self):
+        # Pastikan state MO sesuai sebelum memulai work order
+        if self.production_id.state not in ['confirmed', 'progress']:
+            self.production_id.write({'state': 'confirmed'})
+        
+        # Panggil method asli
+        res = super().button_start()
+        
+        # Update quantity setelah work order dimulai
+        self._update_qty_producing(self.qty_production - self.qty_produced)
+        return res
 
 
 class MrpBomLine(models.Model):
@@ -414,3 +451,12 @@ class MrpWorkorderWizard(models.TransientModel):
     _description = 'MRP Workorder Wizard'
 
     name = fields.Char(string="Name")
+
+# Add a new field to mrp.stock.move to store original quantities
+class StockMove(models.Model):
+    _inherit = 'stock.move'
+
+    original_qty = fields.Float(
+        string="Original Quantity",
+        help="Stores the original quantity before any auto-calculations"
+    )
