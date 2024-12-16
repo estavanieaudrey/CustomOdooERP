@@ -4,57 +4,64 @@ from odoo import models, fields, api
 class PurchaseOrderCustom(models.Model):
     _inherit = 'purchase.order'
 
-    # Add fields for linking SO and MO
+    # Ngehubungin PO ke SO dan MO
     sale_order_id = fields.Many2one('sale.order', string="Sales Order")
     manufacturing_order_id = fields.Many2one('mrp.production', string="Manufacturing Order")
 
-    # Custom field for vendor address
+    # Field buat nyimpen alamat vendor
     vendor_address = fields.Text(string="Vendor Address", compute="_compute_vendor_address")
 
     @api.depends('partner_id')
     def _compute_vendor_address(self):
-        """Auto-fetch vendor address."""
+        """Ngambil alamat vendor otomatis dari data partner"""
         for record in self:
             record.vendor_address = record.partner_id.contact_address or "No Address Available"
 
     @api.onchange('manufacturing_order_id')
     def _onchange_manufacturing_order_id(self):
         """
-        Auto-fill Products tab and fetch unit price from BoM dynamically.
+        Fungsi ini bakal jalan pas MO-nya diganti
+        - Ngisi tab Products otomatis
+        - Ngambil harga dari BoM
         """
         if self.manufacturing_order_id:
             bom = self.manufacturing_order_id.bom_id
             if not bom:
                 return
 
-            # Clear existing lines
+            # Bersihin dulu line yang ada
             self.order_line = [(5, 0, 0)]
 
-            # Add new lines based on MO's raw materials
+            # Bikin line baru dari bahan-bahan di MO
             new_lines = []
             for line in self.manufacturing_order_id.move_raw_ids:
                 price_unit = self._get_price_from_bom(line.product_id, bom)
-                new_lines.append((0, 0, {
+                vals = {
                     'product_id': line.product_id.id,
                     'product_qty': line.product_uom_qty,
                     'price_unit': price_unit,
                     'name': line.product_id.display_name,
-                }))
+                    'date_planned': fields.Datetime.now(),
+                    'product_uom': line.product_id.uom_po_id.id or line.product_id.uom_id.id,
+                }
+                new_lines.append((0, 0, vals))
 
             self.order_line = new_lines
-            # Trigger UI update for each order line
-            # Force UI update
-            # for line in self.order_line:
-            #     line.price_unit = self._get_price_from_bom(line.product_id, bom)
+
+            # Update harga tiap line
+            for line in self.order_line:
+                line._compute_price_unit_and_date_planned_and_name()
+                line._onchange_product_id()
 
     def _get_price_from_bom(self, product_id, bom):
         """
-        Fetch the price from BoM based on the product name and specific fields.
+        Ngambil harga dari BoM berdasarkan nama produk
+        Misal: kalo ada kata 'Kertas Cover' di nama produk, ambil harga dari field hrg_kertas_cover
         """
         if not product_id or not bom:
             return 0.0
 
-        # Mapping between product name keyword and BoM price fields
+        # Mapping nama produk ke field harga di BoM
         price_field_mapping = {
             "Kertas Cover": "hrg_kertas_cover",
             "Kertas Isi": "hrg_kertas_isi",
@@ -63,26 +70,30 @@ class PurchaseOrderCustom(models.Model):
             "Box": "hrg_box",
         }
 
-        # Match the product name to the corresponding BoM field
+        # Cek nama produk, cocokkan sama field di BoM
         for keyword, field_name in price_field_mapping.items():
             if keyword in product_id.name:
                 return getattr(bom, field_name, 0.0)
 
-        return 0.0  # Default to 0 if no match
+        return 0.0  # Kalo ga ketemu, kasih 0
 
 
-class PurchaseOrderLineCustom(models.Model):
+class PurchaseOrderLineCustom(models.Model): #memastikan harga di PO line selalu diambil dari BoM
     _inherit = 'purchase.order.line'
 
     @api.onchange('product_id', 'order_id.manufacturing_order_id')
     def _onchange_product_id(self):
         """
-        Set price_unit based on BoM dynamically whenever product_id or manufacturing_order_id changes.
+        # Fungsi ini bakal jalan pas:
+        # - Produk di line PO diganti
+        # - MO di header PO diganti
+        # Tugasnya: ngeset harga dari BoM
         """
         if self.product_id and self.order_id.manufacturing_order_id:
             bom = self.order_id.manufacturing_order_id.bom_id
             self.price_unit = self.order_id._get_price_from_bom(self.product_id, bom)
-            self.write({'price_unit': self.price_unit})  # Write back to enforce update
+            # Pake write biar UI-nya ke-update
+            self.write({'price_unit': self.price_unit})
 
     # def _update_ui_price_unit(self):
     #     """
@@ -93,7 +104,12 @@ class PurchaseOrderLineCustom(models.Model):
 
     @api.model
     def default_get(self, fields):
+        """
+        # Fungsi bawaan Odoo buat ngeset nilai default
+        # Di sini kita override biar bisa ngeset harga dari BoM pas bikin line PO baru
+        """
         res = super(PurchaseOrderLineCustom, self).default_get(fields)
+        # Cek kalo ada PO ID di context
         if self.env.context.get('default_order_id'):
             order = self.env['purchase.order'].browse(self.env.context['default_order_id'])
             if order.manufacturing_order_id:
@@ -104,7 +120,8 @@ class PurchaseOrderLineCustom(models.Model):
     @api.onchange('order_id.manufacturing_order_id')
     def _onchange_order_id_manufacturing_order_id(self):
         """
-        Update price_unit when Manufacturing Order changes.
+        # Fungsi ini bakal jalan pas MO di header PO diganti
+        # Mirip kayak _onchange_product_id, tapi khusus buat perubahan MO aja
         """
         if self.order_id.manufacturing_order_id:
             bom = self.order_id.manufacturing_order_id.bom_id
@@ -113,7 +130,9 @@ class PurchaseOrderLineCustom(models.Model):
     @api.model
     def create(self, vals):
         """
-        Set price_unit from BoM during record creation to override default vendor price logic.
+        # Override fungsi create bawaan Odoo
+        # Tujuannya: mastiin harga dari BoM kepake pas bikin record baru
+        # Ini penting karena kadang default vendor price bisa ngeganti harga dari BoM
         """
         record = super(PurchaseOrderLineCustom, self).create(vals)
         if record.product_id and record.order_id.manufacturing_order_id:
@@ -123,7 +142,9 @@ class PurchaseOrderLineCustom(models.Model):
 
     def write(self, vals):
         """
-        Set price_unit from BoM during record update to override default vendor price logic.
+        # Override fungsi write bawaan Odoo
+        # Mirip kayak create, tapi ini buat update record yang udah ada
+        # Ngecek kalo ada perubahan di product_id atau order_id
         """
         res = super(PurchaseOrderLineCustom, self).write(vals)
         for line in self:
@@ -136,24 +157,42 @@ class PurchaseOrderLineCustom(models.Model):
     @api.onchange('product_uom')
     def _onchange_product_uom(self):
         """
-        Ensure price_unit remains consistent with BoM when UoM changes
-        and validate UoM rounding.
+        # Fungsi ini jalan pas satuan (UoM) produk diganti
+        # Ada 2 tugas:
+        # 1. Ngecek & benerin rounding UoM kalo ga valid
+        # 2. Update harga dari BoM (karena kadang harga bisa berubah pas ganti satuan)
         """
         if self.product_uom:
-            # Validate rounding for UoM
+            # Validasi rounding UoM
             if not self.product_uom.rounding or self.product_uom.rounding <= 0:
-                self.product_uom.rounding = 0.01  # Set default rounding if not set
+                self.product_uom.rounding = 0.01  # Default ke 0.01 kalo ga diset
 
-            # Ensure price_unit consistency with BoM
+            # Update harga dari BoM
             if self.order_id.manufacturing_order_id:
                 bom = self.order_id.manufacturing_order_id.bom_id
                 if bom:
                     self.price_unit = self.order_id._get_price_from_bom(self.product_id, bom)
 
-            # Log for debugging
+            # Log buat debugging
             import logging
             _logger = logging.getLogger(__name__)
             _logger.info(f"UoM changed: {self.product_uom.name}, Price Unit: {self.price_unit}")
+
+    @api.depends('product_qty', 'product_uom', 'company_id', 'order_id.partner_id', 'order_id.manufacturing_order_id')
+    def _compute_price_unit_and_date_planned_and_name(self):
+        """
+        # Override fungsi compute bawaan Odoo
+        # Ini dipanggil pas ada perubahan di field-field yang di @api.depends
+        # Mastiin harga dari BoM tetep kepake, ga ke-override sama logic harga default
+        """
+        super()._compute_price_unit_and_date_planned_and_name()
+        for line in self:
+            if line.order_id.manufacturing_order_id and line.product_id:
+                bom = line.order_id.manufacturing_order_id.bom_id
+                if bom:
+                    price = line.order_id._get_price_from_bom(line.product_id, bom)
+                    if price > 0:
+                        line.price_unit = price
 
 
 
