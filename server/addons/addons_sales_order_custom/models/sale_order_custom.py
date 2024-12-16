@@ -6,11 +6,11 @@ import base64
 class SaleOrderCustom(models.Model):
     _inherit = 'sale.order'
 
-    # PASAL 1: Ruang Lingkup Perjanjian
+    # === PASAL 1: Ruang Lingkup Perjanjian ===
     ruang_lingkup = fields.Text(string="Ruang Lingkup Perjanjian")
 
-    # PASAL 2: Detail Produk
-    # detail_ukuran = fields.Selection(related="bom_id.ukuran_buku", string="Ukuran Buku", readonly=True)
+    # === PASAL 2: Detail Produk ===
+    # Field untuk nyimpen detail produk, kebanyakan diambil otomatis dari BoM
     detail_isi = fields.Char(
         string="Detail Isi",
         compute="_compute_detail_isi",
@@ -22,11 +22,14 @@ class SaleOrderCustom(models.Model):
         store=True
     )
     detail_design = fields.Char(string="Design")
+    
+    # Dropdown untuk jenis jilid, diambil dari BoM
     jenis_jilid = fields.Selection([
         ('perfect_binding', 'Perfect Binding (Lem)'),
         ('stitching', 'Stitching (Kawat)')
     ], string="Jenis Jilid", compute="_compute_jenis_jilid", store=True)
 
+    # Dropdown untuk jenis UV, diambil dari BoM
     jenis_uv = fields.Selection([
         ('glossy', 'Glossy'),
         ('matte', 'Matte (Doff)')
@@ -35,25 +38,31 @@ class SaleOrderCustom(models.Model):
     detail_packing = fields.Char(string="Packing", compute="_compute_detail_packing", readonly=True)
     detail_quantity = fields.Float(related="bom_id.qty_buku", string="Quantity Buku", readonly=True)
 
-    # PASAL 3: Harga, Down Payment, dan Rekening Transfer
+    # === PASAL 3: Harga dan Pembayaran ===
     price_unit = fields.Float(related="order_line.price_unit", string="Unit Price", readonly=True)
     total_amount = fields.Monetary(related="amount_total", string="Total Harga", readonly=True)
+    
+    # Field untuk down payment
     down_payment_yes_no = fields.Boolean(string="Down Payment (Yes/No)")
     down_payment_percentage = fields.Float(string="Down Payment (%)")
-    down_payment_nominal = fields.Float(string="Down Payment (Nominal)", compute="_compute_down_payment_nominal",
-                                        store=True)
+    down_payment_nominal = fields.Float(string="Down Payment (Nominal)", 
+                                      compute="_compute_down_payment_nominal",
+                                      store=True)
+    
+    # Field untuk data rekening transfer
     transfer_rekening_name = fields.Char(string="Nama Rekening")
     transfer_rekening_bank = fields.Char(string="Bank")
     transfer_rekening_number = fields.Char(string="Nomor Rekening")
     transfer_rekening_branch = fields.Char(string="Cabang")
 
-    # PASAL 4: Expired Date dan Tanda Tangan
+    # === PASAL 4: Expired Date dan Tanda Tangan ===
     expired_date = fields.Date(related="validity_date", string="Expired Date", readonly=True)
     customer_signature = fields.Binary(string="Tanda Tangan", attachment=True)
 
-    # Field untuk memilih BoM
+    # Field untuk pilih BoM yang akan dipakai sebagai sumber data
     bom_id = fields.Many2one('mrp.bom', string="Bill of Materials", help="Pilih BoM untuk mengambil data HPP.")
-    # Field untuk data perjanjian
+    
+    # Field yang diambil dari BoM
     ukuran_buku = fields.Selection(related="bom_id.ukuran_buku", string="Ukuran Buku", readonly=True)
     jenis_cetakan_isi = fields.Selection(related="bom_id.jenis_cetakan_isi", string="Jenis Cetakan Isi", readonly=True)
     jenis_cetakan_cover = fields.Selection(related="bom_id.jenis_cetakan_cover", string="Jenis Cetakan Cover", readonly=True)
@@ -65,16 +74,17 @@ class SaleOrderCustom(models.Model):
     hpp_total = fields.Float(related="bom_id.hpp_total", string="Harga Total", readonly=True)
     ppn = fields.Float(related="bom_id.ppn", string="PPn", readonly=True)
 
+    # Function untuk ngitung detail isi dari BoM
     @api.depends('bom_id.bom_line_ids')
     def _compute_detail_isi(self):
         for record in self:
             if record.bom_id:
-                # Filter baris dengan nama produk "Kertas Isi"
+                # Cari komponen yang namanya ada "Kertas Isi"
                 isi_lines = record.bom_id.bom_line_ids.filtered(
                     lambda l: "Kertas Isi" in l.product_id.name
                 )
                 if isi_lines:
-                    # Gabungkan nama produk dengan variannya
+                    # Gabungin nama produk + variannya
                     detail_isi_list = [
                         f"{line.product_id.name} ({', '.join(line.product_id.product_template_variant_value_ids.mapped('name'))})"
                         for line in isi_lines
@@ -85,6 +95,7 @@ class SaleOrderCustom(models.Model):
             else:
                 record.detail_isi = "Tidak Ada"
 
+    # Function untuk ngitung detail cover dari BoM, mirip kayak detail_isi
     @api.depends('bom_id.bom_line_ids')
     def _compute_detail_cover(self):
         for record in self:
@@ -103,10 +114,11 @@ class SaleOrderCustom(models.Model):
             else:
                 record.detail_cover = "Tidak Ada"
 
+    # Dipanggil waktu BoM dipilih/ganti
     @api.onchange('bom_id')
     def _onchange_bom_id(self):
         """
-        Ketika BoM dipilih, hitung ulang `detail_isi` dan `detail_cover`.
+        Update detail_isi dan detail_cover waktu BoM berubah
         """
         for record in self:
             if record.bom_id:
@@ -120,7 +132,7 @@ class SaleOrderCustom(models.Model):
                     'detail_cover': record.detail_cover,
                 })
 
-    # untuk mengambil jenis jilid dari bom
+    # Ngambil jenis jilid dari BoM
     @api.depends('bom_id.jenis_jilid')
     def _compute_jenis_jilid(self):
         for record in self:
@@ -131,7 +143,7 @@ class SaleOrderCustom(models.Model):
                 # Default jika tidak ada BoM
                 record.jenis_jilid = False
 
-    # untuk mengambil jenis uv dari bom
+    # Ngambil jenis UV dari BoM
     @api.depends('bom_id.jenis_uv')
     def _compute_jenis_uv(self):
         for record in self:
@@ -142,15 +154,16 @@ class SaleOrderCustom(models.Model):
                 # Default jika tidak ada BoM
                 record.jenis_uv = False
 
+    # Ngitung detail packing di isi_bos (tambahin "/box" di belakang angka)
     @api.depends('bom_id.isi_box')
     def _compute_detail_packing(self):
-        """Kombinasikan isi_box dengan '/box'."""
         for record in self:
             if record.bom_id.isi_box:
                 record.detail_packing = f"{record.bom_id.isi_box} /box"
             else:
                 record.detail_packing = "Tidak Ada"
 
+    # Ngitung nominal DP dari persentase
     @api.depends('down_payment_percentage', 'hpp_total')
     def _compute_down_payment_nominal(self):
         """Hitung nominal Down Payment berdasarkan persentase."""
@@ -160,16 +173,14 @@ class SaleOrderCustom(models.Model):
             else:
                 record.down_payment_nominal = 0.0
 
+    # Update data ke order lines waktu BoM dipilih
     @api.onchange('bom_id')
     def _onchange_bom_id(self):
-        """
-        Ketika BoM dipilih, tambahkan data ke Order Lines.
-        """
         if self.bom_id:
-            # Kosongkan Order Lines sebelumnya
+            # Reset order lines dulu
             self.order_line = [(5, 0, 0)]
 
-            # Tambahkan produk berdasarkan BoM
+            # Tambah produk dari BoM
             product = self.bom_id.product_tmpl_id.product_variant_id
             if product:
                 self.order_line = [(0, 0, {
@@ -180,7 +191,7 @@ class SaleOrderCustom(models.Model):
                     'tax_id': [(6, 0, [])],  # Set pajak menjadi kosong
                 })]
 
-    # Field tambahan untuk informasi draft
+    # Field untuk draft perjanjian
     draft_perjanjian = fields.Binary(string="Draft Perjanjian PDF")
     draft_perjanjian_name = fields.Char(string="Nama File")
     is_signed = fields.Boolean(string="Telah Ditandatangani", default=False)
@@ -198,37 +209,16 @@ class SaleOrderCustom(models.Model):
     #     self.is_confirmed = True  # Mark the sales order as confirmed
 
     def action_generate_pdf(self):
-        # Fetch the report template
-        report_template = self.env.ref('addons_sales_order_custom.action_report_draft_perjanjian')
-        if not report_template:
-            raise ValueError("Template laporan tidak ditemukan.")
-        return report_template.report_action(self)
-
-        # Render the report as PDF
-        report_pdf, _ = report_template._render_qweb_pdf([self.id])
-
-        # Convert PDF content to base64
-        pdf_base64 = base64.b64encode(report_pdf)
-
-        # Create an attachment record
-        attachment_values = {
-            'name': "ID_Card.pdf",
-            'type': 'binary',
-            'datas': pdf_base64,
-            'mimetype': 'application/pdf',
-            'res_model': self._name,
-            'res_id': self.id,
-        }
-        attachment = self.env['ir.attachment'].create(attachment_values)
-
-        # Assign the attachment to the binary field
-        self.report_file = attachment.id
-
-        return True
+        """
+        Function buat bikin PDF dari template report yang udah dibuat.
+        Simpel sih, cuma manggil template reportnya terus dirender jadi PDF.
+        """
+        # Manggil template report yang udah didaftarin di XML, terus langsung dirender
+        return self.env.ref('addons_sales_order_custom.action_report_draft_perjanjian').report_action(self)
 
     down_payment_percentage = fields.Float(
         string="Down Payment Percentage",
-        default=10.0,  # Default ke 10% jika belum ada
+        default=10.0,  # Default 10%
         help="Percentage of the down payment for the order."
     )
 
@@ -256,49 +246,58 @@ class SaleOrderCustom(models.Model):
 
 class SaleAdvancePaymentInv(models.TransientModel):
     _inherit = 'sale.advance.payment.inv'
+    
+    # Field buat nyimpen nominal DP yang udah dihitung (readonly karena dihitung otomatis)
     nominal = fields.Float(string="Nominal", readonly=True, help="Computed Down Payment Nominal")
 
     def _compute_advance_payment_method_selection(self):
         """
-        Remove 'fixed' option dynamically from the selection.
+        Function ini buat ngatur pilihan metode pembayaran, tapi 'fixed' option diilangin
+        Jadi usernya cuma bisa pilih:
+        - Regular invoice (bayar full)
+        - Down payment pake persentase
         """
         selection = [
             ('all', 'Regular invoice'),
             ('percentage', 'Down payment (percentage)'),
-            # Do not include 'fixed' here
+            # Fixed option dimatiin
         ]
         return selection
 
-    # Override the selection for advance_payment_method
+    # Field buat pilihan metode pembayaran, pake function di atas
     advance_payment_method = fields.Selection(
         selection=_compute_advance_payment_method_selection,
         string='Create Invoice',
-        default='all',
+        default='all',  # Default ke regular invoice
         required=True,
     )
 
-
-    @api.onchange('advance_payment_method')
+    @api.onchange('advance_payment_method') 
     def _onchange_advance_payment_method(self):
         """
-        Automatically populate 'amount' (percentage) and 'nominal' (calculated nominal)
-        based on the selected sales order.
+        Function ini kepanggil otomatis waktu user ganti metode pembayaran
+        Tugasnya:
+        1. Ngisi field 'amount' (persentase DP)
+        2. Ngitung nominal DP-nya
         """
+        # Ambil ID sales order yang lagi aktif
         sale_order_id = self.env.context.get('active_id')
         if sale_order_id:
+            # Load data sales ordernya
             sale_order = self.env['sale.order'].browse(sale_order_id)
 
             if self.advance_payment_method == 'percentage':
-                # Set the percentage value (amount field)
+                # Kalo pilih DP:
+                # Set persentase sesuai yang ada di SO
                 self.amount = sale_order.down_payment_percentage
 
-                # Compute the nominal value
+                # Hitung nominal DP-nya
                 if sale_order.down_payment_yes_no and sale_order.down_payment_percentage:
                     self.nominal = (sale_order.hpp_total * sale_order.down_payment_percentage) / 100
                 else:
                     self.nominal = 0.0
             else:
-                # Reset fields for "Regular Invoice"
+                # Kalo regular invoice, reset field-fieldnya ke 0
                 self.amount = 0.0
                 self.nominal = 0.0
 
@@ -344,29 +343,37 @@ class SaleAdvancePaymentInv(models.TransientModel):
 
     def action_generate_pdf(self):
         """
-        Generate PDF for the custom report and return it as an action.
+        Buat generate PDF dari template yang udah kita bikin
         """
         return self.env.ref('addons_sales_order_custom.action_report_draft_perjanjian').report_action(self)
 
     def action_quotation_send(self):
         """
-        Override Odoo's quotation send to include custom PDF attachment.
+        Function buat override cara kirim quotation bawaan Odoo.
+        Bedanya ini nambah attachment PDF custom kita ke emailnya.
         """
+        # Panggil dulu function aslinya dari Odoo
         action = super(SaleOrderCustom, self).action_quotation_send()
+        
+        # Cek ada context-nya gak (buat mastiin gak error)
         if action.get('context'):
-            # Render the PDF for the current sale order
+            # Bikin PDF-nya, sama kayak function di atas
+            # [0] karena _render_qweb_pdf return tuple (content, type)
             pdf_content = self.env.ref('addons_sales_order_custom.action_report_draft_perjanjian')._render_qweb_pdf(self.id)[0]
-            pdf_base64 = base64.b64encode(pdf_content)  # Convert PDF to base64
+            
+            # Convert PDF ke base64 biar bisa disimpen di database
+            pdf_base64 = base64.b64encode(pdf_content)
 
-            # Generate attachment name
+            # Bikin nama file yang keren
             attachment_name = f"Quotation - {self.name or 'Draft'}.pdf"
 
-            # Add the attachment to the context
+            # Masukin attachment ke context email
+            # Format (0, 0, values) itu command Odoo buat create record baru
             action['context']['default_attachment_ids'] = [(0, 0, {
-                'name': attachment_name,  # Name of the file (mandatory)
-                'datas': pdf_base64,      # Data of the file in base64
-                'res_model': 'sale.order',
-                'res_id': self.id,
-                'mimetype': 'application/pdf',
+                'name': attachment_name,  # Nama filenya mandatory)
+                'datas': pdf_base64,      # Isi PDF-nya dalam base64
+                'res_model': 'sale.order', # Model yang punya file ini
+                'res_id': self.id,         # ID record yang punya
+                'mimetype': 'application/pdf', # Tipe file
             })]
         return action
