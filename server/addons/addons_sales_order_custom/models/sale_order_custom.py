@@ -186,16 +186,16 @@ class SaleOrderCustom(models.Model):
     is_signed = fields.Boolean(string="Telah Ditandatangani", default=False)
     signature_date = fields.Date(string="Tanggal Tanda Tangan")
 
-    is_confirmed = fields.Boolean(string="Confirmed", default=False)
+    # is_confirmed = fields.Boolean(string="Confirmed", default=False)
 
-    def action_convert_to_sales_order(self):
-        """
-        Convert draft quotation to confirmed sales order after validating the signature.
-        """
-        if not self.is_signed:
-            raise ValidationError("Draft perjanjian belum ditandatangani!")
-        self.action_confirm()  # Confirm the sales order using Odoo's built-in method
-        self.is_confirmed = True  # Mark the sales order as confirmed
+    # def action_convert_to_sales_order(self):
+    #     """
+    #     Convert draft quotation to confirmed sales order after validating the signature.
+    #     """
+    #     if not self.is_signed:
+    #         raise ValidationError("Draft perjanjian belum ditandatangani!")
+    #     self.action_confirm()  # Confirm the sales order using Odoo's built-in method
+    #     self.is_confirmed = True  # Mark the sales order as confirmed
 
     def action_generate_pdf(self):
         # Fetch the report template
@@ -244,11 +244,11 @@ class SaleOrderCustom(models.Model):
         for order in self:
             if order.bom_id:
                 mo_vals = {
-                    'product_id': order.bom_id.product_tmpl_id.id,
+                    'product_id': order.bom_id.product_tmpl_id.product_variant_id.id,
                     'product_qty': order.qty_buku,
                     'bom_id': order.bom_id.id,
-                    'sale_id': order.id,  # Hubungkan MO dengan SO
-                    'date_planned_start': fields.Datetime.now(),
+                    'sale_id': order.id,
+                    'date_start': fields.Datetime.now(),
                     'origin': order.name,
                 }
                 self.env['mrp.production'].create(mo_vals)
