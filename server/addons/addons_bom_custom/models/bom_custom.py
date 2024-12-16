@@ -374,32 +374,62 @@ class MrpBomLineCustom(models.Model):
 
     @api.model
     def create(self, vals):
-        """Pastikan product_qty dihitung dengan benar saat record dibuat."""
-        bom = self.env['mrp.bom'].browse(vals.get('bom_id'))
-        product = self.env['product.product'].browse(vals.get('product_id'))
-        if bom and product:
-            waste_factor = 1 + (bom.waste_percentage / 100)
-            if "Kertas Isi" in product.name:
-                vals['product_qty'] = (vals.get('kebutuhan_rim_isi', 0.0) * vals.get('kebutuhan_kg_isi',
-                                                                                     0.0)) * waste_factor
-            elif "Kertas Cover" in product.name:
-                vals['product_qty'] = (vals.get('kebutuhan_rim_cover', 0.0) * vals.get('kebutuhan_kg_cover',
-                                                                                       0.0)) * waste_factor
-            elif "Box" in product.name:
-                vals['product_qty'] = vals.get('qty_buku', 0.0) / vals.get('isi_box', 1.0)
+        """Hitung product_qty saat komponen baru dibuat"""
+        vals = self._update_product_qty(vals)
         return super(MrpBomLineCustom, self).create(vals)
 
     def write(self, vals):
-        """Pastikan product_qty dihitung dengan benar saat record diperbarui."""
-        for line in self:
-            bom = line.bom_id
-            product = line.product_id
-            if bom and product:
-                waste_factor = 1 + (bom.waste_percentage / 100)
-                if "Kertas Isi" in product.name:
-                    vals['product_qty'] = (line.kebutuhan_rim_isi * line.kebutuhan_kg_isi) * waste_factor
-                elif "Kertas Cover" in product.name:
-                    vals['product_qty'] = (line.kebutuhan_rim_cover * line.kebutuhan_kg_cover) * waste_factor
-                elif "Box" in product.name:
-                    vals['product_qty'] = line.qty_buku / line.isi_box if line.isi_box > 0 else 0.0
+        """Hitung ulang product_qty saat komponen BOM diperbarui"""
+        vals = self._update_product_qty(vals)
         return super(MrpBomLineCustom, self).write(vals)
+
+    def _update_product_qty(self, vals):
+        """Logika untuk menghitung product_qty sebelum menyimpan data"""
+        product_id = vals.get('product_id') or self.product_id.id
+        bom = self.bom_id or self.env['mrp.bom'].browse(vals.get('bom_id'))
+        waste_factor = 1 + (bom.waste_percentage / 100)
+
+        if product_id:
+            product = self.env['product.product'].browse(product_id)
+            product_name = product.name
+
+            # Logika untuk menghitung product_qty
+            if "Kertas Isi" in product_name:
+                vals['product_qty'] = (bom.kebutuhan_rim_isi * bom.kebutuhan_kg_isi) * waste_factor
+            elif "Kertas Cover" in product_name:
+                vals['product_qty'] = (bom.kebutuhan_rim_cover * bom.kebutuhan_kg_cover) * waste_factor
+            elif "Box" in product_name:
+                vals['product_qty'] = bom.qty_buku / bom.isi_box if bom.isi_box > 0 else 0.0
+        return vals
+    
+    # @api.model
+    # def create(self, vals):
+    #     """Pastikan product_qty dihitung dengan benar saat record dibuat."""
+    #     bom = self.env['mrp.bom'].browse(vals.get('bom_id'))
+    #     product = self.env['product.product'].browse(vals.get('product_id'))
+    #     if bom and product:
+    #         waste_factor = 1 + (bom.waste_percentage / 100)
+    #         if "Kertas Isi" in product.name:
+    #             vals['product_qty'] = (vals.get('kebutuhan_rim_isi', 0.0) * vals.get('kebutuhan_kg_isi',
+    #                                                                                  0.0)) * waste_factor
+    #         elif "Kertas Cover" in product.name:
+    #             vals['product_qty'] = (vals.get('kebutuhan_rim_cover', 0.0) * vals.get('kebutuhan_kg_cover',
+    #                                                                                    0.0)) * waste_factor
+    #         elif "Box" in product.name:
+    #             vals['product_qty'] = vals.get('qty_buku', 0.0) / vals.get('isi_box', 1.0)
+    #     return super(MrpBomLineCustom, self).create(vals)
+
+    # def write(self, vals):
+    #     """Pastikan product_qty dihitung dengan benar saat record diperbarui."""
+    #     for line in self:
+    #         bom = line.bom_id
+    #         product = line.product_id
+    #         if bom and product:
+    #             waste_factor = 1 + (bom.waste_percentage / 100)
+    #             if "Kertas Isi" in product.name:
+    #                 vals['product_qty'] = (line.kebutuhan_rim_isi * line.kebutuhan_kg_isi) * waste_factor
+    #             elif "Kertas Cover" in product.name:
+    #                 vals['product_qty'] = (line.kebutuhan_rim_cover * line.kebutuhan_kg_cover) * waste_factor
+    #             elif "Box" in product.name:
+    #                 vals['product_qty'] = line.qty_buku / line.isi_box if line.isi_box > 0 else 0.0
+    #     return super(MrpBomLineCustom, self).write(vals)
