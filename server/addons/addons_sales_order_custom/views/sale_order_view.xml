@@ -13,11 +13,11 @@
                             string="Generate Draft Perjanjian"
                             class="btn-primary"
                             icon="fa-pencil-square-o"/>
-                <button name="action_convert_to_sales_order"
+                <!-- <button name="action_convert_to_sales_order"
                         string="Confirm as Sales Order"
                         type="object"
                         class="btn-secondary"
-                        invisible="is_confirmed"/>
+                        invisible="is_confirmed"/> -->
             </xpath>
 
             <xpath expr="//group" position="inside">
