@@ -2,43 +2,172 @@
     <template id="draft_perjanjian_report">
         <t t-call="web.basic_layout">
             <div class="page">
-                <h1>Draft Perjanjian</h1>
-                <p>Ukuran Buku:
-                    <t t-esc="docs.ukuran_buku or 'Tidak Ada Ukuran Buku'"/>
+                <h1>PERJANJIAN PENCETAKAN BUKU TULIS</h1>
+
+                <p>Nomor: 035/CPB/LD.PKS/II/2024</p>
+
+                <p>Pada hari ini, Senin tanggal<t t-esc="docs.date_order or '...'"/>, telah dibuat dan ditandatangani
+                    Perjanjian Pencetakan Buku Tulis, oleh dan antara:
                 </p>
-                <p>Nomor Pesanan:
-                    <t t-esc="docs.name or 'Draft'"/>
+
+                <ul>
+                    <li>Nama: Percetakan Buku Champion<br/>Alamat: Jl. Muncul No. 2 Gedangan, Kota Sidoarjo
+                    </li>
+                    <p>Selanjutnya disebut sebagai
+                        <b>"PIHAK PERTAMA"</b>
+                    </p>
+
+                    <li>Nama:
+                        <t t-esc="docs.partner_id.name or '...'"/>
+                        <br/>Alamat:
+                        <t t-esc="docs.partner_id.contact_address or '...'"/>
+                    </li>
+                    <p>Selanjutnya disebut sebagai
+                        <b>"PIHAK KEDUA"</b>
+                    </p>
+                </ul>
+
+                <h2>PASAL 1<br/>RUANG LINGKUP PERJANJIAN
+                </h2>
+                <p>PIHAK KEDUA menunjuk PIHAK PERTAMA sebagai pelaksana untuk pencetakan buku tulis untuk menunjang
+                    kebutuhan dam/atau kegiatan usaha PIHAK KEDUA;
                 </p>
-                <p>Nama Customer:
-                    <t t-esc="docs.partner_id.name or 'Unknown Customer'"/>
+                <p>PIHAK PERTAMA bersedia melaksanakan pekerjaan pencetakan buku tulis tersebut dengan spesifikasi dan
+                    teknis pekerjaan yang telah disepakati PARA PIHAK.
                 </p>
-                <p>Alamat Customer:
-                    <t t-esc="docs.partner_id.contact_address or 'No Address Available'"/>
+
+                <h2>PASAL 2<br/>SPESIFIKASI DAN TEKNIS PENGERJAAN
+                </h2>
+                <p>Bahwa PARA PIHAK telah setuju dan sepakat terkait pelaksanaan pekerjaan pencetakan buku tulis
+                    sebagaimana dimaksud dalam Perjanjian ini harus dilaksanakan oleh PIHAK PERTAMA sesuai dengan
+                    spesifikasi buku tulis yang dicetak sebagai berikut:
                 </p>
-                <p>Ukuran Buku:
-                    <t t-esc="docs.ukuran_buku or 'Tidak Ada'"/>
+                <ul>
+                    <li>Ukuran:
+                        <t t-esc="docs.ukuran_buku or '...'"/>
+                    </li>
+                    <li>Isi:
+                        <t t-esc="docs.detail_isi or '...'"/>
+                    </li>
+                    <li>Jenis Isi:
+                        <t t-esc="docs.jenis_cetakan_isi or '...'"/>
+                    </li>
+                    <li>Cover:
+                        <t t-esc="docs.detail_cover or '...'"/>
+                    </li>
+                    <li>Design:
+                        <t t-esc="docs.detail_design or '...'"/>
+                    </li>
+                    <li>Jilid:
+                        <t t-esc="docs.jenis_jilid or '...'"/>
+                    </li>
+                    <li>Packing:
+                        <t t-esc="docs.detail_packing or '...'"/>
+                    </li>
+                    <li>Quantity:
+                        <t t-esc="docs.detail_quantity or '...'"/>
+                    </li>
+                </ul>
+
+                <h2>PASAL 3<br/>BIAYA DAN CARA PEMBAYARAN
+                </h2>
+                <p>PARA PIHAK telah setuju dan sepakat bahwa biaya pencetakan buku tulis sebagaimana dimaksud dalam
+                    perjanjian ini adalah sebagai berikut:
                 </p>
-                <p>Jenis Cetakan Isi:
-                    <t t-esc="docs.jenis_cetakan_isi or 'Tidak Ada'"/>
+                <ul>
+                    <li>Harga Satuan:
+                        <t t-esc="docs.bom_id.display_name or '...'"/>
+                        = Rp.
+                        <t t-esc="docs.price_unit or '...'"/>
+                    </li>
+                    <li>Nilai Total Keseluruhan:
+                        <t t-esc="docs.bom_id.display_name or '...'"/>
+                        = Rp.
+                        <t t-esc="docs.price_unit or 0.0"/>
+                        x
+                        <t t-esc="docs.detail_quantity or 0.0"/>
+                        = Rp.
+                        <t t-esc="docs.total_amount or 0.0"/>
+                    </li>
+                </ul>
+                <p>PARA PIHAK telah setuju dan sepakat bahwa prosedur pembayaran dalam perjanjian ini adalah sebagai
+                    berikut:
                 </p>
-                <p>HPP per Unit:
-                    <t t-esc="docs.hpp_per_unit or 0.0"/>
+                <ul>
+                    <li>PIHAK KEDUA melakukan pembayaran uang muka (Down Payment)<t
+                            t-esc="docs.down_payment_percentage or '...'"/>% sebesar Rp.
+                        <t t-esc="docs.down_payment_nominal or '...'"/>
+                        atas pencetakan buku tulis dengan total sebanyak<t t-esc="docs.detail_quantity or '...'"/>.
+                        Pembayaran tersebut dilakukan setelah perjanjian ini ditandatangani oleh PARA PIHAK.
+                    </li>
+                    <li>Apabila order pencetakan buku tulis PIHAK KEDUA kepada PIHAK PERTAMA sudah selesai dan siap
+                        untuk dikirim, maka untuk itu PIHAK KEDUA berkewajiban untuk menyelesaikan pembayaran pelunasan
+                        kepada PIHAK PERTAMA.
+                    </li>
+                </ul>
+
+                <p>PARA PIHAK telah setuju dan sepakat terkait pembayaran biaya pencetakan buku tulis sebagaimana
+                    dimaksud dalam Pasal ini oleh PIHAK KEDUA dilakukan secara transfer ke rekening PIHAK PERTAMA
+                    sebagai berikut:
                 </p>
-                <p>Total Keseluruhan:
-                    <t t-esc="docs.hpp_total or 0.0"/>
+                <ul>
+                    <li>Nama Rekening:
+                        <t t-esc="docs.transfer_rekening_name or '...'"/>
+                    </li>
+                    <li>Bank:
+                        <t t-esc="docs.transfer_rekening_bank or '...'"/>
+                    </li>
+                    <li>Nomor Rekening:
+                        <t t-esc="docs.transfer_rekening_number or '...'"/>
+                    </li>
+                    <li>Cabang:
+                        <t t-esc="docs.transfer_rekening_branch or '...'"/>
+                    </li>
+                </ul>
+
+                <h2>PASAL 4<br/>JANGKA WAKTU PERJANJIAN
+                </h2>
+                <p>Bahwa PARA PIHAK setuju dan sepakat bahwa Perjanjian ini berlaku sampai dengan
+                    <t t-esc="docs.expired_date or '...'"/>
+                    atau pada saat PIHAK PERTAMA sudah menyelesaikan seluruh pekerjaan pencetakan buku tulis kepada
+                    PIHAK KEDUA.
+                </p>
+                <p>Kesepakatan PARA PIHAK mengenai perpanjangan Perjanjian ini wajib dibuat secara tertulis dan
+                    ditandatangani oleh PARA PIHAK selambat-lambatnya 7 hari sebelum jangka waktu Perjanjian ini
+                    berakhir.
+                </p>
+
+                <h2>PASAL 5<br/>PENYELESAIAN PERSELISIHAN
+                </h2>
+                <p>Apabila terjadi perselisihan mengenai interprestasi maupun implementasi Perjanjian ini, maka PARA
+                    PIHAK setuju dan sepakat untuk menyelesaikannya secara kekeluargaan dan mengambil jalan musyawarah
+                    untuk mufakat.
+                </p>
+                <p>Jika dalam 30 hari upaya sebagaimana dimaksud pada ayat 1 tersebut di atas telah dilakukan namun
+                    tidak menghasilkan kesepakatan, maka PARA PIHAK setuju dan sepakat untuk memilih menyelesaikan
+                    perselisihan tersebut melalui Kepaniteraan Pengadilan Negeri.
+                </p>
+
+                <p>Demikian Perjanjian ini dibuat dan ditandatangani oleh PARA PIHAK pada hari, tanggal dan tempat
+                    sebagaimana tercantum pada awal Perjanjian serta dibuat dalam rangkap 2 dan masing-masing mempunyai
+                    kekuatan hukum yang sama.
+                </p>
+
+                <p>PIHAK PERTAMA: Percetakan Buku Champion<br/>PIHAK KEDUA:
+                    <t t-esc="docs.partner_id.name or '...'"/>
                 </p>
             </div>
         </t>
     </template>
 
-    <report
-        id="report_draft_perjanjian"
-        model="sale.order"
-        string="Draft Perjanjian"
-        report_type="qweb-pdf"
-        name="addons_sales_order_custom.report_draft_perjanjian"
-        file="addons_sales_order_custom.report_draft_perjanjian"
-        print_report_name="'Draft_Perjanjian_%s' % (object.name)"
-    />
 
+    <report
+            id="report_draft_perjanjian"
+            model="sale.order"
+            string="Draft Perjanjian"
+            report_type="qweb-pdf"
+            name="addons_sales_order_custom.report_draft_perjanjian"
+            file="addons_sales_order_custom.report_draft_perjanjian"
+            print_report_name="'Draft_Perjanjian_%s' % (object.name)"
+    />
 </odoo>

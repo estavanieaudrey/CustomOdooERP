@@ -11,7 +11,9 @@
     'data': [
         'views/manufacturing_order_view.xml',
         'views/nota_permintaan_barang_view.xml',
+        'views/surat_perintah_kerja.xml',
         'reports/report_npb_template.xml',
+        'reports/report_spk_template.xml',
         'security/ir.model.access.csv',
     ],
     'installable': True,
