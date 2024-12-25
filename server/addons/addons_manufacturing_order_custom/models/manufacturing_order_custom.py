@@ -249,6 +249,13 @@ class MrpProductionCustom(models.Model):
         ).report_action(self)
         # return report_action
 
+    def action_generate_spk(self):
+        """
+        Function buat bikin PDF dari template report yang udah dibuat.
+        Simpel sih, cuma manggil template reportnya terus dirender jadi PDF.
+        """
+        # Manggil template report yang udah didaftarin di XML, terus langsung dirender
+        return self.env.ref('addons_manufacturing_order_custom.action_report_surat_perjanjian_kerja').report_action(self)
 
 # untuk mengedit custom quantity di bagian work order di Manufacturing Order
 class MrpWorkorderCustom(models.Model):
@@ -322,19 +329,6 @@ class MrpWorkorderCustom(models.Model):
         store=True,
     )
 
-    # Override qty_remaining -> untuk mencegah quantity mengikuti custom_qty_to_produce
-    # qty_remaining = fields.Float(
-    #     'Quantity To Be Produced',
-    #     compute='_compute_qty_remaining',
-    #     digits=(16, 0),
-    #     store=True
-    # )
-
-    # @api.depends('qty_production', 'qty_produced')
-    # def _compute_qty_remaining(self):
-    #     for wo in self:
-    #         # Jangan menggunakan custom_qty_to_produce
-    #         wo.qty_remaining = max(wo.qty_production - wo.qty_produced, 0)
     
     # Override qty_remaining -> untuk maksa quantity to be produce mengikuti custom_qty_to_produce
     custom_qty_remaining = fields.Float(
@@ -433,6 +427,7 @@ class MrpWorkorderCustom(models.Model):
         self._update_qty_producing(self.qty_production - self.qty_produced)
         return res
 
+    
 
 class MrpBomLine(models.Model):
     _inherit = 'mrp.bom.line'
@@ -460,3 +455,66 @@ class StockMove(models.Model):
         string="Original Quantity",
         help="Stores the original quantity before any auto-calculations"
     )
+#
+# # class MrpWorkorderCustom(models.Model):
+#     _inherit = 'mrp.workorder'
+#
+#     # Visibility Helper Fields
+#     is_visible_jumlah_bahan_baku = fields.Boolean(
+#         string="Is Jumlah Bahan Baku Visible", compute="_compute_visibility"
+#     )
+#     is_visible_hasil_produksi_cover = fields.Boolean(
+#         string="Is Hasil Produksi Cover Visible", compute="_compute_visibility"
+#     )
+#     is_visible_qty_kirim_ke_uv = fields.Boolean(
+#         string="Is Qty Kirim ke UV Visible", compute="_compute_visibility"
+#     )
+#     is_visible_qty_terima_dari_uv = fields.Boolean(
+#         string="Is Qty Terima dari UV Visible", compute="_compute_visibility"
+#     )
+#     is_visible_hasil_produksi_isi = fields.Boolean(
+#         string="Is Hasil Produksi Isi Visible", compute="_compute_visibility"
+#     )
+#     is_visible_hasil_join_cetak_isi = fields.Boolean(
+#         string="Is Hasil Join Cetak Isi Visible", compute="_compute_visibility"
+#     )
+#     is_visible_hasil_pemotongan_akhir = fields.Boolean(
+#         string="Is Hasil Pemotongan Akhir Visible", compute="_compute_visibility"
+#     )
+#     is_visible_qty_realita_buku = fields.Boolean(
+#         string="Is Qty Realita Buku Visible", compute="_compute_visibility"
+#     )
+#
+#     @api.depends('workcenter_id.name')
+#     def _compute_visibility(self):
+#         """
+#         Compute field visibility based on workcenter_id.name.
+#         """
+#         for record in self:
+#             # Default all fields to invisible
+#             record.is_visible_jumlah_bahan_baku = False
+#             record.is_visible_hasil_produksi_cover = False
+#             record.is_visible_qty_kirim_ke_uv = False
+#             record.is_visible_qty_terima_dari_uv = False
+#             record.is_visible_hasil_produksi_isi = False
+#             record.is_visible_hasil_join_cetak_isi = False
+#             record.is_visible_hasil_pemotongan_akhir = False
+#             record.is_visible_qty_realita_buku = False
+#
+#             # Set visibility based on the Workcenter Name
+#             if record.workcenter_id.name == 'Produksi Cetak Cover':
+#                 record.is_visible_jumlah_bahan_baku = True
+#                 record.is_visible_hasil_produksi_cover = True
+#             elif record.workcenter_id.name == 'Mengirimkan ke UV Varnish':
+#                 record.is_visible_qty_kirim_ke_uv = True
+#             elif record.workcenter_id.name == 'Menerima Cetak Cover dari UV Varnish':
+#                 record.is_visible_qty_terima_dari_uv = True
+#             elif record.workcenter_id.name == 'Produksi Cetak Isi':
+#                 record.is_visible_jumlah_bahan_baku = True
+#                 record.is_visible_hasil_produksi_isi = True
+#             elif record.workcenter_id.name == 'Join Cetak Cover dan Isi':
+#                 record.is_visible_hasil_join_cetak_isi = True
+#             elif record.workcenter_id.name == 'Pemotongan Akhir':
+#                 record.is_visible_hasil_pemotongan_akhir = True
+#             elif record.workcenter_id.name == 'Packing Buku kedalam Box':
+#                 record.is_visible_qty_realita_buku = True

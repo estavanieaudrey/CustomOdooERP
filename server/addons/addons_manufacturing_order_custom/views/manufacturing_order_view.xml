@@ -12,6 +12,11 @@
                             string="Nota Permintaan Barang"
                             class="btn-primary"
                             icon="fa-pencil-square-o"/>
+                    <button name="action_generate_spk"
+                            type="object"
+                            string="Surat Perintah Kerja"
+                            class="btn-primary"
+                            icon="fa-pencil-square-o"/>
                 </xpath>
                 <!-- Tambahkan field tambahan ke dalam group -->
                 <xpath expr="//group" position="inside">
