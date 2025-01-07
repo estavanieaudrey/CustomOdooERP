@@ -93,64 +93,6 @@
             </field>
         </record>
 
-        <!-- UI untuk waste produksi -->
-        <!--        <record id="view_mrp_workorder_form_custom" model="ir.ui.view">-->
-        <!--            <field name="name">mrp.workorder.form.custom</field>-->
-        <!--            <field name="model">mrp.workorder</field>-->
-        <!--            <field name="inherit_id" ref="mrp.mrp_workorder_form_view"/>-->
-        <!--            <field name="arch" type="xml">-->
-        <!--                <xpath expr="//sheet" position="inside">-->
-        <!--                    <page string="Custom Waste Tracking" name="custom_waste_tracking">-->
-        <!--                        <group string="Production Input">-->
-        <!--                            <field name="jumlah_bahan_baku"/>-->
-        <!--                        </group>-->
-        <!--                        <group string="Production Output">-->
-        <!--                            <field name="hasil_produksi_cover"-->
-        <!--                                   string="Hasil Produksi Cover (Visible for 'Produksi Cetak Cover')"/>-->
-        <!--                            <field name="hasil_produksi_isi"-->
-        <!--                                   string="Hasil Produksi Isi (Visible for 'Produksi Cetak Isi')"/>-->
-        <!--                            <field name="hasil_join_cetak_isi"-->
-        <!--                                   string="Hasil Join Cetak Isi (Visible for 'Join Cetak Cover dan Isi')"/>-->
-        <!--                            <field name="hasil_pemotongan_akhir"-->
-        <!--                                   string="Hasil Pemotongan Akhir (Visible for 'Pemotongan Akhir')"/>-->
-        <!--                            <field name="qty_realita_buku"/>-->
-        <!--                            <field name="qty_realita_box"/>-->
-        <!--                            <field name="qty_buku_dalam_box"/>-->
-        <!--                        </group>-->
-        <!--                        <group string="Waste Calculation">-->
-        <!--                            <field name="selisih_qty_buku" readonly="1"/>-->
-        <!--                            <field name="warning_message" readonly="1"/>-->
-        <!--                        </group>-->
-        <!--                    </page>-->
-        <!--                </xpath>-->
-        <!--            </field>-->
-        <!--        </record>-->
-        <!--        <record id="view_open_workorder_custom" model="ir.ui.view">-->
-        <!--    <field name="name">mrp.workorder.open.custom</field>-->
-        <!--    <field name="model">mrp.workorder</field>-->
-        <!--    <field name="inherit_id" ref="mrp.mrp_workorder_form_view" />-->
-        <!--    <field name="arch" type="xml">-->
-        <!--        &lt;!&ndash; Insert into the notebook &ndash;&gt;-->
-        <!--        <xpath expr="//notebook" position="inside">-->
-        <!--            <page string="Custom Production Details" name="custom_production_details">-->
-        <!--                <group string="Input Details">-->
-        <!--                    <field name="jumlah_bahan_baku"/>-->
-        <!--                    <field name="hasil_produksi_cover" attrs="{'invisible': [('workcenter_id.name', 'not in', ['Produksi Cetak Cover'])]}"/>-->
-        <!--                    <field name="hasil_produksi_isi" attrs="{'invisible': [('workcenter_id.name', 'not in', ['Produksi Cetak Isi'])]}"/>-->
-        <!--                    <field name="hasil_join_cetak_isi" attrs="{'invisible': [('workcenter_id.name', 'not in', ['Join Cetak Cover dan Isi'])]}"/>-->
-        <!--                    <field name="hasil_pemotongan_akhir" attrs="{'invisible': [('workcenter_id.name', 'not in', ['Pemotongan Akhir'])]}"/>-->
-        <!--                    <field name="qty_realita_buku"/>-->
-        <!--                    <field name="qty_realita_box"/>-->
-        <!--                    <field name="qty_buku_dalam_box"/>-->
-        <!--                </group>-->
-        <!--                <group string="Waste Calculation">-->
-        <!--                    <field name="selisih_qty_buku" readonly="1"/>-->
-        <!--                    <field name="warning_message" readonly="1"/>-->
-        <!--                </group>-->
-        <!--            </page>-->
-        <!--        </xpath>-->
-        <!--    </field>-->
-        <!--</record>-->
         <record id="view_open_workorder_custom" model="ir.ui.view">
             <field name="name">mrp.workorder.open.custom</field>
             <field name="model">mrp.workorder</field>
@@ -159,86 +101,62 @@
                 <xpath expr="//notebook" position="inside">
                     <page string="Production Details" name="production_details">
                         <!-- Raw Material Input Section -->
+                        <group string="Pilih Work Order">
+                            <field name="work_center_step"/>
+                        </group>
                         <group string="INPUT BAHAN BAKU">
                             <group>
-                                <field name="custom_qty_to_produce" 
-                                       string="Maksimal Bahan Baku"
-                                       readonly="1"/>
+                                <field name="custom_qty_to_produce" string="Maksimal Bahan Baku" readonly="1"/>
                                 <field name="jumlah_bahan_baku" 
-                                       string="Jumlah Bahan Baku Digunakan"
-                                       optional="show"
-                                       column_invisible="workcenter_id.name not in ('Produksi Cetak Cover', 'Produksi Cetak Isi')"/>
+                                    invisible="not work_center_step in ('produksi_cetak_cover', 'produksi_cetak_isi')"/>
                             </group>
                         </group>
 
                         <!-- Production Output Section -->
                         <group string="HASIL PRODUKSI">
                             <!-- Cover Production -->
-                            <group>
-                                <field name="hasil_produksi_cover" 
-                                       optional="show"
-                                       column_invisible="workcenter_id.name != 'Produksi Cetak Cover'"/>
-                                <field name="unit_type" 
-                                       optional="show"
-                                       column_invisible="workcenter_id.name != 'Produksi Cetak Cover'"/>
+                            <group invisible="work_center_step != 'produksi_cetak_cover'">
+                                <field name="hasil_produksi_cover"/>
+                                <field name="unit_type"/>
                             </group>
 
                             <!-- UV Process -->
-                            <group>
-                                <field name="qty_kirim_ke_uv" 
-                                       optional="show"
-                                       column_invisible="workcenter_id.name != 'Mengirimkan ke UV Varnish'"/>
-                                <field name="qty_terima_dari_uv" 
-                                       optional="show"
-                                       column_invisible="workcenter_id.name != 'Menerima Cetak Cover dari UV Varnish'"/>
+                            <group invisible="work_center_step != 'mengirimkan_ke_uv_varnish'">
+                                <field name="qty_kirim_ke_uv"/>
+                            </group>
+                            <group invisible="work_center_step != 'menerima_dari_uv_varnish'">
+                                <field name="qty_terima_dari_uv"/>
                             </group>
 
                             <!-- Content Production -->
-                            <group>
-                                <field name="hasil_produksi_isi" 
-                                       optional="show"
-                                       column_invisible="workcenter_id.name != 'Produksi Cetak Isi'"/>
-                                <field name="unit_type" 
-                                       optional="show"
-                                       column_invisible="workcenter_id.name != 'Produksi Cetak Isi'"/>
+                            <group invisible="work_center_step != 'produksi_cetak_isi'">
+                                <field name="hasil_produksi_isi"/>
+                                <field name="unit_type"/>
                             </group>
 
                             <!-- Assembly Process -->
-                            <group>
-                                <field name="hasil_join_cetak_isi" 
-                                       optional="show"
-                                       column_invisible="workcenter_id.name != 'Join Cetak Cover dan Isi'"/>
-                                <field name="unit_type" 
-                                       optional="show"
-                                       column_invisible="workcenter_id.name != 'Join Cetak Cover dan Isi'"/>
+                            <group invisible="work_center_step != 'join_cetak_cover_dan_isi'">
+                                <field name="hasil_join_cetak_isi"/>
+                                <field name="unit_type"/>
                             </group>
 
                             <!-- Final Cutting -->
-                            <group>
-                                <field name="hasil_pemotongan_akhir" 
-                                       optional="show"
-                                       column_invisible="workcenter_id.name != 'Pemotongan Akhir'"/>
-                                <field name="unit_type" 
-                                       optional="show"
-                                       column_invisible="workcenter_id.name != 'Pemotongan Akhir'"/>
+                            <group invisible="work_center_step != 'pemotongan_akhir'">
+                                <field name="hasil_pemotongan_akhir"/>
+                                <field name="unit_type"/>
                             </group>
 
                             <!-- Packing Process -->
-                            <group>
-                                <field name="qty_realita_buku" 
-                                       optional="show"
-                                       column_invisible="workcenter_id.name != 'Packing Buku kedalam Box'"/>
-                                <field name="qty_realita_box" 
-                                       optional="show"
-                                       column_invisible="workcenter_id.name != 'Packing Buku kedalam Box'"/>
-                                <field name="qty_buku_dalam_box" 
-                                       optional="show"
-                                       column_invisible="workcenter_id.name != 'Packing Buku kedalam Box'"/>
+                            <group invisible="work_center_step != 'packing_buku'">
+                                <field name="qty_realita_buku"/>
+                                <field name="qty_realita_box"/>
+                                <field name="qty_buku_dalam_box"/>
                             </group>
                         </group>
 
                         <!-- Waste Calculation Section -->
-                        <group string="PERHITUNGAN WASTE">
+                        <group string="PERHITUNGAN WASTE" 
+                               invisible="work_center_step != 'packing_buku'">
                             <field name="selisih_qty_buku" readonly="1"/>
                             <field name="warning_message" readonly="1"/>
                         </group>

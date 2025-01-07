@@ -1,0 +1,69 @@
+<odoo>
+    <template id="custom_report_deliveryslip" inherit_id="stock.report_delivery_document">
+        <xpath expr="//div[@class='page']" position="inside">
+            <div class="page">
+                    <h2>Delivery Slip</h2>
+                    <div>
+                        <p>
+                            <strong>Delivery Address:</strong>
+                            <span t-field="docs.partner_id.name"/>
+                        </p>
+                        <p>
+                            <strong>Scheduled Date:</strong>
+                            <span t-field="docs.scheduled_date"/>
+                        </p>
+                        <p>
+                            <strong>Effective Date:</strong>
+                            <span t-field="docs.date_done"/>
+                        </p>
+                        <p>
+                            <strong>Source document:</strong>
+                            <span t-field="docs.origin"/>
+                        </p>
+                    </div>
+                    <div>
+                        <p>
+                            <strong>Nomor Resi:</strong>
+                            <span t-field="docs.resi_number"/>
+                        </p>
+                        <p>
+                            <strong>Nomor Kontainer:</strong>
+                            <span t-field="docs.container_number"/>
+                        </p>
+                        <p>
+                            <strong>Tanggal Kedatangan Kontainer:</strong>
+                            <span t-field="docs.container_arrival_date"/>
+                        </p>
+                    </div>
+                    <table class="table table-bordered">
+                        <thead>
+                            <tr>
+                                <th>Product</th>
+                                <th>Demand</th>
+                                <th>Quantity</th>
+                                <th>Unit</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr t-foreach="docs.move_ids_without_package" t-as="line">
+                                <td>
+                                    <span t-field="line.product_id.name"/>
+                                </td>
+                                <td>
+                                    <span t-field="line.product_uom_qty"/>
+                                </td>
+                                <td>
+                                    <span t-field="line.quantity"/>
+                                </td>
+                                <td>
+                                    <span t-field="line.product_uom.name"/>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+        </xpath>
+    </template>
+</odoo>
+
+

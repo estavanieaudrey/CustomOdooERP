@@ -1,6 +1,8 @@
 from odoo import models, fields, api, _
 from odoo.exceptions import UserError
+from odoo.exceptions import ValidationError
 from datetime import timedelta
+
 
 class MrpProductionCustom(models.Model):
     _inherit = 'mrp.production'
@@ -255,11 +257,32 @@ class MrpProductionCustom(models.Model):
         Simpel sih, cuma manggil template reportnya terus dirender jadi PDF.
         """
         # Manggil template report yang udah didaftarin di XML, terus langsung dirender
-        return self.env.ref('addons_manufacturing_order_custom.action_report_surat_perjanjian_kerja').report_action(self)
+        return self.env.ref('addons_manufacturing_order_custom.action_report_surat_perjanjian_kerja').report_action(
+            self)
+
 
 # untuk mengedit custom quantity di bagian work order di Manufacturing Order
 class MrpWorkorderCustom(models.Model):
     _inherit = "mrp.workorder"
+
+    # Dropdown to select Work Center Step
+    work_center_step = fields.Selection([
+        ('produksi_cetak_cover', 'Produksi Cetak Cover'),
+        ('mengirimkan_ke_uv_varnish', 'Mengirimkan ke UV Varnish'),
+        ('menerima_dari_uv_varnish', 'Menerima Cetak Cover dari UV Varnish'),
+        ('produksi_cetak_isi', 'Produksi Cetak Isi'),
+        ('join_cetak_cover_dan_isi', 'Join Cetak Cover dan Isi'),
+        ('pemotongan_akhir', 'Pemotongan Akhir'),
+        ('packing_buku', 'Packing Buku kedalam Box'),
+    ], string="Work Center Step", required=True)
+
+    # Visibility Fields
+    jumlah_bahan_baku_visible = fields.Boolean(compute="_compute_visibility", string="Jumlah Bahan Baku Visible")
+    hasil_produksi_cover_visible = fields.Boolean(compute="_compute_visibility", string="Hasil Produksi Cover Visible")
+    hasil_produksi_isi_visible = fields.Boolean(compute="_compute_visibility", string="Hasil Produksi Isi Visible")
+    qty_kirim_ke_uv_visible = fields.Boolean(compute="_compute_visibility", string="Qty Kirim ke UV Visible")
+    qty_terima_dari_uv_visible = fields.Boolean(compute="_compute_visibility", string="Qty Terima dari UV Visible")
+    qty_realita_buku_visible = fields.Boolean(compute="_compute_visibility", string="Qty Realita Buku Visible")
 
     # Input Fields
     jumlah_bahan_baku = fields.Float(
@@ -275,7 +298,7 @@ class MrpWorkorderCustom(models.Model):
     qty_realita_buku = fields.Float(string="Qty Realita Buku")
     qty_realita_box = fields.Float(string="Qty Realita Box")
     qty_buku_dalam_box = fields.Float(string="Qty Buku dalam 1 Box")
-    
+
     # UV Process Fields
     qty_kirim_ke_uv = fields.Float(string="Qty Kirim ke UV")
     qty_terima_dari_uv = fields.Float(string="Qty Terima dari UV")
@@ -293,9 +316,23 @@ class MrpWorkorderCustom(models.Model):
         store=True
     )
     warning_message = fields.Char(
-        string="Warning Message", 
+        string="Warning Message",
         readonly=True
     )
+
+    @api.depends("work_center_step")
+    def _compute_visibility(self):
+        """
+        Compute the visibility of fields based on the selected Work Center step.
+        """
+        for record in self:
+            step = record.work_center_step
+            record.jumlah_bahan_baku_visible = step in ['produksi_cetak_cover', 'produksi_cetak_isi']
+            record.hasil_produksi_cover_visible = step == 'produksi_cetak_cover'
+            record.hasil_produksi_isi_visible = step == 'produksi_cetak_isi'
+            record.qty_kirim_ke_uv_visible = step == 'mengirimkan_ke_uv_varnish'
+            record.qty_terima_dari_uv_visible = step == 'menerima_dari_uv_varnish'
+            record.qty_realita_buku_visible = step == 'packing_buku'
 
     @api.depends('qty_realita_buku', 'production_id.bom_id.qty_buku')
     def _compute_waste_difference(self):
@@ -311,17 +348,15 @@ class MrpWorkorderCustom(models.Model):
                 else:
                     record.warning_message = _("Jumlah buku sesuai permintaan.")
 
-    @api.constrains('jumlah_bahan_baku', 'workcenter_id')
-    def _check_bahan_baku(self):
-        for record in self:
-            if record.workcenter_id.name in ['Produksi Cetak Cover', 'Produksi Cetak Isi']:
-                if record.jumlah_bahan_baku < 0:
-                    raise ValidationError(_("Jumlah bahan baku tidak boleh kurang dari 0!"))
-                if record.jumlah_bahan_baku > record.production_id.bom_id.qty_buku:
-                    raise ValidationError(_(
-                        f"Jumlah bahan baku melebihi kebutuhan untuk {record.workcenter_id.name}!\n"
-                        f"Maksimal: {record.production_id.bom_id.qty_buku}"
-                    ))
+    # @api.constrains('jumlah_bahan_baku', 'custom_qty_to_produce', 'work_center_step')
+    # def _check_jumlah_bahan_baku(self):
+    #     for record in self:
+    #         if record.work_center_step in ['produksi_cetak_cover', 'produksi_cetak_isi']:
+    #             if record.jumlah_bahan_baku > record.custom_qty_to_produce:
+    #                 raise ValidationError(_(
+    #                     'Jumlah bahan baku tidak boleh melebihi maksimal bahan baku (%s)'
+    #                     % record.custom_qty_to_produce
+    #                 ))
 
     custom_qty_to_produce = fields.Float(
         string="Custom Quantity To Produce",
@@ -329,7 +364,6 @@ class MrpWorkorderCustom(models.Model):
         store=True,
     )
 
-    
     # Override qty_remaining -> untuk maksa quantity to be produce mengikuti custom_qty_to_produce
     custom_qty_remaining = fields.Float(
         string="Custom Quantity Remaining",
@@ -342,67 +376,105 @@ class MrpWorkorderCustom(models.Model):
         for work_order in self:
             work_order.qty_remaining = work_order.custom_qty_to_produce
 
-
     @api.depends(
         'production_id.bom_id',
+        'production_id.bom_id.waste_percentage',
         'production_id.bom_id.kebutuhan_rim_isi',
         'production_id.bom_id.kebutuhan_kg_isi',
         'production_id.bom_id.kebutuhan_rim_cover',
         'production_id.bom_id.kebutuhan_kg_cover',
+        'production_id.bom_id.isi_box',
         'operation_id.name'
     )
-
+    @api.depends('work_center_step', 'production_id.bom_id')
     def _compute_custom_qty_to_produce(self):
         """
-        Menghitung custom_qty_to_produce berdasarkan kebutuhan di BoM dan operasi workorder.
+        Dynamically compute custom_qty_to_produce based on work_center_step and BOM details.
         """
         for workorder in self:
             bom = workorder.production_id.bom_id
             if bom:
                 waste_factor = 1 + (bom.waste_percentage / 100)
-
-                # Identifikasi operasi dan tentukan quantity berdasarkan nama
-                if "Produksi Cetak Cover" in workorder.operation_id.name:
-                    # Menggunakan perhitungan kertas cover
-                    custom_qty = (bom.kebutuhan_rim_cover * bom.kebutuhan_kg_cover) * waste_factor
-                    workorder.custom_qty_to_produce = custom_qty or 0.0
-
-                elif "Produksi Cetak Isi" in workorder.operation_id.name:
-                    # Menggunakan perhitungan kertas isi
-                    custom_qty = (bom.kebutuhan_rim_isi * bom.kebutuhan_kg_isi) * waste_factor
-                    workorder.custom_qty_to_produce = custom_qty or 0.0
-
-                elif "Packing Buku kedalam Box" in workorder.operation_id.name:
-                    # Menggunakan perhitungan packing box
-                    if bom.isi_box > 0:
-                        custom_qty = bom.qty_buku / bom.isi_box
-                    else:
-                        custom_qty = 0.0
-                    workorder.custom_qty_to_produce = custom_qty or 0.0
-
+                if workorder.work_center_step == 'produksi_cetak_cover':
+                    # Calculate for Produksi Cetak Cover
+                    workorder.custom_qty_to_produce = (
+                        bom.kebutuhan_rim_cover * bom.kebutuhan_kg_cover * waste_factor
+                    ) or 0.0
+                elif workorder.work_center_step == 'produksi_cetak_isi':
+                    # Calculate for Produksi Cetak Isi
+                    workorder.custom_qty_to_produce = (
+                         bom.kebutuhan_rim_isi * bom.kebutuhan_kg_isi * waste_factor
+                    ) or 0.0
+                elif workorder.work_center_step == 'packing_buku':
+                    # Calculate for Packing Buku ke dalam Box
+                    workorder.custom_qty_to_produce = (
+                         bom.qty_buku / bom.isi_box
+                    ) or 0.0
                 else:
-                    # Default untuk operasi lain
+                    # Default to 0 for other work centers
                     workorder.custom_qty_to_produce = 0.0
             else:
+                # No BOM linked
                 workorder.custom_qty_to_produce = 0.0
+
+    @api.onchange('work_center_step')
+    def _onchange_work_center_step(self):
+        """
+        Recalculate custom_qty_to_produce when work_center_step changes.
+        """
+        for workorder in self:
+            if workorder.work_center_step:
+                workorder._compute_custom_qty_to_produce()
+
+    @api.constrains('jumlah_bahan_baku', 'custom_qty_to_produce', 'work_center_step')
+    def _check_jumlah_bahan_baku(self):
+        """
+        Ensure jumlah_bahan_baku does not exceed custom_qty_to_produce and
+        is not less than 90% of custom_qty_to_produce for the selected Work Center Step.
+        """
+        for record in self:
+            if record.work_center_step in ['produksi_cetak_cover', 'produksi_cetak_isi']:
+                if record.jumlah_bahan_baku > record.custom_qty_to_produce:
+                    raise ValidationError(_(
+                        f"Jumlah bahan baku ({record.jumlah_bahan_baku}) tidak boleh "
+                        f"melebihi maksimal bahan baku ({record.custom_qty_to_produce}) "
+                        f"untuk {record.work_center_step}."
+                    ))
+
+                if record.jumlah_bahan_baku < (record.custom_qty_to_produce * 0.9):
+                    raise ValidationError(_(
+                        f"Jumlah bahan baku ({record.jumlah_bahan_baku}) tidak boleh "
+                        f"kurang dari 90% dari maksimal bahan baku ({record.custom_qty_to_produce * 0.9}) "
+                        f"untuk {record.work_center_step}."
+                    ))
 
     @api.onchange('jumlah_bahan_baku')
     def _onchange_jumlah_bahan_baku(self):
-        if self.workcenter_id.name in ['Produksi Cetak Cover', 'Produksi Cetak Isi']:
-            # Mengakses qty_buku melalui production_id.bom_id
-            if self.jumlah_bahan_baku and self.production_id.bom_id.qty_buku:
-                usage_percentage = (self.jumlah_bahan_baku / self.production_id.bom_id.qty_buku) * 100
-                if usage_percentage < 80:
-                    return {
-                        'warning': {
-                            'title': _('Peringatan Penggunaan Bahan Baku'),
-                            'message': _(
-                                f"Jumlah bahan baku yang diinput ({self.jumlah_bahan_baku}) "
-                                f"kurang dari 80% dari kebutuhan yang dihitung ({self.production_id.bom_id.qty_buku}). "
-                                f"Pastikan jumlah ini sudah benar."
-                            )
-                        }
+        """
+        Warn if jumlah_bahan_baku exceeds custom_qty_to_produce or is less than 90% of it.
+        """
+        if self.work_center_step in ['produksi_cetak_cover', 'produksi_cetak_isi']:
+            if self.jumlah_bahan_baku > self.custom_qty_to_produce:
+                return {
+                    'warning': {
+                        'title': _('Invalid Input'),
+                        'message': _(
+                            f"Jumlah bahan baku ({self.jumlah_bahan_baku}) melebihi "
+                            f"batas maksimum ({self.custom_qty_to_produce}) untuk {self.work_center_step}."
+                        ),
                     }
+                }
+
+            if self.jumlah_bahan_baku < (self.custom_qty_to_produce * 0.9):
+                return {
+                    'warning': {
+                        'title': _('Invalid Input'),
+                        'message': _(
+                            f"Jumlah bahan baku ({self.jumlah_bahan_baku}) kurang dari 90% "
+                            f"dari batas maksimum ({self.custom_qty_to_produce * 0.9}) untuk {self.work_center_step}."
+                        ),
+                    }
+                }
 
     # untuk mengupdate qty_producing
     @api.depends('qty_production', 'qty_produced')
@@ -410,7 +482,8 @@ class MrpWorkorderCustom(models.Model):
         if not quantity:
             quantity = self.qty_production - self.qty_produced
             if self.production_id.product_id.tracking == 'serial':
-                quantity = 1.0 if float_compare(quantity, 0, precision_rounding=self.production_id.product_uom_id.rounding) > 0 else 0
+                quantity = 1.0 if float_compare(quantity, 0,
+                                                precision_rounding=self.production_id.product_uom_id.rounding) > 0 else 0
         # Tidak menggunakan custom_qty_to_produce
         self.qty_producing = quantity
         return quantity
@@ -419,15 +492,14 @@ class MrpWorkorderCustom(models.Model):
         # Pastikan state MO sesuai sebelum memulai work order
         if self.production_id.state not in ['confirmed', 'progress']:
             self.production_id.write({'state': 'confirmed'})
-        
+
         # Panggil method asli
         res = super().button_start()
-        
+
         # Update quantity setelah work order dimulai
         self._update_qty_producing(self.qty_production - self.qty_produced)
         return res
 
-    
 
 class MrpBomLine(models.Model):
     _inherit = 'mrp.bom.line'
@@ -441,11 +513,13 @@ class MrpBomLine(models.Model):
         # _logger.info(f"Updating BoM Line {self.id}: {vals}")
         return super(MrpBomLine, self).write(vals)
 
+
 class MrpWorkorderWizard(models.TransientModel):
     _name = 'mrp.workorder.wizard'
     _description = 'MRP Workorder Wizard'
 
     name = fields.Char(string="Name")
+
 
 # Add a new field to mrp.stock.move to store original quantities
 class StockMove(models.Model):
@@ -455,66 +529,3 @@ class StockMove(models.Model):
         string="Original Quantity",
         help="Stores the original quantity before any auto-calculations"
     )
-#
-# # class MrpWorkorderCustom(models.Model):
-#     _inherit = 'mrp.workorder'
-#
-#     # Visibility Helper Fields
-#     is_visible_jumlah_bahan_baku = fields.Boolean(
-#         string="Is Jumlah Bahan Baku Visible", compute="_compute_visibility"
-#     )
-#     is_visible_hasil_produksi_cover = fields.Boolean(
-#         string="Is Hasil Produksi Cover Visible", compute="_compute_visibility"
-#     )
-#     is_visible_qty_kirim_ke_uv = fields.Boolean(
-#         string="Is Qty Kirim ke UV Visible", compute="_compute_visibility"
-#     )
-#     is_visible_qty_terima_dari_uv = fields.Boolean(
-#         string="Is Qty Terima dari UV Visible", compute="_compute_visibility"
-#     )
-#     is_visible_hasil_produksi_isi = fields.Boolean(
-#         string="Is Hasil Produksi Isi Visible", compute="_compute_visibility"
-#     )
-#     is_visible_hasil_join_cetak_isi = fields.Boolean(
-#         string="Is Hasil Join Cetak Isi Visible", compute="_compute_visibility"
-#     )
-#     is_visible_hasil_pemotongan_akhir = fields.Boolean(
-#         string="Is Hasil Pemotongan Akhir Visible", compute="_compute_visibility"
-#     )
-#     is_visible_qty_realita_buku = fields.Boolean(
-#         string="Is Qty Realita Buku Visible", compute="_compute_visibility"
-#     )
-#
-#     @api.depends('workcenter_id.name')
-#     def _compute_visibility(self):
-#         """
-#         Compute field visibility based on workcenter_id.name.
-#         """
-#         for record in self:
-#             # Default all fields to invisible
-#             record.is_visible_jumlah_bahan_baku = False
-#             record.is_visible_hasil_produksi_cover = False
-#             record.is_visible_qty_kirim_ke_uv = False
-#             record.is_visible_qty_terima_dari_uv = False
-#             record.is_visible_hasil_produksi_isi = False
-#             record.is_visible_hasil_join_cetak_isi = False
-#             record.is_visible_hasil_pemotongan_akhir = False
-#             record.is_visible_qty_realita_buku = False
-#
-#             # Set visibility based on the Workcenter Name
-#             if record.workcenter_id.name == 'Produksi Cetak Cover':
-#                 record.is_visible_jumlah_bahan_baku = True
-#                 record.is_visible_hasil_produksi_cover = True
-#             elif record.workcenter_id.name == 'Mengirimkan ke UV Varnish':
-#                 record.is_visible_qty_kirim_ke_uv = True
-#             elif record.workcenter_id.name == 'Menerima Cetak Cover dari UV Varnish':
-#                 record.is_visible_qty_terima_dari_uv = True
-#             elif record.workcenter_id.name == 'Produksi Cetak Isi':
-#                 record.is_visible_jumlah_bahan_baku = True
-#                 record.is_visible_hasil_produksi_isi = True
-#             elif record.workcenter_id.name == 'Join Cetak Cover dan Isi':
-#                 record.is_visible_hasil_join_cetak_isi = True
-#             elif record.workcenter_id.name == 'Pemotongan Akhir':
-#                 record.is_visible_hasil_pemotongan_akhir = True
-#             elif record.workcenter_id.name == 'Packing Buku kedalam Box':
-#                 record.is_visible_qty_realita_buku = True
