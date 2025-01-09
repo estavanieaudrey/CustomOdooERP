@@ -23,6 +23,7 @@ class PurchaseOrderCustom(models.Model):
         Fungsi ini bakal jalan pas MO-nya diganti
         - Ngisi tab Products otomatis
         - Ngambil harga dari BoM
+        - Set lot/serial number dari MO
         """
         if self.manufacturing_order_id:
             bom = self.manufacturing_order_id.bom_id
@@ -44,6 +45,9 @@ class PurchaseOrderCustom(models.Model):
                     'date_planned': fields.Datetime.now(),
                     'product_uom': line.product_id.uom_po_id.id or line.product_id.uom_id.id,
                 }
+                # Tambahkan lot_ids jika ada lot_producing_id di MO
+                # if self.manufacturing_order_id.lot_producing_id:
+                #     vals['lot_ids'] = [(4, self.manufacturing_order_id.lot_producing_id.id)]
                 new_lines.append((0, 0, vals))
 
             self.order_line = new_lines
@@ -76,6 +80,12 @@ class PurchaseOrderCustom(models.Model):
                 return getattr(bom, field_name, 0.0)
 
         return 0.0  # Kalo ga ketemu, kasih 0
+
+    # def _prepare_picking(self):
+    #     res = super()._prepare_picking()
+    #     if self.manufacturing_order_id:
+    #         res['manufacturing_order_id'] = self.manufacturing_order_id.id
+    #     return res
 
 
 class PurchaseOrderLineCustom(models.Model): #memastikan harga di PO line selalu diambil dari BoM
@@ -193,6 +203,30 @@ class PurchaseOrderLineCustom(models.Model): #memastikan harga di PO line selalu
                     price = line.order_id._get_price_from_bom(line.product_id, bom)
                     if price > 0:
                         line.price_unit = price
+
+    # @api.onchange('product_id')
+    # def _onchange_product_id(self):
+    #     """Override untuk menambahkan pengisian lot_ids"""
+    #     res = super(PurchaseOrderLineCustom, self)._onchange_product_id()
+        
+    #     # Tambahkan lot dari MO jika ada
+    #     if self.order_id.manufacturing_order_id and self.order_id.manufacturing_order_id.lot_producing_id:
+    #         self.lot_ids = [(4, self.order_id.manufacturing_order_id.lot_producing_id.id)]
+        
+    #     return res
+
+    # def _prepare_stock_moves(self, picking):
+    #     """Override untuk memastikan lot_ids terbawa ke stock moves"""
+    #     res = super(PurchaseOrderLineCustom, self)._prepare_stock_moves(picking)
+        
+    #     # Tambahkan lot_ids ke stock moves jika ada
+    #     if self.order_id.manufacturing_order_id and self.order_id.manufacturing_order_id.lot_producing_id:
+    #         for move_vals in res:
+    #             move_vals['lot_ids'] = [(4, self.order_id.manufacturing_order_id.lot_producing_id.id)]
+        
+    #     return res
+
+
 
 
 
