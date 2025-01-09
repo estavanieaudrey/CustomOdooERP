@@ -56,7 +56,11 @@
                     <!-- Tab Harga Bahan Baku -->
                     <page string="Harga Bahan Baku">
                         <group>
-                            <group>
+                            <group string="Purchase Agreements">
+                                <field name="purchase_requisition_ids"
+                                       options="{'no_create': True}"/>
+                            </group>
+                            <group string="Material Prices">
                                 <field name="hrg_kertas_isi"/>
                                 <field name="hrg_kertas_cover"/>
                                 <field name="hrg_plate_isi"/>
@@ -66,6 +70,7 @@
                             </group>
                         </group>
                     </page>
+
 
                     <!-- Tab Biaya Jasa Produksi -->
                     <page string="Biaya Jasa Produksi">
