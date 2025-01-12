@@ -1,160 +1,253 @@
-
 <odoo>
     <template id="surat_perintah_kerja_report">
-    <t t-call="web.basic_layout">
-        <div class="page">
-            <h1 style="text-align: center;">SURAT PERINTAH KERJA (SPK)</h1>
-            <p style="text-align: center;">Nomor SPK: <t t-esc="docs.name"/></p>
-            <p style="text-align: center;">Tanggal: <t t-esc="docs.create_date.strftime('%d-%m-%Y')"/></p>
+        <t t-call="web.basic_layout">
+            <div class="page" style="margin-left: 20px; margin-right: 20px; text-align: justify;">
+                <h1 style="text-align: center;">SURAT PERINTAH KERJA (SPK)</h1>
+                <p style="text-align: center;">Nomor SPK:
+                    <t t-esc="docs.name"/>
+                </p>
+                <p style="text-align: center;">Tanggal:
+                    <t t-esc="docs.create_date.strftime('%d-%m-%Y')"/>
+                </p>
 
-            <br/>
+                <br/>
 
-            <h2>Spesifikasi Umum</h2>
-            <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">
-                <tr>
-                    <td style="border: 1px solid black; padding: 5px;">Produk</td>
-                    <td style="border: 1px solid black; padding: 5px;"><t t-esc="docs.product_id.name"/></td>
-                </tr>
-                <tr>
-                    <td style="border: 1px solid black; padding: 5px;">Nama / Judul Produk</td>
-                    <td style="border: 1px solid black; padding: 5px;"><t t-esc="docs.bom_id"/></td>
-                </tr>
-                <tr>
-                    <td style="border: 1px solid black; padding: 5px;">Item Produk</td>
-                    <td style="border: 1px solid black; padding: 5px;"><t t-esc="docs.item_product"/></td>
-                </tr>
-                <tr>
-                    <td style="border: 1px solid black; padding: 5px;">Jumlah Halaman</td>
-                    <td style="border: 1px solid black; padding: 5px;"><t t-esc="docs.jumlah_halaman"/></td>
-                </tr>
-                <tr>
-                    <td style="border: 1px solid black; padding: 5px;">Ukuran Produk Jadi</td>
-                    <td style="border: 1px solid black; padding: 5px;"><t t-esc="docs.ukuran_produk_jadi"/></td>
-                </tr>
-                <tr>
-                    <td style="border: 1px solid black; padding: 5px;">Jumlah Produksi</td>
-                    <td style="border: 1px solid black; padding: 5px;"><t t-esc="docs.product_qty"/> <t t-esc="docs.product_uom_id.name"/></td>
-                </tr>
-                <tr>
-                    <td style="border: 1px solid black; padding: 5px;">Customer</td>
-                    <td style="border: 1px solid black; padding: 5px;"><t t-esc="docs.sale_id.partner_id.name or 'N/A'"/></td>
-                </tr>
-                <tr>
-                    <td style="border: 1px solid black; padding: 5px;">Tanggal Mulai</td>
-                    <td style="border: 1px solid black; padding: 5px;"><t t-esc="docs.date_start.strftime('%d-%m-%Y') or 'N/A'"/></td>
-                </tr>
-                <tr>
-                    <td style="border: 1px solid black; padding: 5px;">Tanggal Selesai</td>
-                    <td style="border: 1px solid black; padding: 5px;"><t t-esc="docs.date_finished.strftime('%d-%m-%Y') or 'N/A'"/></td>
-                </tr>
-            </table>
+                <h2>Spesifikasi Umum</h2>
+                <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">
+                    <tr>
+                        <td style="border: 1px solid black; padding: 5px;">
+                            <b>Produk</b>
+                        </td>
+                        <td style="border: 1px solid black; padding: 5px;">
+                            <t t-esc="docs.product_id.name"/>
+                        </td>
+                    </tr>
+                    <!--                    <tr>-->
+                    <!--                        <td style="border: 1px solid black; padding: 5px;">Nama / Judul Produk</td>-->
+                    <!--                        <td style="border: 1px solid black; padding: 5px;">-->
+                    <!--                            <t t-esc="docs.bom_id"/>-->
+                    <!--                        </td>-->
+                    <!--                    </tr>-->
+                    <tr>
+                        <td style="border: 1px solid black; padding: 5px;">Item Produk</td>
+                        <td style="border: 1px solid black; padding: 5px;">
+                            <t t-esc="docs.item_product"/>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style="border: 1px solid black; padding: 5px;">Jumlah Halaman</td>
+                        <td style="border: 1px solid black; padding: 5px;">
+                            <t t-esc="docs.jumlah_halaman"/>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style="border: 1px solid black; padding: 5px;">Ukuran Produk Jadi</td>
+                        <td style="border: 1px solid black; padding: 5px;">
+                            <!--                            <t t-esc="docs.ukuran_produk_jadi"/>-->
+                            <t t-esc="dict(request.env['mrp.production'].fields_get(allfields=['ukuran_produk_jadi'])['ukuran_produk_jadi']['selection']).get(docs.ukuran_produk_jadi, '...')"/>
 
-            <h2>SPESIFIKASI TEKNIS</h2>
-            <table style="width: 100%; border-collapse: collapse;">
-                <tr>
-                    <td style="border: 1px solid black; padding: 10px;"><b>Cetak Cover</b></td>
-                </tr>
-                <tr>
-                    <td style="border: 1px solid black; padding: 5px;">Mesin Cetak</td>
-                    <td style="border: 1px solid black; padding: 5px;"><t t-esc="docs.mesin_cetak_cover or 'N/A'"/></td>
-                </tr>
-                <tr>
-                    <td style="border: 1px solid black; padding: 5px;">Konfigurasi Warna Cetak</td>
-                    <td style="border: 1px solid black; padding: 5px;"><t t-esc="docs.konfigurasi_warna_cetak"/></td>
-                </tr>
-                <tr>
-                    <td style="border: 1px solid black; padding: 5px;">Format Cetak</td>
-                    <td style="border: 1px solid black; padding: 5px;"><t t-esc="docs.format_cetak"/></td>
-                </tr>
-                <tr>
-                    <td style="border: 1px solid black; padding: 5px;">Jumlah Plat</td>
-                    <td style="border: 1px solid black; padding: 5px;"><t t-esc="docs.jumlah_plat"/></td>
-                </tr>
-                <tr>
-                    <td style="border: 1px solid black; padding: 5px;">Finishing Cetak</td>
-                    <td style="border: 1px solid black; padding: 5px;"><t t-esc="docs.finishing_cetak or 'N/A'"/></td>
-                </tr>
-            </table>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style="border: 1px solid black; padding: 5px;">Jumlah Produksi</td>
+                        <td style="border: 1px solid black; padding: 5px;">
+                            <t t-esc="docs.product_qty"/>
+                            <t t-esc="docs.product_uom_id.name"/>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style="border: 1px solid black; padding: 5px;">Customer</td>
+                        <td style="border: 1px solid black; padding: 5px;">
+                            <t t-esc="docs.sale_id.partner_id.name or 'N/A'"/>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style="border: 1px solid black; padding: 5px;">Tanggal Pengiriman Pertama</td>
+                        <td style="border: 1px solid black; padding: 5px;">
+                            <t t-esc="docs.waktu_pengiriman_pertama.strftime('%d-%m-%Y') or 'N/A'"/>
+                        </td>
+                    </tr>
+                    <!--                    <tr>-->
+                    <!--                        <td style="border: 1px solid black; padding: 5px;">Tanggal Mulai</td>-->
+                    <!--                        <td style="border: 1px solid black; padding: 5px;">-->
+                    <!--                            <t t-esc="docs.date_start.strftime('%d-%m-%Y') or 'N/A'"/>-->
+                    <!--                        </td>-->
+                    <!--                    </tr>-->
+                    <!--                    <tr>-->
+                    <!--                        <td style="border: 1px solid black; padding: 5px;">Tanggal Selesai</td>-->
+                    <!--                        <td style="border: 1px solid black; padding: 5px;">-->
+                    <!--                            <t t-esc="docs.date_finished.strftime('%d-%m-%Y') or 'N/A'"/>-->
+                    <!--                        </td>-->
+                    <!--                    </tr>-->
+                </table>
 
-            <br/>
+                <h2>Spesifikasi Teknis</h2>
+                <table style="width: 100%; border-collapse: collapse;">
+                    <tr>
+                        <td style="border: 1px solid black; padding: 7px; font-weight: bold;">
+                            <b>Cetak Cover</b>
+                        </td>
+                        <td style="border: 1px solid black; padding: 7px; font-weight: bold;">
+                            <b>Keterangan</b>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style="border: 1px solid black; padding: 5px;">Mesin Cetak</td>
+                        <td style="border: 1px solid black; padding: 5px;">
+                            <t t-esc="docs.mesin_cetak_cover or 'N/A'"/>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style="border: 1px solid black; padding: 5px;">Konfigurasi Warna Cetak</td>
+                        <td style="border: 1px solid black; padding: 5px;">
+                            <t t-esc="docs.konfigurasi_warna_cetak"/>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style="border: 1px solid black; padding: 5px;">Format Cetak</td>
+                        <td style="border: 1px solid black; padding: 5px;">
+                            <t t-esc="docs.format_cetak"/>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style="border: 1px solid black; padding: 5px;">Jumlah Plat</td>
+                        <td style="border: 1px solid black; padding: 5px;">
+                            <t t-esc="docs.jumlah_plat"/>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style="border: 1px solid black; padding: 5px;">Finishing Cetak</td>
+                        <td style="border: 1px solid black; padding: 5px;">
+                            <t t-esc="docs.finishing_cetak or 'N/A'"/>
+                        </td>
+                    </tr>
+                </table>
 
-            <table style="width: 100%; border-collapse: collapse;">
-                <tr>
-                    <td style="border: 1px solid black; padding: 10px;"><b>Bahan Cover</b></td>
-                </tr>
-                <tr>
-                    <td style="border: 1px solid black; padding: 5px;">Jenis Kertas</td>
-                    <td style="border: 1px solid black; padding: 5px;"><t t-esc="docs.jenis_kertas_cover or 'N/A'"/></td>
-                </tr>
-                <tr>
-                    <td style="border: 1px solid black; padding: 5px;">Ukuran Bahan Kertas</td>
-                    <td style="border: 1px solid black; padding: 5px;"><t t-esc="docs.ukuran_bahan_kertas"/></td>
-                </tr>
-                <tr>
-                    <td style="border: 1px solid black; padding: 5px;">Ukuran Cetak</td>
-                    <td style="border: 1px solid black; padding: 5px;"><t t-esc="docs.ukuran_cetak"/></td>
-                </tr>
-                <tr>
-                    <td style="border: 1px solid black; padding: 5px;">Jumlah Up /Lembar</td>
-                    <td style="border: 1px solid black; padding: 5px;"><t t-esc="docs.jumlah_up_per_lembar"/></td>
-                </tr>
-                <tr>
-                    <td style="border: 1px solid black; padding: 5px;">Jumlah Kebutuhan Cetak</td>
-                    <td style="border: 1px solid black; padding: 5px;"><t t-esc="docs.kebutuhan_kertas_cover or 'N/A'"/></td>
-                </tr>
-            </table>
+                <br/>
 
-            <br/>
+                <table style="width: 100%; border-collapse: collapse;">
+                    <tr>
+                        <td style="border: 1px solid black; padding: 7px;">
+                            <b>Bahan Cover</b>
+                        </td>
+                        <td style="border: 1px solid black; padding: 7px;">
+                            <b>Keterangan</b>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style="border: 1px solid black; padding: 5px;">Jenis Kertas</td>
+                        <td style="border: 1px solid black; padding: 5px;">
+                            <t t-esc="docs.jenis_kertas_cover or 'N/A'"/>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style="border: 1px solid black; padding: 5px;">Ukuran Bahan Kertas</td>
+                        <td style="border: 1px solid black; padding: 5px;">
+                            <t t-esc="docs.ukuran_bahan_kertas"/>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style="border: 1px solid black; padding: 5px;">Ukuran Cetak</td>
+                        <td style="border: 1px solid black; padding: 5px;">
+                            <t t-esc="docs.ukuran_cetak"/>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style="border: 1px solid black; padding: 5px;">Jumlah Up /Lembar</td>
+                        <td style="border: 1px solid black; padding: 5px;">
+                            <t t-esc="docs.jumlah_up_per_lembar"/>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style="border: 1px solid black; padding: 5px;">Jumlah Kebutuhan Cetak</td>
+                        <td style="border: 1px solid black; padding: 5px;">
+                            <t t-esc="docs.kebutuhan_kertas_cover or 'N/A'"/>
+                        </td>
+                    </tr>
+                </table>
 
-            <table style="width: 100%; border-collapse: collapse;">
-                <tr>
-                    <td style="border: 1px solid black; padding: 10px;"><b>Cetak Isi</b></td>
-                </tr>
-                <tr>
-                    <td style="border: 1px solid black; padding: 5px;">Mesin Cetak</td>
-                    <td style="border: 1px solid black; padding: 5px;"><t t-esc="docs.mesin_cetak_isi or 'N/A'"/></td>
-                </tr>
-                <tr>
-                    <td style="border: 1px solid black; padding: 5px;">Bahan Kertas Isi</td>
-                    <td style="border: 1px solid black; padding: 5px;"><t t-esc="docs.bahan_kertas_isi"/></td>
-                </tr>
-                <tr>
-                    <td style="border: 1px solid black; padding: 5px;">Ukuran Bahan Kertas Isi</td>
-                    <td style="border: 1px solid black; padding: 5px;"><t t-esc="docs.ukuran_bahan_kertas_isi"/></td>
-                </tr>
-                <tr>
-                    <td style="border: 1px solid black; padding: 5px;">Kebutuhan Bahan Kertas Isi</td>
-                    <td style="border: 1px solid black; padding: 5px;"><t t-esc="docs.kebutuhan_kertas_isi"/></td>
-                </tr>
-            </table>
+                <br/>
 
-            <br/>
+                <table style="width: 100%; border-collapse: collapse;">
+                    <tr>
+                        <td style="border: 1px solid black; padding: 7px;">
+                            <b>Cetak Isi</b>
+                        </td>
+                        <td style="border: 1px solid black; padding: 7px;">
+                            <b>Keterangan</b>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style="border: 1px solid black; padding: 5px;">Mesin Cetak</td>
+                        <td style="border: 1px solid black; padding: 5px;">
+                            <t t-esc="docs.mesin_cetak_isi or 'N/A'"/>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style="border: 1px solid black; padding: 5px;">Bahan Kertas Isi</td>
+                        <td style="border: 1px solid black; padding: 5px;">
+                            <t t-esc="docs.bahan_kertas_isi"/>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style="border: 1px solid black; padding: 5px;">Ukuran Bahan Kertas Isi</td>
+                        <td style="border: 1px solid black; padding: 5px;">
+                            <t t-esc="docs.ukuran_bahan_kertas_isi"/>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style="border: 1px solid black; padding: 5px;">Kebutuhan Bahan Kertas Isi</td>
+                        <td style="border: 1px solid black; padding: 5px;">
+                            <t t-esc="docs.kebutuhan_kertas_isi"/>
+                        </td>
+                    </tr>
+                </table>
 
-            <h2>CATATAN</h2>
-<!--            <p style="border: 1px solid black; padding: 10px;"><t t-esc="docs.note or 'Tidak Ada Catatan Tambahan'"/></p>-->
-            <table style="width: 100%; border-collapse: collapse;">
-                <tr>
-                    <td style="border: 1px solid black; padding: 5px;">Toleransi BB</td>
-                    <td style="border: 1px solid black; padding: 5px;"><t t-esc="docs.toleransi_bb or 'Tidak Ada Catatan Tambahan'"/></td>
-                </tr>
-                <tr>
-                    <td style="border: 1px solid black; padding: 5px;">Warna Rulling</td>
-                    <td style="border: 1px solid black; padding: 5px;"><t t-esc="docs.warna_rulling or 'Tidak Ada Catatan Tambahan'"/></td>
-                </tr>
-                <tr>
-                    <td style="border: 1px solid black; padding: 5px;">Packing</td>
-                    <td style="border: 1px solid black; padding: 5px;"><t t-esc="docs.packing or 'Tidak Ada Catatan Tambahan'"/></td>
-                </tr>
-            </table>
-            <br/>
+                <br/>
 
-            <div style="text-align: right;">
-                <p><b>Mengetahui:</b></p>
+                <h2>CATATAN</h2>
+                <!--            <p style="border: 1px solid black; padding: 10px;"><t t-esc="docs.note or 'Tidak Ada Catatan Tambahan'"/></p>-->
+                <table style="width: 100%; border-collapse: collapse;">
+                    <tr>
+                        <td style="border: 1px solid black; padding: 5px;">Toleransi BB</td>
+                        <td style="border: 1px solid black; padding: 5px;">
+                            <t t-esc="docs.toleransi_bb or 'Tidak Ada Catatan Tambahan'"/>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style="border: 1px solid black; padding: 5px;">Warna Rulling</td>
+                        <td style="border: 1px solid black; padding: 5px;">
+                            <t t-esc="docs.warna_rulling or 'Tidak Ada Catatan Tambahan'"/>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style="border: 1px solid black; padding: 5px;">Packing</td>
+                        <td style="border: 1px solid black; padding: 5px;">
+                            <t t-esc="docs.packing or 'Tidak Ada Catatan Tambahan'"/>
+                        </td>
+                    </tr>
+                </table>
+                <br/>
+                <p style="text-align: right;">
+                    <b>Mengetahui:</b>
+                </p>
                 <p style="margin-top: 50px;">____________________________</p>
+
+                <table style="width: 100%; text-align: left; border-collapse: collapse; border: none !important;">
+                    <tr>
+                        <td style="width: 50%; vertical-align: top; border: none !important;">
+                            <b>PIHAK PERTAMA:</b>
+                            <p style="margin-top: 50px;">Percetakan Buku Champion</p>
+                        </td>
+                        <td style="width: 50%; vertical-align: top; border: none !important;">
+                            <b>PIHAK KEDUA:</b>
+                            <p style="margin-top: 50px;">____________________________</p>
+                        </td>
+                    </tr>
+                </table>
             </div>
-        </div>
-    </t>
-</template>
+        </t>
+    </template>
 
 
     <report

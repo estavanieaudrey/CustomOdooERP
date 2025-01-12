@@ -1,12 +1,14 @@
 <odoo>
     <template id="draft_perjanjian_report">
         <t t-call="web.basic_layout">
-            <div class="page">
-                <h1>PERJANJIAN PENCETAKAN BUKU TULIS</h1>
+            <div class="page" style="margin-left: 20px; margin-right: 20px; text-align: justify;">
+                <h1 style="text-align: center;">PERJANJIAN PENCETAKAN BUKU TULIS</h1>
 
-                <p>Nomor: 035/CPB/LD.PKS/II/2024</p>
+                <p style="text-align: center; font-size: 25px;">Order Reference:
+                    <t t-esc="docs.name or '...'"/>
+                </p>
 
-                <p>Pada hari ini, Senin tanggal<t t-esc="docs.date_order or '...'"/>, telah dibuat dan ditandatangani
+                <p>Pada hari ini, tanggal:<t t-esc="docs.date_order or '...'"/>, telah dibuat dan ditandatangani
                     Perjanjian Pencetakan Buku Tulis, oleh dan antara:
                 </p>
 
@@ -26,89 +28,166 @@
                         <b>"PIHAK KEDUA"</b>
                     </p>
                 </ul>
-
-                <h2>PASAL 1<br/>RUANG LINGKUP PERJANJIAN
-                </h2>
-                <p>PIHAK KEDUA menunjuk PIHAK PERTAMA sebagai pelaksana untuk pencetakan buku tulis untuk menunjang
-                    kebutuhan dam/atau kegiatan usaha PIHAK KEDUA;
-                </p>
-                <p>PIHAK PERTAMA bersedia melaksanakan pekerjaan pencetakan buku tulis tersebut dengan spesifikasi dan
-                    teknis pekerjaan yang telah disepakati PARA PIHAK.
+                <p>
+                    <b>PARA PIHAK</b>
+                    setuju dan sepakat untuk membuat dan menandatangani Perjanjian Kerjasama dengan syarat-syarat dan
+                    ketentuan-ketentuan sebagai berikut:
                 </p>
 
-                <h2>PASAL 2<br/>SPESIFIKASI DAN TEKNIS PENGERJAAN
+                <h2 style="text-align: center;">PASAL 1<br/>RUANG LINGKUP PERJANJIAN
                 </h2>
-                <p>Bahwa PARA PIHAK telah setuju dan sepakat terkait pelaksanaan pekerjaan pencetakan buku tulis
+                <p>
+                    <b>PIHAK KEDUA</b>
+                    menunjuk <b>PIHAK PERTAMA</b> sebagai pelaksana untuk pencetakan buku tulis untuk menunjang
+                    kebutuhan dan/atau kegiatan usaha <b>PIHAK KEDUA</b>;
+                </p>
+                <p>
+                    <b>PIHAK PERTAMA</b>
+                    bersedia melaksanakan pekerjaan pencetakan buku tulis tersebut dengan spesifikasi dan teknis
+                    pekerjaan yang telah disepakati <b>PARA PIHAK</b>.
+                </p>
+
+                <h2 style="text-align: center; font-weight: bold;">PASAL 2<br/>SPESIFIKASI DAN TEKNIS PENGERJAAN
+                </h2>
+                <p>Bahwa <b>PARA PIHAK</b> telah setuju dan sepakat terkait pelaksanaan pekerjaan pencetakan buku tulis
                     sebagaimana dimaksud dalam Perjanjian ini harus dilaksanakan oleh PIHAK PERTAMA sesuai dengan
                     spesifikasi buku tulis yang dicetak sebagai berikut:
                 </p>
-                <ul>
-                    <li>Ukuran:
-                        <t t-esc="docs.ukuran_buku or '...'"/>
-                    </li>
-                    <li>Isi:
-                        <t t-esc="docs.detail_isi or '...'"/>
-                    </li>
-                    <li>Jenis Isi:
-                        <t t-esc="docs.jenis_cetakan_isi or '...'"/>
-                    </li>
-                    <li>Cover:
-                        <t t-esc="docs.detail_cover or '...'"/>
-                    </li>
-                    <li>Design:
-                        <t t-esc="docs.detail_design or '...'"/>
-                    </li>
-                    <li>Jilid:
-                        <t t-esc="docs.jenis_jilid or '...'"/>
-                    </li>
-                    <li>Packing:
-                        <t t-esc="docs.detail_packing or '...'"/>
-                    </li>
-                    <li>Quantity:
-                        <t t-esc="docs.detail_quantity or '...'"/>
-                    </li>
-                </ul>
+                <!--                <ul>-->
+                <!--                    <li>Ukuran:-->
+                <!--                        <t t-esc="dict(request.env['sale.order'].fields_get(allfields=['ukuran_buku'])['ukuran_buku']['selection']).get(docs.ukuran_buku, '...')"/>-->
+                <!--                    </li>-->
+                <!--                    <li>Isi:-->
+                <!--                        <t t-esc="docs.detail_isi or '...'"/>-->
+                <!--                    </li>-->
+                <!--                    <li>Jenis Cetakan Isi:-->
+                <!--                        <t t-esc="dict(request.env['sale.order'].fields_get(allfields=['jenis_cetakan_isi'])['jenis_cetakan_isi']['selection']).get(docs.jenis_cetakan_isi, '...')"/>-->
+                <!--                    </li>-->
+                <!--                    <li>Cover:-->
+                <!--                        <t t-esc="docs.detail_cover or '...'"/>-->
+                <!--                    </li>-->
+                <!--                    <li>Design:-->
+                <!--                        <t t-esc="docs.detail_design or '...'"/>-->
+                <!--                    </li>-->
+                <!--                    <li>Jenis Jilid:-->
+                <!--                        <t t-esc="dict(request.env['sale.order'].fields_get(allfields=['jenis_jilid'])['jenis_jilid']['selection']).get(docs.jenis_jilid, '...')"/>-->
+                <!--                    </li>-->
+                <!--                    <li>Packing:-->
+                <!--                        <t t-esc="docs.detail_packing or '...'"/>-->
+                <!--                    </li>-->
+                <!--                    <li>Quantity:-->
+                <!--                        <t t-esc="docs.detail_quantity or '...'"/>-->
+                <!--                    </li>-->
+                <!--                </ul>-->
+                <div style="text-align: center;">
+                    <table style="margin: auto; border-collapse: collapse; width: 60%; text-align: center;">
+                        <tbody>
+                            <tr>
+                                <td style="border: 1px solid #000; padding: 4px;">Ukuran</td>
+                                <td style="border: 1px solid #000; padding: 4px;">
+                                    <t t-esc="dict(request.env['sale.order'].fields_get(allfields=['ukuran_buku'])['ukuran_buku']['selection']).get(docs.ukuran_buku, '...')"/>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td style="border: 1px solid #000; padding: 4px;">Isi</td>
+                                <td style="border: 1px solid #000; padding: 4px;">
+                                    <t t-esc="docs.detail_isi or '...'"/>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td style="border: 1px solid #000; padding: 4px;">Jenis Cetakan Isi</td>
+                                <td style="border: 1px solid #000; padding: 4px;">
+                                    <t t-esc="dict(request.env['sale.order'].fields_get(allfields=['jenis_cetakan_isi'])['jenis_cetakan_isi']['selection']).get(docs.jenis_cetakan_isi, '...')"/>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td style="border: 1px solid #000; padding: 4px;">Cover</td>
+                                <td style="border: 1px solid #000; padding: 4px;">
+                                    <t t-esc="docs.detail_cover or '...'"/>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td style="border: 1px solid #000; padding: 4px;">Design</td>
+                                <td style="border: 1px solid #000; padding: 4px;">
+                                    <t t-esc="docs.detail_design or '...'"/>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td style="border: 1px solid #000; padding: 4px;">Jenis Jilid</td>
+                                <td style="border: 1px solid #000; padding: 4px;">
+                                    <t t-esc="dict(request.env['sale.order'].fields_get(allfields=['jenis_jilid'])['jenis_jilid']['selection']).get(docs.jenis_jilid, '...')"/>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td style="border: 1px solid #000; padding: 4px;">Packing</td>
+                                <td style="border: 1px solid #000; padding: 4px;">
+                                    <t t-esc="docs.detail_packing or '...'"/>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td style="border: 1px solid #000; padding: 4px;">Quantity</td>
+                                <td style="border: 1px solid #000; padding: 4px;">
+                                    <t t-esc="docs.detail_quantity or '...'"/>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
 
-                <h2>PASAL 3<br/>BIAYA DAN CARA PEMBAYARAN
+                <h2 style="text-align: center; margin-top: 12px;">PASAL 3<br/>BIAYA DAN CARA PEMBAYARAN
                 </h2>
-                <p>PARA PIHAK telah setuju dan sepakat bahwa biaya pencetakan buku tulis sebagaimana dimaksud dalam
-                    perjanjian ini adalah sebagai berikut:
+                <p>
+                    <b>PARA PIHAK</b>
+                    telah setuju dan sepakat bahwa biaya pencetakan buku tulis sebagaimana dimaksud dalam perjanjian ini
+                    adalah sebagai berikut:
                 </p>
                 <ul>
                     <li>Harga Satuan:
-                        <t t-esc="docs.bom_id.display_name or '...'"/>
+                        <br/>
+                        <!--                        <t t-esc="docs.bom_id.display_name or '...'"/>-->
+                        <t t-esc="dict(request.env['sale.order'].fields_get(allfields=['ukuran_buku'])['ukuran_buku']['selection']).get(docs.ukuran_buku, '...')"/>
                         = Rp.
                         <t t-esc="docs.price_unit or '...'"/>
                     </li>
                     <li>Nilai Total Keseluruhan:
-                        <t t-esc="docs.bom_id.display_name or '...'"/>
-                        = Rp.
+                        <br/>
+                        <!--                        <t t-esc="docs.bom_id.display_name or '...'"/>-->
+                        <t t-esc="dict(request.env['sale.order'].fields_get(allfields=['ukuran_buku'])['ukuran_buku']['selection']).get(docs.ukuran_buku, '...')"/>
+                        :
+                        <br/>
+                        Rp.
                         <t t-esc="docs.price_unit or 0.0"/>
                         x
                         <t t-esc="docs.detail_quantity or 0.0"/>
+                        (quantity)
                         = Rp.
                         <t t-esc="docs.total_amount or 0.0"/>
                     </li>
                 </ul>
-                <p>PARA PIHAK telah setuju dan sepakat bahwa prosedur pembayaran dalam perjanjian ini adalah sebagai
-                    berikut:
+                <p>
+                    <b>PARA PIHAK</b>
+                    telah setuju dan sepakat bahwa prosedur pembayaran dalam perjanjian ini adalah sebagai berikut:
                 </p>
                 <ul>
-                    <li>PIHAK KEDUA melakukan pembayaran uang muka (Down Payment)<t
-                            t-esc="docs.down_payment_percentage or '...'"/>% sebesar Rp.
+                    <li>
+                        <b>PIHAK KEDUA</b>
+                        melakukan pembayaran uang muka (Down Payment) :<t
+                            t-esc="docs.down_payment_percentage or '...'"/>% atau sebesar Rp.
                         <t t-esc="docs.down_payment_nominal or '...'"/>
                         atas pencetakan buku tulis dengan total sebanyak<t t-esc="docs.detail_quantity or '...'"/>.
-                        Pembayaran tersebut dilakukan setelah perjanjian ini ditandatangani oleh PARA PIHAK.
+                        Pembayaran tersebut dilakukan setelah perjanjian ini ditandatangani oleh <b>PARA PIHAK</b>.
                     </li>
-                    <li>Apabila order pencetakan buku tulis PIHAK KEDUA kepada PIHAK PERTAMA sudah selesai dan siap
-                        untuk dikirim, maka untuk itu PIHAK KEDUA berkewajiban untuk menyelesaikan pembayaran pelunasan
-                        kepada PIHAK PERTAMA.
+                    <li>Apabila order pencetakan buku tulis <b>PIHAK KEDUA</b> kepada <b>PIHAK PERTAMA</b> sudah selesai
+                        dan siap untuk dikirim, maka untuk itu <b>PIHAK KEDUA</b> berkewajiban untuk menyelesaikan
+                        pembayaran pelunasan kepada <b>PIHAK PERTAMA</b>.
                     </li>
                 </ul>
 
-                <p>PARA PIHAK telah setuju dan sepakat terkait pembayaran biaya pencetakan buku tulis sebagaimana
-                    dimaksud dalam Pasal ini oleh PIHAK KEDUA dilakukan secara transfer ke rekening PIHAK PERTAMA
-                    sebagai berikut:
+                <p>
+                    <b>PARA PIHAK</b>
+                    telah setuju dan sepakat terkait pembayaran biaya pencetakan buku tulis sebagaimana dimaksud dalam
+                    Pasal ini oleh <b>PIHAK KEDUA</b> dilakukan secara transfer ke rekening <b>PIHAK PERTAMA</b> sebagai
+                    berikut:
                 </p>
                 <ul>
                     <li>Nama Rekening:
@@ -125,37 +204,47 @@
                     </li>
                 </ul>
 
-                <h2>PASAL 4<br/>JANGKA WAKTU PERJANJIAN
+                <h2 style="text-align: center;">PASAL 4<br/>JANGKA WAKTU PERJANJIAN
                 </h2>
-                <p>Bahwa PARA PIHAK setuju dan sepakat bahwa Perjanjian ini berlaku sampai dengan
+                <p>Bahwa <b>PARA PIHAK</b> setuju dan sepakat bahwa Perjanjian ini berlaku sampai dengan
                     <t t-esc="docs.expired_date or '...'"/>
-                    atau pada saat PIHAK PERTAMA sudah menyelesaikan seluruh pekerjaan pencetakan buku tulis kepada
-                    PIHAK KEDUA.
+                    atau pada saat <b>PIHAK PERTAMA</b> sudah menyelesaikan seluruh pekerjaan pencetakan buku tulis
+                    kepada <b>PIHAK KEDUA</b>.
                 </p>
-                <p>Kesepakatan PARA PIHAK mengenai perpanjangan Perjanjian ini wajib dibuat secara tertulis dan
-                    ditandatangani oleh PARA PIHAK selambat-lambatnya 7 hari sebelum jangka waktu Perjanjian ini
+                <p>Kesepakatan <b>PARA PIHAK</b> mengenai perpanjangan Perjanjian ini wajib dibuat secara tertulis dan
+                    ditandatangani oleh <b>PARA PIHAK</b> selambat-lambatnya 7 hari sebelum jangka waktu Perjanjian ini
                     berakhir.
                 </p>
 
-                <h2>PASAL 5<br/>PENYELESAIAN PERSELISIHAN
+                <h2 style="text-align: center;">PASAL 5<br/>PENYELESAIAN PERSELISIHAN
                 </h2>
-                <p>Apabila terjadi perselisihan mengenai interprestasi maupun implementasi Perjanjian ini, maka PARA
-                    PIHAK setuju dan sepakat untuk menyelesaikannya secara kekeluargaan dan mengambil jalan musyawarah
-                    untuk mufakat.
+                <p>Apabila terjadi perselisihan mengenai interprestasi maupun implementasi Perjanjian ini, maka <b>PARA
+                    PIHAK
+                </b> setuju dan sepakat untuk menyelesaikannya secara kekeluargaan dan mengambil jalan musyawarah untuk
+                    mufakat.
                 </p>
                 <p>Jika dalam 30 hari upaya sebagaimana dimaksud pada ayat 1 tersebut di atas telah dilakukan namun
-                    tidak menghasilkan kesepakatan, maka PARA PIHAK setuju dan sepakat untuk memilih menyelesaikan
-                    perselisihan tersebut melalui Kepaniteraan Pengadilan Negeri.
+                    tidak menghasilkan kesepakatan, maka <b>PARA PIHAK</b> setuju dan sepakat untuk memilih
+                    menyelesaikan perselisihan tersebut melalui Kepaniteraan Pengadilan Negeri.
                 </p>
 
-                <p>Demikian Perjanjian ini dibuat dan ditandatangani oleh PARA PIHAK pada hari, tanggal dan tempat
-                    sebagaimana tercantum pada awal Perjanjian serta dibuat dalam rangkap 2 dan masing-masing mempunyai
-                    kekuatan hukum yang sama.
+                <p>Demikian Perjanjian ini dibuat dan ditandatangani oleh <b>PARA PIHAK</b> pada hari, tanggal dan
+                    tempat sebagaimana tercantum pada awal Perjanjian serta dibuat dalam rangkap 2 dan masing-masing
+                    mempunyai kekuatan hukum yang sama.
                 </p>
 
-                <p>PIHAK PERTAMA: Percetakan Buku Champion<br/>PIHAK KEDUA:
-                    <t t-esc="docs.partner_id.name or '...'"/>
-                </p>
+                <table style="width: 100%; text-align: left; border-collapse: collapse; border: none !important;">
+                    <tr>
+                        <td style="width: 50%; vertical-align: top; border: none !important;">
+                            <b>PIHAK PERTAMA:</b>
+                            <p style="margin-top: 50px;">Percetakan Buku Champion</p>
+                        </td>
+                        <td style="width: 50%; vertical-align: top; border: none !important;">
+                            <b>PIHAK KEDUA:</b>
+                            <t t-esc="docs.partner_id.name or '...'" style="margin-top: 50px;"/>
+                        </td>
+                    </tr>
+                </table>
             </div>
         </t>
     </template>

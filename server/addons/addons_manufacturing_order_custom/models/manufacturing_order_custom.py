@@ -93,8 +93,8 @@ class MrpProductionCustom(models.Model):
     )
     ukuran_bahan_kertas_isi = fields.Char(
         string="Uk. Bahan Kertas Isi",
-        compute="_compute_ukuran_bahan_kertas_isi",
-        store=True
+        # compute="_compute_ukuran_bahan_kertas_isi",
+        # store=True
     )
     kebutuhan_kertas_isi = fields.Float(
         string="Kebutuhan Bahan Kertas Isi",
@@ -123,11 +123,11 @@ class MrpProductionCustom(models.Model):
 
     finishing_cetak = fields.Selection([('laminating', 'Laminating'), ('spot_uv', 'Spot UV')], string="Finishing Cetak")
 
-    ukuran_bahan_kertas_isi = fields.Char(
-        string="Ukuran Bahan Kertas Isi",
-        compute="_compute_ukuran_bahan_kertas_isi",
-        store=True
-    )
+    # ukuran_bahan_kertas_isi = fields.Char(
+    #     string="Ukuran Bahan Kertas Isi",
+    #     compute="_compute_ukuran_bahan_kertas_isi",
+    #     store=True
+    # )
     # Others
     note = fields.Text(string="Note")
     berat_satuan_buku = fields.Float(string="Berat Satuan Buku")
@@ -208,27 +208,27 @@ class MrpProductionCustom(models.Model):
                 record.jumlah_plat = 0
 
     # 4. Compute Ukuran Bahan Kertas Isi
-    @api.depends('sale_id.order_line.product_id')
-    def _compute_ukuran_bahan_kertas_isi(self):
-        """
-        Compute the Ukuran Bahan Kertas Isi based on the product in the linked sale order lines.
-        """
-        for production in self:
-            # Ensure the sale order exists
-            if production.sale_id and production.sale_id.order_line:
-                # Get the first product in the sale order lines (assuming it's the primary product)
-                product = production.sale_id.order_line[0].product_id
-                if product:
-                    if product.name == 'B5':
-                        production.ukuran_bahan_kertas_isi = "54.6 x 73"
-                    elif product.name == 'A4':
-                        production.ukuran_bahan_kertas_isi = "63 x 86"
-                    else:
-                        production.ukuran_bahan_kertas_isi = "Tidak Diketahui"
-                else:
-                    production.ukuran_bahan_kertas_isi = "Tidak Diketahui"
-            else:
-                production.ukuran_bahan_kertas_isi = "Tidak Diketahui"
+    # @api.depends('sale_id.order_line.product_id')
+    # def _compute_ukuran_bahan_kertas_isi(self):
+    #     """
+    #     Compute the Ukuran Bahan Kertas Isi based on the product in the linked sale order lines.
+    #     """
+    #     for production in self:
+    #         # Ensure the sale order exists
+    #         if production.sale_id and production.sale_id.order_line:
+    #             # Get the first product in the sale order lines (assuming it's the primary product)
+    #             product = production.sale_id.order_line[0].product_id
+    #             if product:
+    #                 if product.name == 'B5':
+    #                     production.ukuran_bahan_kertas_isi = "54.6 x 73"
+    #                 elif product.name == 'A4':
+    #                     production.ukuran_bahan_kertas_isi = "63 x 86"
+    #                 else:
+    #                     production.ukuran_bahan_kertas_isi = "Tidak Diketahui"
+    #             else:
+    #                 production.ukuran_bahan_kertas_isi = "Tidak Diketahui"
+    #         else:
+    #             production.ukuran_bahan_kertas_isi = "Tidak Diketahui"
 
     def action_generate_nota(self):
         """
@@ -386,36 +386,7 @@ class MrpWorkorderCustom(models.Model):
         'production_id.bom_id.isi_box',
         'operation_id.name'
     )
-    @api.depends('work_center_step', 'production_id.bom_id')
-    def _compute_custom_qty_to_produce(self):
-        """
-        Dynamically compute custom_qty_to_produce based on work_center_step and BOM details.
-        """
-        for workorder in self:
-            bom = workorder.production_id.bom_id
-            if bom:
-                waste_factor = 1 + (bom.waste_percentage / 100)
-                if workorder.work_center_step == 'produksi_cetak_cover':
-                    # Calculate for Produksi Cetak Cover
-                    workorder.custom_qty_to_produce = (
-                        bom.kebutuhan_rim_cover * bom.kebutuhan_kg_cover * waste_factor
-                    ) or 0.0
-                elif workorder.work_center_step == 'produksi_cetak_isi':
-                    # Calculate for Produksi Cetak Isi
-                    workorder.custom_qty_to_produce = (
-                         bom.kebutuhan_rim_isi * bom.kebutuhan_kg_isi * waste_factor
-                    ) or 0.0
-                elif workorder.work_center_step == 'packing_buku':
-                    # Calculate for Packing Buku ke dalam Box
-                    workorder.custom_qty_to_produce = (
-                         bom.qty_buku / bom.isi_box
-                    ) or 0.0
-                else:
-                    # Default to 0 for other work centers
-                    workorder.custom_qty_to_produce = 0.0
-            else:
-                # No BOM linked
-                workorder.custom_qty_to_produce = 0.0
+
 
     @api.onchange('work_center_step')
     def _onchange_work_center_step(self):
@@ -425,6 +396,31 @@ class MrpWorkorderCustom(models.Model):
         for workorder in self:
             if workorder.work_center_step:
                 workorder._compute_custom_qty_to_produce()
+
+    @api.depends('production_id.bom_id', 'work_center_step')
+    def _compute_custom_qty_to_produce(self):
+        """
+        Compute custom_qty_to_produce dynamically based on work_center_step and BOM details.
+        """
+        for workorder in self:
+            bom = workorder.production_id.bom_id
+            if bom:
+                waste_factor = 1 + (bom.waste_percentage / 100)
+
+                if workorder.work_center_step == 'produksi_cetak_cover':
+                    workorder.custom_qty_to_produce = (
+                                                              bom.kebutuhan_rim_cover * bom.kebutuhan_kg_cover * waste_factor
+                                                      ) or 0.0
+
+                elif workorder.work_center_step == 'produksi_cetak_isi':
+                    workorder.custom_qty_to_produce = (
+                                                              bom.kebutuhan_rim_isi * bom.kebutuhan_kg_isi * waste_factor
+                                                      ) or 0.0
+
+                else:
+                    workorder.custom_qty_to_produce = 0.0
+            else:
+                workorder.custom_qty_to_produce = 0.0
 
     @api.constrains('jumlah_bahan_baku', 'custom_qty_to_produce', 'work_center_step')
     def _check_jumlah_bahan_baku(self):
@@ -436,16 +432,14 @@ class MrpWorkorderCustom(models.Model):
             if record.work_center_step in ['produksi_cetak_cover', 'produksi_cetak_isi']:
                 if record.jumlah_bahan_baku > record.custom_qty_to_produce:
                     raise ValidationError(_(
-                        f"Jumlah bahan baku ({record.jumlah_bahan_baku}) tidak boleh "
-                        f"melebihi maksimal bahan baku ({record.custom_qty_to_produce}) "
-                        f"untuk {record.work_center_step}."
+                        f"Jumlah bahan baku yang anda input ({record.jumlah_bahan_baku}) tidak boleh LEBIH dari "
+                        f"maksimal bahan baku ({record.custom_qty_to_produce})."
                     ))
 
                 if record.jumlah_bahan_baku < (record.custom_qty_to_produce * 0.9):
                     raise ValidationError(_(
-                        f"Jumlah bahan baku ({record.jumlah_bahan_baku}) tidak boleh "
-                        f"kurang dari 90% dari maksimal bahan baku ({record.custom_qty_to_produce * 0.9}) "
-                        f"untuk {record.work_center_step}."
+                        f"Jumlah bahan baku yang anda input ({record.jumlah_bahan_baku}) tidak boleh KURANG dari "
+                        f"90% dari maksimal bahan baku ({record.custom_qty_to_produce * 0.9})."
                     ))
 
     @api.onchange('jumlah_bahan_baku')
@@ -459,8 +453,8 @@ class MrpWorkorderCustom(models.Model):
                     'warning': {
                         'title': _('Invalid Input'),
                         'message': _(
-                            f"Jumlah bahan baku ({self.jumlah_bahan_baku}) melebihi "
-                            f"batas maksimum ({self.custom_qty_to_produce}) untuk {self.work_center_step}."
+                            f"Jumlah bahan baku yang anda input ({self.jumlah_bahan_baku}) tidak boleh LEBIH dari "
+                            f"maksimal bahan baku ({self.custom_qty_to_produce})."
                         ),
                     }
                 }
@@ -470,8 +464,8 @@ class MrpWorkorderCustom(models.Model):
                     'warning': {
                         'title': _('Invalid Input'),
                         'message': _(
-                            f"Jumlah bahan baku ({self.jumlah_bahan_baku}) kurang dari 90% "
-                            f"dari batas maksimum ({self.custom_qty_to_produce * 0.9}) untuk {self.work_center_step}."
+                            f"Jumlah bahan baku yang anda input ({self.jumlah_bahan_baku}) tidak boleh KURANG dari "
+                            f"90% dari maksimal bahan baku ({self.custom_qty_to_produce * 0.9})."
                         ),
                     }
                 }
@@ -499,6 +493,58 @@ class MrpWorkorderCustom(models.Model):
         # Update quantity setelah work order dimulai
         self._update_qty_producing(self.qty_production - self.qty_produced)
         return res
+
+    # Aggregated fields for Detail Produksi and Rekap Hasil Produksi
+    hasil_produksi_cover_total = fields.Float(
+        string="Total Hasil Produksi Cover",
+        compute="_compute_aggregated_results",
+        store=False
+    )
+    qty_kirim_ke_uv_total = fields.Float(
+        string="Total Kirim ke UV",
+        compute="_compute_aggregated_results",
+        store=False
+    )
+    qty_terima_dari_uv_total = fields.Float(
+        string="Total Terima dari UV",
+        compute="_compute_aggregated_results",
+        store=False
+    )
+    hasil_produksi_isi_total = fields.Float(
+        string="Total Hasil Produksi Isi",
+        compute="_compute_aggregated_results",
+        store=False
+    )
+    hasil_join_cetak_isi_total = fields.Float(
+        string="Total Hasil Join Cetak Isi",
+        compute="_compute_aggregated_results",
+        store=False
+    )
+    hasil_pemotongan_akhir_total = fields.Float(
+        string="Total Hasil Pemotongan Akhir",
+        compute="_compute_aggregated_results",
+        store=False
+    )
+    qty_realita_buku_total = fields.Float(
+        string="Total Buku yang Masuk ke Dalam Box",
+        compute="_compute_aggregated_results",
+        store=False
+    )
+
+    @api.depends('production_id.workorder_ids')
+    def _compute_aggregated_results(self):
+        """
+        Compute aggregated production results for all work orders in the same manufacturing order.
+        """
+        for workorder in self:
+            workorders = workorder.production_id.workorder_ids
+            workorder.hasil_produksi_cover_total = sum(workorders.mapped('hasil_produksi_cover'))
+            workorder.qty_kirim_ke_uv_total = sum(workorders.mapped('qty_kirim_ke_uv'))
+            workorder.qty_terima_dari_uv_total = sum(workorders.mapped('qty_terima_dari_uv'))
+            workorder.hasil_produksi_isi_total = sum(workorders.mapped('hasil_produksi_isi'))
+            workorder.hasil_join_cetak_isi_total = sum(workorders.mapped('hasil_join_cetak_isi'))
+            workorder.hasil_pemotongan_akhir_total = sum(workorders.mapped('hasil_pemotongan_akhir'))
+            workorder.qty_realita_buku_total = sum(workorders.mapped('qty_realita_buku'))
 
 
 class MrpBomLine(models.Model):

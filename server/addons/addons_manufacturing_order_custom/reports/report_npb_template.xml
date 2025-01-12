@@ -2,7 +2,7 @@
     <data>
         <template id="nota_permintaan_barang_report">
             <t t-call="web.basic_layout">
-                <div class="page">
+                <div class="page" style="margin-left: 20px; margin-right: 20px; text-align: justify;">
                     <h2>Nota Permintaan Barang</h2>
                     <table class="table table-bordered">
                         <thead>
