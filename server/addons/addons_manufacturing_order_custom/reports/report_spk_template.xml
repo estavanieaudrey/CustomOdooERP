@@ -205,7 +205,7 @@
 
                 <br/>
 
-                <h2>CATATAN</h2>
+                <h2>Catatan</h2>
                 <!--            <p style="border: 1px solid black; padding: 10px;"><t t-esc="docs.note or 'Tidak Ada Catatan Tambahan'"/></p>-->
                 <table style="width: 100%; border-collapse: collapse;">
                     <tr>
@@ -228,20 +228,16 @@
                     </tr>
                 </table>
                 <br/>
-                <p style="text-align: right;">
-                    <b>Mengetahui:</b>
-                </p>
-                <p style="margin-top: 50px;">____________________________</p>
 
                 <table style="width: 100%; text-align: left; border-collapse: collapse; border: none !important;">
                     <tr>
                         <td style="width: 50%; vertical-align: top; border: none !important;">
-                            <b>PIHAK PERTAMA:</b>
-                            <p style="margin-top: 50px;">Percetakan Buku Champion</p>
+                            <b>Pembuat:</b>
+                            <p style="margin-top: 80px;"><t t-esc="docs.user_id.name"/></p>
                         </td>
                         <td style="width: 50%; vertical-align: top; border: none !important;">
-                            <b>PIHAK KEDUA:</b>
-                            <p style="margin-top: 50px;">____________________________</p>
+                            <b>Menyetujui:</b>
+                            <p style="margin-top: 80px;">____________________________</p>
                         </td>
                     </tr>
                 </table>

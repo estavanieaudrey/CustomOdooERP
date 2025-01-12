@@ -237,11 +237,11 @@
                     <tr>
                         <td style="width: 50%; vertical-align: top; border: none !important;">
                             <b>PIHAK PERTAMA:</b>
-                            <p style="margin-top: 50px;">Percetakan Buku Champion</p>
+                            <p style="margin-top: 80px;">Percetakan Buku Champion</p>
                         </td>
                         <td style="width: 50%; vertical-align: top; border: none !important;">
                             <b>PIHAK KEDUA:</b>
-                            <t t-esc="docs.partner_id.name or '...'" style="margin-top: 50px;"/>
+                            <p style="margin-top: 80px;"><t t-esc="docs.partner_id.name or '...'"/></p>
                         </td>
                     </tr>
                 </table>
