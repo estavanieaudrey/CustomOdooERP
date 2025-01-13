@@ -104,9 +104,9 @@
                         <group string="PILIH WORK ORDER">
                             <field name="work_center_step"/>
                         </group>
-                        <group string="INPUT BAHAN BAKU">
+                        <group string="INPUT BAHAN BAKU" invisible="not work_center_step in ('produksi_cetak_cover', 'produksi_cetak_isi', 'packing_buku')">
                             <group>
-                                <field name="custom_qty_to_produce" string="Maksimal Bahan Baku" readonly="1"/>
+                                <field name="custom_qty_to_produce" string="Maksimal Bahan Baku" readonly="1" invisible="not work_center_step in ('produksi_cetak_cover', 'produksi_cetak_isi', 'packing_buku')"/>
                                 <field name="jumlah_bahan_baku"
                                        invisible="not work_center_step in ('produksi_cetak_cover', 'produksi_cetak_isi', 'packing_buku')"/>
                             </group>

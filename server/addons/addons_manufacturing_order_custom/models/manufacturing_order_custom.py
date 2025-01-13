@@ -383,6 +383,7 @@ class MrpWorkorderCustom(models.Model):
         'production_id.bom_id.kebutuhan_kg_isi',
         'production_id.bom_id.kebutuhan_rim_cover',
         'production_id.bom_id.kebutuhan_kg_cover',
+        'production_id.bom_id.qty_buku_plus_waste',
         'production_id.bom_id.isi_box',
         'operation_id.name'
     )
@@ -415,6 +416,11 @@ class MrpWorkorderCustom(models.Model):
                 elif workorder.work_center_step == 'produksi_cetak_isi':
                     workorder.custom_qty_to_produce = (
                                                               bom.kebutuhan_rim_isi * bom.kebutuhan_kg_isi * waste_factor
+                                                      ) or 0.0
+
+                elif workorder.work_center_step == 'packing_buku':
+                    workorder.custom_qty_to_produce = (
+                                                              bom.qty_buku_plus_waste / bom.isi_box
                                                       ) or 0.0
 
                 else:

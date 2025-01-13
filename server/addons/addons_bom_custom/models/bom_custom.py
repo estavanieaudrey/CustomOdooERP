@@ -403,7 +403,7 @@ class MrpBomLineCustom(models.Model):
                     line.product_qty = (line.kebutuhan_rim_cover * line.kebutuhan_kg_cover) * waste_factor
                 # Logika untuk Box
                 elif "Box" in product_name:
-                    line.product_qty = line.qty_buku / line.isi_box if line.isi_box > 0 else 0.0
+                    line.product_qty = (line.qty_buku * waste_factor) / line.isi_box if line.isi_box > 0 else 0.0
 
     @api.model
     def create(self, vals):
@@ -432,5 +432,5 @@ class MrpBomLineCustom(models.Model):
             elif "Kertas Cover" in product_name:
                 vals['product_qty'] = (bom.kebutuhan_rim_cover * bom.kebutuhan_kg_cover) * waste_factor
             elif "Box" in product_name:
-                vals['product_qty'] = bom.qty_buku / bom.isi_box if bom.isi_box > 0 else 0.0
+                vals['product_qty'] = (bom.qty_buku * waste_factor) / bom.isi_box if bom.isi_box > 0 else 0.0
         return vals
