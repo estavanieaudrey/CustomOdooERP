@@ -6,9 +6,9 @@ class MrpBomCustom(models.Model):
 
     # Fields untuk ukuran buku
     ukuran_buku = fields.Selection([
-        ('B5', 'B5 (17.6 x 25 cm)'),
-        ('A4', 'A4 (21 x 29.7 cm)')
-    ], string="Ukuran Buku", default='B5')
+        ('b5', 'B5 (17.6 x 25 cm)'),
+        ('a4', 'A4 (21 x 29.7 cm)')
+    ], string="Ukuran Buku", default='b5')
 
     # Fields  untuk jenis cetakan
     jenis_cetakan_isi = fields.Selection([
@@ -392,17 +392,16 @@ class MrpBomLineCustom(models.Model):
             if line.product_id:
                 bom = line.bom_id
                 waste_factor = 1 + (bom.waste_percentage / 100)
-                product_name = line.product_id.name
+                product = line.product_id.product_tmpl_id
 
                 # Logika untuk Kertas Isi
-                #if line.product_id.tipe_kertas == isi : line mengarah ke bom line
-                if "Kertas Isi" in product_name:
+                if product.tipe_kertas == 'isi':
                     line.product_qty = (line.kebutuhan_rim_isi * line.kebutuhan_kg_isi) * waste_factor
                 # Logika untuk Kertas Cover
-                elif "Kertas Cover" in product_name:
+                elif product.tipe_kertas == 'cover':
                     line.product_qty = (line.kebutuhan_rim_cover * line.kebutuhan_kg_cover) * waste_factor
                 # Logika untuk Box
-                elif "Box" in product_name:
+                elif line.product_id.default_code == 'BOX':
                     line.product_qty = (line.qty_buku * waste_factor) / line.isi_box if line.isi_box > 0 else 0.0
 
     @api.model

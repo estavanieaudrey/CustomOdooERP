@@ -7,6 +7,7 @@
             <field name="model">mrp.bom.line</field>
             <field name="inherit_id" ref="mrp.mrp_bom_line_view_form"/>
             <field name="arch" type="xml">
+
                 <xpath expr="//group" position="inside">
                     <group string="Data Perhitungan HPP">
                         <field name="kebutuhan_rim_isi" readonly="1"/>
