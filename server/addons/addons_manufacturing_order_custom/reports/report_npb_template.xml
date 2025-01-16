@@ -2,28 +2,93 @@
     <data>
         <template id="nota_permintaan_barang_report">
             <t t-call="web.basic_layout">
-                <div class="page" style="margin-left: 20px; margin-right: 20px; text-align: justify;">
-                    <h2>Nota Permintaan Barang</h2>
-                    <table class="table table-bordered">
-                        <thead>
+                <div class="page" style="margin-left: 40px; margin-right: 40px; text-align: justify;">
+                    <!-- Company Letterhead -->
+                    <div style="width:1000px; padding-bottom:30px; ">
+                        <!-- Logo -->
+                        <div style="width:300px; float:left; margin-left: 20px;">
+                            <img src="/addons_sales_order_custom/static/img/logo_company_1.png" alt="Company Logo"
+                                 style="height: 150px;"/>
+                        </div>
+                        <!-- Address Details -->
+                        <div style="width: 300px; float: right; text-align: left; line-height: 1.2; margin: 0; padding-top: 30px;">
+                            <p style="margin: 0;">
+                                <strong>
+                                    <span t-field="docs.company_id.name"/>
+                                </strong>
+                            </p>
+                            <p style="margin: 0;">
+                                <span t-field="docs.company_id.street"/>
+                            </p>
+                            <p style="margin: 0;">
+                                <span t-field="docs.company_id.city"/>,
+                                <span t-field="docs.company_id.state_id.name"/>
+                            </p>
+                            <p style="margin: 0;">
+                                <span t-field="docs.company_id.country_id.name"/>
+                            </p>
+                            <p style="margin: 0;">
+                                <span t-field="docs.company_id.mobile"/>
+                            </p>
+                            <p style="margin: 0;">
+                                <span t-field="docs.company_id.phone"/>
+                            </p>
+                        </div>
+
+                    </div>
+
+                    <!--                <hr style="border: 1px solid #000; margin: 10px 0;"/>-->
+                    <p style="text-align: center;">
+                        ________________________________________________________________________________________________________________________________________________
+                    </p>
+
+                    <div class="page" style="margin-left: 20px; margin-right: 20px; text-align: justify;">
+                        <h2 style="padding-top: 20px; padding-bottom: 10px; text-align: center;">Nota Permintaan
+                            Barang
+                        </h2>
+                        <p style="text-align: center;">Pada hari ini, tanggal:
+                            <t t-esc="datetime.date.today().strftime('%d-%m-%Y')"/>
+                        </p>
+                        <table class="table table-bordered" style="width: 100%;">
+                            <thead>
+                                <tr>
+                                    <th style="padding: 5px; text-align: center; font-weight: bold;">Product</th>
+                                    <th style="text-align: right; padding: 5px; text-align: center; font-weight: bold;">
+                                        Quantity
+                                    </th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr t-foreach="docs.move_raw_ids" t-as="line">
+                                    <td style="padding: 5px;">
+                                        <span t-field="line.product_id.name"/>
+                                    </td>
+                                    <td style="text-align: right; padding: 5px;">
+                                        <span t-field="line.product_uom_qty"/>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+
+                        <table style="width: 100%; text-align: left; border: none; border-collapse: separate;">
                             <tr>
-                                <th>Product</th>
-                                <th>Quantity</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr t-foreach="docs.move_raw_ids" t-as="line">
-                                <td>
-                                    <span t-field="line.product_id.name"/>
+                                <td style="width: 50%; vertical-align: top; border: ;">
+                                    <b>Pembuat:</b>
+                                    <p style="margin-top: 80px;">
+                                        <t t-esc="docs.user_id.name"/>
+                                    </p>
                                 </td>
-                                <td>
-                                    <span t-field="line.product_uom_qty"/>
+                                <td style="width: 50%; vertical-align: top; border: none;">
+                                    <b>Menyetujui:</b>
+                                    <p style="margin-top: 80px;">____________________________</p>
                                 </td>
                             </tr>
-                        </tbody>
-                    </table>
+                        </table>
+                    </div>
                 </div>
             </t>
+
+            <!--            </t>-->
         </template>
     </data>
 </odoo>

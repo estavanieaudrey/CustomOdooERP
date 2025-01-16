@@ -1,14 +1,56 @@
 <odoo>
     <template id="draft_perjanjian_report">
         <t t-call="web.basic_layout">
-            <div class="page" style="margin-left: 20px; margin-right: 20px; text-align: justify;">
-                <h1 style="text-align: center;">PERJANJIAN PENCETAKAN BUKU TULIS</h1>
+            <div class="page" style="margin-left: 40px; margin-right: 40px; text-align: justify;">
+
+                <!-- Company Letterhead -->
+                <div style="width:1000px; padding-bottom:30px; margin-top: 0;">
+                    <!-- Logo -->
+                    <div style="width:300px; float:left; margin-left: 20px;">
+                        <img src="/addons_sales_order_custom/static/img/logo_company_1.png" alt="Company Logo"
+                             style="height: 150px;"/>
+                    </div>
+                    <!-- Address Details -->
+                    <div style="width: 300px; float: right; text-align: left; line-height: 1.2; margin: 0; padding-top: 30px;">
+                        <p style="margin: 0;">
+                            <strong>
+                                <span t-field="docs.company_id.name"/>
+                            </strong>
+                        </p>
+                        <p style="margin: 0;">
+                            <span t-field="docs.company_id.street"/>
+                        </p>
+                        <p style="margin: 0;">
+                            <span t-field="docs.company_id.city"/>,
+                            <span t-field="docs.company_id.state_id.name"/>
+                        </p>
+                        <p style="margin: 0;">
+                            <span t-field="docs.company_id.country_id.name"/>
+                        </p>
+                        <p style="margin: 0;">
+                            <span t-field="docs.company_id.mobile"/>
+                        </p>
+                        <p style="margin: 0;">
+                            <span t-field="docs.company_id.phone"/>
+                        </p>
+                    </div>
+
+                </div>
+
+                <p style="text-align: center;">
+                    ________________________________________________________________________________________________________________________________________________
+                </p>
+
+                <div style="padding-top: 10px;">
+                    <h1 style="text-align: center;">PERJANJIAN PENCETAKAN BUKU TULIS</h1>
+
+                </div>
 
                 <p style="text-align: center; font-size: 25px;">Order Reference:
                     <t t-esc="docs.name or '...'"/>
                 </p>
 
-                <p>Pada hari ini, tanggal:<t t-esc="docs.date_order or '...'"/>, telah dibuat dan ditandatangani
+                <p>Pada hari ini, tanggal:  <t t-esc="docs.date_order or '...'"/>, telah dibuat dan ditandatangani
                     Perjanjian Pencetakan Buku Tulis, oleh dan antara:
                 </p>
 
@@ -233,15 +275,18 @@
                     mempunyai kekuatan hukum yang sama.
                 </p>
 
-                <table style="width: 100%; text-align: left; border-collapse: collapse; border: none !important;">
+                <!-- Tabel tanda tangan tanpa border -->
+                <table style="width: 100%; text-align: left; border: none; border-collapse: separate; padding-top: 40px;">
                     <tr>
-                        <td style="width: 50%; vertical-align: top; border: none !important;">
+                        <td style="width: 50%; vertical-align: top; border: none;">
                             <b>PIHAK PERTAMA:</b>
                             <p style="margin-top: 80px;">Percetakan Buku Champion</p>
                         </td>
-                        <td style="width: 50%; vertical-align: top; border: none !important;">
+                        <td style="width: 50%; vertical-align: top; border: none;">
                             <b>PIHAK KEDUA:</b>
-                            <p style="margin-top: 80px;"><t t-esc="docs.partner_id.name or '...'"/></p>
+                            <p style="margin-top: 80px;">
+                                <t t-esc="docs.partner_id.name or '...'"/>
+                            </p>
                         </td>
                     </tr>
                 </table>
