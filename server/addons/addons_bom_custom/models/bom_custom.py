@@ -22,11 +22,11 @@ class MrpBomCustom(models.Model):
     ], string="Jenis Cetakan Kertas Cover", default='1_sisi')
 
     # Tambahkan field input untuk overhead, ppn, dan waste
-    overhead_percentage = fields.Float(string="Overhead (%)", default=5.0,
+    overhead_percentage = fields.Float(string="Overhead (%)", default=5,
                                        help="Persentase overhead yang dihitung dari total biaya")
-    ppn_percentage = fields.Float(string="PPn (%)", default=11.0,
+    ppn_percentage = fields.Float(string="PPn (%)", default=11,
                                   help="Persentase pajak PPn yang dihitung dari total biaya")
-    waste_percentage = fields.Float(string="Waste Produksi (%)", default=10.0,
+    waste_percentage = fields.Float(string="Waste Produksi (%)", default=10,
                                     help="Persentase tambahan untuk waste produksi")
 
     # Overwrite field lama (tidak perlu hardcode lagi)
@@ -43,11 +43,11 @@ class MrpBomCustom(models.Model):
         help="Hasil perhitungan pajak PPn berdasarkan persentase input user"
     )
 
-    gramasi_kertas_isi = fields.Float(string="Gramasi Kertas Isi (gram)", default=70.0)
-    gramasi_kertas_cover = fields.Float(string="Gramasi Kertas Cover (gram)", default=210.0)
+    gramasi_kertas_isi = fields.Float(string="Gramasi Kertas Isi (gram)", default=70)
+    gramasi_kertas_cover = fields.Float(string="Gramasi Kertas Cover (gram)", default=210)
     jmlh_halaman_buku = fields.Integer(string="Jumlah Halaman Buku", default=160)
-    qty_buku = fields.Float(string="Quantity Buku", default=1.0)
-    isi_box = fields.Float(string="Isi Box (Jumlah Buku/Box)", default=60.0)
+    qty_buku = fields.Float(string="Quantity Buku", default=1)
+    isi_box = fields.Float(string="Isi Box (Jumlah Buku/Box)", default=60)
     
     jenis_jilid = fields.Selection([
         ('perfect_binding', 'Perfect Binding (Lem)'),
@@ -117,7 +117,7 @@ class MrpBomCustom(models.Model):
     kebutuhan_kg_cover = fields.Float(string="Kebutuhan Kertas Cover (KG)", compute="_compute_hpp_values", store=True)
     kebutuhan_kertasCover = fields.Float(string="Kebutuhan Kertas Cover", compute="_compute_hpp_values", store=True)
 
-    isi_box = fields.Float(string="Isi Box", default=60.0)
+    isi_box = fields.Float(string="Isi Box", default=60)
 
     # menambahkan field baru untuk melakukan kalkulasi quantity buku yang ditambah persentase waste
     qty_buku_plus_waste = fields.Float(
@@ -171,7 +171,7 @@ class MrpBomCustom(models.Model):
             bom.kebutuhan_kertasCover = bom.kebutuhan_rim_cover * kebutuhan_kg_cover
 
     # Perhitungan Biaya Bahan Baku
-    @api.depends('jenis_cetakan_isi', 'jenis_cetakan_cover', 'jmlh_halaman_buku', 'qty_buku', 'hrg_plate_isi',
+    @api.depends('ukuran_buku', 'jenis_cetakan_isi', 'jenis_cetakan_cover', 'jmlh_halaman_buku', 'qty_buku', 'hrg_plate_isi',
                  'hrg_plate_cover', 'waste_percentage')
     def _compute_biaya_bahan_baku(self):
         for record in self:
@@ -231,7 +231,7 @@ class MrpBomCustom(models.Model):
             )
 
     # Perhitungan Biaya Jasa
-    @api.depends('kebutuhan_rim_isi', 'kebutuhan_rim_cover', 'jasa_cetak_isi', 'jasa_cetak_cover', 'jasa_jilid',
+    @api.depends('ukuran_buku', 'kebutuhan_rim_isi', 'kebutuhan_rim_cover', 'jasa_cetak_isi', 'jasa_cetak_cover', 'jasa_jilid',
                  'hrg_uv')
     def _compute_biaya_jasa(self):
         for record in self:
@@ -252,13 +252,13 @@ class MrpBomCustom(models.Model):
                 ukuran_cover = 0  # Default jika ukuran_buku tidak dipilih
 
             # Waste berdasarkan input user
-            waste_factor = 1 + (record.waste_percentage / 100)
+            waste_factor = 1 + (record.waste_percentage / 100) # 1.1
 
             record.total_biaya_uv = (
                     (ukuran_cover * record.hrg_uv)  # Harga UV per cm
                     * 500  # 1 rim
                     * (record.kebutuhan_rim_cover  # Jumlah rim
-                       + waste_factor)  # Tambah 10% Waste Produksi
+                       * waste_factor)  # Tambah 10% Waste Produksi
             )
 
             # Jilid
@@ -276,7 +276,7 @@ class MrpBomCustom(models.Model):
             )
 
     # Perhitungan Overhead, PPn, dan HPP
-    @api.depends('total_biaya_bahan_baku', 'total_biaya_jasa', 'qty_buku')
+    @api.depends('total_biaya_bahan_baku', 'total_biaya_jasa', 'qty_buku', 'overhead_percentage', 'ppn_percentage')
     def _compute_total_akhir(self):
         for record in self:
             total = record.total_biaya_bahan_baku + record.total_biaya_jasa
@@ -284,7 +284,7 @@ class MrpBomCustom(models.Model):
             record.overhead = total * (record.overhead_percentage / 100)
             # Hitung PPn berdasarkan input user
             record.ppn = (total + record.overhead) * (record.ppn_percentage / 100)
-            record.hpp_total = total + record.ppn
+            record.hpp_total = total + record.overhead + record.ppn
             record.hpp_per_unit = record.hpp_total / record.qty_buku  # if record.qty_buku > 0 else 0.0
 
     '''Ini untuk menyamakan antara qty_buku yang ada dicustom dengan product_qty yang ada di BOM template'''
