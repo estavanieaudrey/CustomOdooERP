@@ -6,9 +6,6 @@ import base64
 class SaleOrderCustom(models.Model):
     _inherit = 'sale.order'
 
-    # === PASAL 1: Ruang Lingkup Perjanjian ===
-    ruang_lingkup = fields.Text(string="Ruang Lingkup Perjanjian")
-
     # === PASAL 2: Detail Produk ===
     # Field untuk nyimpen detail produk, kebanyakan diambil otomatis dari BoM
     detail_isi = fields.Char(
@@ -50,14 +47,16 @@ class SaleOrderCustom(models.Model):
                                       store=True)
     
     # Field untuk data rekening transfer
+    # transfer_rekening_name = fields.Many2one('res.partner.bank', string="Nama Rekening")
+    # transfer_rekening_bank = fields.Many2one('res.bank', string="Bank")
     transfer_rekening_name = fields.Char(string="Nama Rekening")
     transfer_rekening_bank = fields.Char(string="Bank")
     transfer_rekening_number = fields.Char(string="Nomor Rekening")
     transfer_rekening_branch = fields.Char(string="Cabang")
 
     # === PASAL 4: Expired Date dan Tanda Tangan ===
-    expired_date = fields.Date(related="validity_date", string="Expired Date", readonly=True)
-    customer_signature = fields.Binary(string="Tanda Tangan", attachment=True)
+    expired_date = fields.Date(string="Expired Date")
+    # customer_signature = fields.Binary(string="Tanda Tangan", attachment=True)
 
     # Field untuk pilih BoM yang akan dipakai sebagai sumber data
     bom_id = fields.Many2one('mrp.bom', string="Bill of Materials", help="Pilih BoM untuk mengambil data HPP.")
@@ -230,7 +229,15 @@ class SaleOrderCustom(models.Model):
 
     # Override Method action_confirm di sale.order: Tambahkan logika untuk menghubungkan SO dengan MO melalui field sale_id.
     def action_confirm(self):
+        # Check if draft_perjanjian exists
+        for order in self:
+            if not order.draft_perjanjian:
+                raise ValidationError("Upload Draft Perjanjian terlebih dahulu!")
+                
+        # Continue with existing confirmation logic
         res = super(SaleOrderCustom, self).action_confirm()
+        
+        # Create draft Manufacturing Order
         for order in self:
             if order.bom_id:
                 mo_vals = {
@@ -240,9 +247,32 @@ class SaleOrderCustom(models.Model):
                     'sale_id': order.id,
                     'date_start': fields.Datetime.now(),
                     'origin': order.name,
+                    'product_uom_id': order.bom_id.product_uom_id.id,
+                    'state': 'draft',  # Ensure MO is created in draft state
                 }
                 self.env['mrp.production'].create(mo_vals)
         return res
+
+    @api.constrains('is_signed', 'draft_perjanjian')
+    def _check_draft_perjanjian(self):
+        for record in self:
+            if record.is_signed and not record.draft_perjanjian:
+                raise ValidationError("Tidak dapat menandatangani perjanjian! Harap upload draft perjanjian terlebih dahulu.")
+
+    @api.onchange('is_signed')
+    def _onchange_is_signed(self):
+        if self.is_signed:
+            if not self.draft_perjanjian:
+                self.is_signed = False
+                return {
+                    'warning': {
+                        'title': 'Peringatan',
+                        'message': 'Harap upload draft perjanjian terlebih dahulu sebelum menandatangani.'
+                    }
+                }
+            self.signature_date = fields.Date.today()
+        else:
+            self.signature_date = False
 
 class SaleAdvancePaymentInv(models.TransientModel):
     _inherit = 'sale.advance.payment.inv'
@@ -291,7 +321,7 @@ class SaleAdvancePaymentInv(models.TransientModel):
                 # Set persentase sesuai yang ada di SO
                 self.amount = sale_order.down_payment_percentage
 
-                # Hitung nominal DP-nya
+                # Hitung nominal DP-nya berdasarkan amount_total (harga jual), bukan hpp_total
                 if sale_order.down_payment_yes_no and sale_order.down_payment_percentage:
                     self.nominal = (sale_order.hpp_total * sale_order.down_payment_percentage) / 100
                 else:

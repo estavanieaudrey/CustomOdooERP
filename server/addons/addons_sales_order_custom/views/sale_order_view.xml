@@ -41,13 +41,6 @@
                         </group>
                     </page>
 
-                    <!-- PASAL 1 -->
-                    <page string="Pasal 1">
-                        <group>
-                            <field name="ruang_lingkup"/>
-                        </group>
-                    </page>
-
                     <!-- PASAL 2 -->
                     <page string="Pasal 2">
                         <group>
@@ -74,10 +67,11 @@
                             <field name="down_payment_nominal"/>
                         </group>
                         <group string="Transfer Rekening">
-                            <field name="transfer_rekening_name"/>
-                            <field name="transfer_rekening_bank"/>
-                            <field name="transfer_rekening_number"/>
-                            <field name="transfer_rekening_branch"/>
+                            <field name="transfer_rekening_name" options="{'no_create': False}"/>
+                            <field name="transfer_rekening_bank" options="{'no_create': False}"/>
+                            <field name="transfer_rekening_number" options="{'no_create': False}"/>
+                            <field name="transfer_rekening_branch" options="{'no_create': False}"/>
+
                         </group>
                     </page>
 
@@ -85,8 +79,8 @@
                     <page string="Pasal 4">
                         <group>
                             <field name="expired_date"/>
-                            <field name="customer_signature" widget="image"
-                                   options="{'preview_image': 'customer_signature'}"/>
+<!--                            <field name="customer_signature" widget="image"-->
+<!--                                   options="{'preview_image': 'customer_signature'}"/>-->
                         </group>
                     </page>
                 </notebook>
