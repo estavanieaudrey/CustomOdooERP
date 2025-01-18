@@ -9,7 +9,10 @@ class ProductCustom(models.Model):
     # Fields untuk product tipe kertas
     tipe_kertas = fields.Selection([
         ('isi', 'Kertas Isi'),
-        ('cover', 'Kertas Cover')
+        ('cover', 'Kertas Cover'),
+        ('plate_isi', 'Plate Isi'),
+        ('plate_cover', 'Plate Cover'),
+        ('box', 'Box')
     ], string="Tipe Kertas", default="isi")
 
     @api.onchange('tipe_kertas')
@@ -20,5 +23,11 @@ class ProductCustom(models.Model):
                 self.default_code = 'KERTAS_ISI'
             elif self.tipe_kertas == 'cover':
                 self.default_code = 'KERTAS_COVER'
+            elif self.tipe_kertas == 'plate_isi':
+                self.default_code = 'PLATE_ISI'
+            elif self.tipe_kertas == 'plate_cover':
+                self.default_code = 'PLATE_COVER'
+            elif self.tipe_kertas == 'box':
+                self.default_code = 'BOX'
 
 
