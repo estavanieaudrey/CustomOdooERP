@@ -400,6 +400,18 @@ class MrpBomLineCustom(models.Model):
                 # Logika untuk Kertas Cover
                 elif product.tipe_kertas == 'cover':
                     line.product_qty = (line.kebutuhan_rim_cover * line.kebutuhan_kg_cover) * waste_factor
+                # Logika untuk Plate Isi
+                elif product.tipe_kertas == 'plate_isi':
+                    if bom.jenis_cetakan_isi == '1_sisi':
+                        line.product_qty = 4
+                    elif bom.jenis_cetakan_isi == '2_sisi':
+                        line.product_qty = 8
+                # Logika untuk Plate Cover
+                elif product.tipe_kertas == 'plate_cover':
+                    if bom.jenis_cetakan_cover == '1_sisi':
+                        line.product_qty = 4
+                    elif bom.jenis_cetakan_cover == '2_sisi':
+                        line.product_qty = 8
                 # Logika untuk Box
                 elif line.product_id.default_code == 'BOX':
                     line.product_qty = (line.qty_buku * waste_factor) / line.isi_box if line.isi_box > 0 else 0.0
@@ -423,13 +435,23 @@ class MrpBomLineCustom(models.Model):
 
         if product_id:
             product = self.env['product.product'].browse(product_id)
-            product_name = product.name
+            product_tmpl = product.product_tmpl_id
 
             # Logika untuk menghitung product_qty
-            if "Kertas Isi" in product_name:
+            if product_tmpl.tipe_kertas == 'isi':
                 vals['product_qty'] = (bom.kebutuhan_rim_isi * bom.kebutuhan_kg_isi) * waste_factor
-            elif "Kertas Cover" in product_name:
+            elif product_tmpl.tipe_kertas == 'cover':
                 vals['product_qty'] = (bom.kebutuhan_rim_cover * bom.kebutuhan_kg_cover) * waste_factor
-            elif "Box" in product_name:
+            elif product_tmpl.tipe_kertas == 'plate_isi':
+                if bom.jenis_cetakan_isi == '1_sisi':
+                    vals['product_qty'] = 4
+                elif bom.jenis_cetakan_isi == '2_sisi':
+                    vals['product_qty'] = 8
+            elif product_tmpl.tipe_kertas == 'plate_cover':
+                if bom.jenis_cetakan_cover == '1_sisi':
+                    vals['product_qty'] = 4
+                elif bom.jenis_cetakan_cover == '2_sisi':
+                    vals['product_qty'] = 8
+            elif product.default_code == 'BOX':
                 vals['product_qty'] = (bom.qty_buku * waste_factor) / bom.isi_box if bom.isi_box > 0 else 0.0
         return vals
