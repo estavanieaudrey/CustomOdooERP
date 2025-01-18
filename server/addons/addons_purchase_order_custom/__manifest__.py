@@ -5,6 +5,7 @@
     'summary': 'Custom features for managing Purchase Orders',
     'depends': ['purchase', 'stock', 'mrp', 'sale'],
     'data': [
+        'views/purchase_agreement_views.xml',
         'views/purchase_order_custom_views.xml',
         'views/stock_picking_custom.xml',
         'security/ir.model.access.csv',

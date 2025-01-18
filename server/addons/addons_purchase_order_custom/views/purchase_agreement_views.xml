@@ -1,0 +1,16 @@
+<odoo>
+    <data>
+        <record id="view_purchase_requisition_form_inherit" model="ir.ui.view">
+            <field name="name">purchase.requisition.form.inherit</field>
+            <field name="model">purchase.requisition</field>
+            <field name="inherit_id" ref="purchase_requisition.view_purchase_requisition_form"/>
+            <field name="arch" type="xml">
+                <!-- Menambahkan field ke dalam list view -->
+                <xpath expr="//notebook/page[@name='products']/field[@name='line_ids']/list" position="inside">
+                    <field name="price_satuan" string="Price Satuan" optional="show"/>
+                </xpath>
+
+            </field>
+        </record>
+    </data>
+</odoo>
