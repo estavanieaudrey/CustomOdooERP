@@ -1,10 +1,11 @@
 <odoo>
+        <!-- Report Action -->
     <record id="action_report_delivery_slip_custom" model="ir.actions.report">
         <field name="name">Delivery Slip Custom</field>
         <field name="model">stock.picking</field>
         <field name="report_type">qweb-pdf</field>
-        <field name="report_name">addons_inventory_custom.delivery_slip_custom_report</field>
-        <field name="report_file">addons_inventory_custom.delivery_slip_custom_report</field>
+        <field name="report_name">addons_inventory_custom.report_deliveryslip_custom_document</field>
+        <field name="report_file">addons_inventory_custom.report_deliveryslip_custom_document</field>
         <field name="binding_model_id" ref="stock.model_stock_picking"/>
         <field name="binding_type">report</field>
     </record>

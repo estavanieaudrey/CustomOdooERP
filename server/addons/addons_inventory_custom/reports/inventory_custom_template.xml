@@ -1,69 +1,138 @@
 <odoo>
-    <template id="custom_report_deliveryslip" inherit_id="stock.report_delivery_document">
-        <xpath expr="//div[@class='page']" position="inside">
-            <div class="page">
-                    <h2>Delivery Slip</h2>
-                    <div>
-                        <p>
-                            <strong>Delivery Address:</strong>
-                            <span t-field="docs.partner_id.name"/>
+    <!-- Custom Template -->
+    <template id="report_deliveryslip_custom_document">
+        <t t-call="web.basic_layout">
+            <div class="page" style="margin-left: 40px; margin-right: 40px; text-align: justify;">
+                <!-- Company Letterhead -->
+                <div style="width:1000px; padding-bottom:30px; ">
+                    <!-- Logo -->
+                    <div style="width:300px; float:left; margin-left: 20px;">
+                        <img src="/addons_sales_order_custom/static/img/logo_company_1.png" alt="Company Logo"
+                             style="height: 150px;"/>
+                    </div>
+                    <!-- Address Details -->
+                    <div style="width: 300px; float: right; text-align: left; line-height: 1.2; margin: 0; padding-top: 30px;">
+                        <p style="margin: 0;">
+                            <strong>
+                                <span t-field="docs.company_id.name"/>
+                            </strong>
                         </p>
-                        <p>
-                            <strong>Scheduled Date:</strong>
-                            <span t-field="docs.scheduled_date"/>
+                        <p style="margin: 0;">
+                            <span t-field="docs.company_id.street"/>
                         </p>
-                        <p>
-                            <strong>Effective Date:</strong>
-                            <span t-field="docs.date_done"/>
+                        <p style="margin: 0;">
+                            <span t-field="docs.company_id.city"/>,
+                            <span t-field="docs.company_id.state_id.name"/>
                         </p>
-                        <p>
-                            <strong>Source document:</strong>
-                            <span t-field="docs.origin"/>
+                        <p style="margin: 0;">
+                            <span t-field="docs.company_id.country_id.name"/>
+                        </p>
+                        <p style="margin: 0;">
+                            <span t-field="docs.company_id.mobile"/>
+                        </p>
+                        <p style="margin: 0;">
+                            <span t-field="docs.company_id.phone"/>
                         </p>
                     </div>
-                    <div>
-                        <p>
-                            <strong>Nomor Resi:</strong>
-                            <span t-field="docs.resi_number"/>
-                        </p>
-                        <p>
-                            <strong>Nomor Kontainer:</strong>
-                            <span t-field="docs.container_number"/>
-                        </p>
-                        <p>
-                            <strong>Tanggal Kedatangan Kontainer:</strong>
-                            <span t-field="docs.container_arrival_date"/>
-                        </p>
-                    </div>
-                    <table class="table table-bordered">
-                        <thead>
-                            <tr>
-                                <th>Product</th>
-                                <th>Demand</th>
-                                <th>Quantity</th>
-                                <th>Unit</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr t-foreach="docs.move_ids_without_package" t-as="line">
-                                <td>
-                                    <span t-field="line.product_id.name"/>
-                                </td>
-                                <td>
-                                    <span t-field="line.product_uom_qty"/>
-                                </td>
-                                <td>
-                                    <span t-field="line.quantity"/>
-                                </td>
-                                <td>
-                                    <span t-field="line.product_uom.name"/>
-                                </td>
-                            </tr>
-                        </tbody>
-                    </table>
                 </div>
-        </xpath>
+
+                <p style="text-align: center;">
+                    ________________________________________________________________________________________________________________________________________________
+                </p>
+
+                <!-- Delivery Information -->
+                <div style="padding-top: 10px;">
+                    <h1 style="text-align: center;">Delivery Slip</h1>
+                </div>
+                <p style="text-align: center;">Nomor Surat Jalan:
+                    <t t-esc="docs.name"/>
+                </p>
+                <p style="text-align: center;">Tanggal:
+                    <t t-esc="docs.create_date.strftime('%d-%m-%Y')"/>
+                </p>
+
+                <div>
+                    <p>
+                        <strong>Delivery Address:</strong>
+                        <span t-field="docs.partner_id.name"/>
+                    </p>
+                    <p>
+                        <strong>Scheduled Date:</strong>
+                        <span t-field="docs.scheduled_date"/>
+                    </p>
+                    <p>
+                        <strong>Effective Date:</strong>
+                        <span t-field="docs.date_done"/>
+                    </p>
+                    <p>
+                        <strong>Source document:</strong>
+                        <span t-field="docs.origin"/>
+                    </p>
+                </div>
+
+                <!-- Additional Information -->
+                <div>
+                    <p>
+                        <strong>Nomor Resi:</strong>
+                        <span t-field="docs.resi_number"/>
+                    </p>
+                    <p>
+                        <strong>Nomor Kontainer:</strong>
+                        <span t-field="docs.container_number"/>
+                    </p>
+                    <p>
+                        <strong>Tanggal Kedatangan Kontainer:</strong>
+                        <span t-field="docs.container_arrival_date"/>
+                    </p>
+                </div>
+
+                <!-- Product Table -->
+                <table class="table table-bordered">
+                    <thead>
+                        <tr>
+                            <th>Product</th>
+                            <th>Demand</th>
+                            <th>Quantity</th>
+                            <th>Unit</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr t-foreach="docs.move_ids_without_package" t-as="line">
+                            <td>
+                                <span t-field="line.product_id.name"/>
+                            </td>
+                            <td>
+                                <span t-field="line.product_uom_qty"/>
+                            </td>
+                            <td>
+                                <span t-field="line.quantity"/>
+                            </td>
+                            <td>
+                                <span t-field="line.product_uom.name"/>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+
+
+                <table style="width: 100%; text-align: left; border: none; border-collapse: separate;">
+                    <tr>
+                        <td style="width: 50%; vertical-align: top; border: none;">
+                            <b>Pembuat:</b>
+                            <p style="margin-top: 80px;">
+                                <t t-esc="docs.user_id.name"/>
+                            </p>
+                        </td>
+                        <td style="width: 50%; vertical-align: top; border: none;">
+                            <b>Menyetujui:</b>
+                            <p style="margin-top: 80px;">____________________________</p>
+                        </td>
+                    </tr>
+                </table>
+            </div>
+        </t>
     </template>
+
 </odoo>
 
 
