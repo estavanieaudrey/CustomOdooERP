@@ -59,13 +59,11 @@ class PurchaseOrderCustom(models.Model):
 
     def _get_price_from_bom(self, product_id, bom):
         """
-        Ngambil harga dari BoM berdasarkan nama produk
-        Misal: kalo ada kata 'Kertas Cover' di nama produk, ambil harga dari field hrg_kertas_cover
+        Mengambil harga integer dari BoM
         """
         if not product_id or not bom:
-            return 0.0
+            return 0
 
-        # Mapping nama produk ke field harga di BoM
         price_field_mapping = {
             "Kertas Cover": "hrg_kertas_cover",
             "Kertas Isi": "hrg_kertas_isi",
@@ -74,12 +72,11 @@ class PurchaseOrderCustom(models.Model):
             "Box": "hrg_box",
         }
 
-        # Cek nama produk, cocokkan sama field di BoM
         for keyword, field_name in price_field_mapping.items():
             if keyword in product_id.name:
-                return getattr(bom, field_name, 0.0)
+                return getattr(bom, field_name, 0)
 
-        return 0.0  # Kalo ga ketemu, kasih 0
+        return 0
 
     # def _prepare_picking(self):
     #     res = super()._prepare_picking()

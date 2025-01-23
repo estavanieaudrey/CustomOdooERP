@@ -22,12 +22,12 @@ class MrpBomCustom(models.Model):
     ], string="Jenis Cetakan Kertas Cover", default='1_sisi')
 
     # Tambahkan field input untuk overhead, ppn, dan waste
-    overhead_percentage = fields.Float(string="Overhead (%)", default=5,
+    overhead_percentage = fields.Integer(string="Overhead (%)", default=5,
                                        help="Persentase overhead yang dihitung dari total biaya")
-    ppn_percentage = fields.Float(string="PPn (%)", default=11,
+    ppn_percentage = fields.Integer(string="PPn (%)", default=11,
                                   help="Persentase pajak PPn yang dihitung dari total biaya")
-    waste_percentage = fields.Float(string="Waste Produksi (%)", default=10,
-                                    help="Persentase tambahan untuk waste produksi")
+    waste_percentage = fields.Integer(string="Waste Produksi (%)", default=10,
+                                  help="Persentase tambahan untuk waste produksi")
 
     # Overwrite field lama (tidak perlu hardcode lagi)
     overhead = fields.Float(
@@ -43,11 +43,11 @@ class MrpBomCustom(models.Model):
         help="Hasil perhitungan pajak PPn berdasarkan persentase input user"
     )
 
-    gramasi_kertas_isi = fields.Float(string="Gramasi Kertas Isi (gram)", default=70)
-    gramasi_kertas_cover = fields.Float(string="Gramasi Kertas Cover (gram)", default=210)
+    gramasi_kertas_isi = fields.Integer(string="Gramasi Kertas Isi (gram)", default=70)
+    gramasi_kertas_cover = fields.Integer(string="Gramasi Kertas Cover (gram)", default=210)
     jmlh_halaman_buku = fields.Integer(string="Jumlah Halaman Buku", default=160)
-    qty_buku = fields.Float(string="Quantity Buku", default=1)
-    isi_box = fields.Float(string="Isi Box (Jumlah Buku/Box)", default=60)
+    qty_buku = fields.Integer(string="Quantity Buku", default=1)
+    isi_box = fields.Integer(string="Isi Box (Jumlah Buku/Box)", default=60)
     
     jenis_jilid = fields.Selection([
         ('perfect_binding', 'Perfect Binding (Lem)'),
@@ -66,12 +66,12 @@ class MrpBomCustom(models.Model):
         help="Pilih Purchase Agreements untuk BoM."
     )
 
-    hrg_kertas_isi = fields.Float(string="Harga Kertas Isi (Rp)")
-    hrg_kertas_cover = fields.Float(string="Harga Kertas Cover (Rp)")
-    hrg_plate_isi = fields.Float(string="Harga Plate Isi (Rp)")
-    hrg_plate_cover = fields.Float(string="Harga Plate Cover (Rp)")
-    hrg_box = fields.Float(string="Harga Box (Rp)")
-    hrg_uv = fields.Float(string="Harga UV (Rp)")
+    hrg_kertas_isi = fields.Integer(string="Harga Kertas Isi (Rp)")
+    hrg_kertas_cover = fields.Integer(string="Harga Kertas Cover (Rp)")
+    hrg_plate_isi = fields.Integer(string="Harga Plate Isi (Rp)")
+    hrg_plate_cover = fields.Integer(string="Harga Plate Cover (Rp)")
+    hrg_box = fields.Integer(string="Harga Box (Rp)")
+    hrg_uv = fields.Integer(string="Harga UV (Rp)")
 
     # Material price fields --> ini compute nya belum jalan hiks
     # hrg_kertas_isi = fields.Float(string="Harga Kertas Isi (Rp)", compute="_compute_material_prices", store=True)
@@ -81,9 +81,9 @@ class MrpBomCustom(models.Model):
     # hrg_box = fields.Float(string="Harga Box (Rp)", compute="_compute_material_prices", store=True)
     # hrg_uv = fields.Float(string="Harga UV (Rp)", compute="_compute_material_prices", store=True)
 
-    jasa_cetak_isi = fields.Float(string="Biaya Cetak Isi (Rp)")
-    jasa_cetak_cover = fields.Float(string="Biaya Cetak Cover (Rp)")
-    jasa_jilid = fields.Float(string="Biaya Jilid (Rp)")
+    jasa_cetak_isi = fields.Integer(string="Biaya Cetak Isi (Rp)")
+    jasa_cetak_cover = fields.Integer(string="Biaya Cetak Cover (Rp)")
+    jasa_jilid = fields.Integer(string="Biaya Jilid (Rp)")
 
     total_biaya_kertas_isi = fields.Float(string="Total Biaya Kertas Isi", compute="_compute_biaya_bahan_baku",
                                           store=True)
@@ -117,7 +117,7 @@ class MrpBomCustom(models.Model):
     kebutuhan_kg_cover = fields.Float(string="Kebutuhan Kertas Cover (KG)", compute="_compute_hpp_values", store=True)
     kebutuhan_kertasCover = fields.Float(string="Kebutuhan Kertas Cover", compute="_compute_hpp_values", store=True)
 
-    isi_box = fields.Float(string="Isi Box", default=60)
+    isi_box = fields.Integer(string="Isi Box (Jumlah Buku/Box)", default=60)
 
     # menambahkan field baru untuk melakukan kalkulasi quantity buku yang ditambah persentase waste
     qty_buku_plus_waste = fields.Float(
@@ -371,8 +371,8 @@ class MrpBomLineCustom(models.Model):
     kebutuhan_kg_isi = fields.Float(string="Kebutuhan KG Isi", compute="_compute_line_values", store=True)
     kebutuhan_rim_cover = fields.Float(string="Kebutuhan Rim Cover", compute="_compute_line_values", store=True)
     kebutuhan_kg_cover = fields.Float(string="Kebutuhan KG Cover", compute="_compute_line_values", store=True)
-    isi_box = fields.Float(string="Isi Box", compute="_compute_line_values", store=True)
-    qty_buku = fields.Float(related='bom_id.qty_buku', string="Quantity Buku", store=True)
+    isi_box = fields.Integer(related='bom_id.isi_box', string="Isi Box", store=True)
+    qty_buku = fields.Integer(related='bom_id.qty_buku', string="Quantity Buku", store=True)
 
     @api.depends('bom_id')
     def _compute_line_values(self):

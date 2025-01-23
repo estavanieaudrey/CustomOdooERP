@@ -33,7 +33,7 @@ class SaleOrderCustom(models.Model):
     ], string="Jenis UV", compute="_compute_jenis_uv", store=True)
 
     detail_packing = fields.Char(string="Packing", compute="_compute_detail_packing", readonly=True)
-    detail_quantity = fields.Float(related="bom_id.qty_buku", string="Quantity Buku", readonly=True)
+    detail_quantity = fields.Integer(related="bom_id.qty_buku", string="Quantity Buku", readonly=True)
 
     # === PASAL 3: Harga dan Pembayaran ===
     price_unit = fields.Float(related="order_line.price_unit", string="Unit Price", readonly=True)
@@ -66,12 +66,19 @@ class SaleOrderCustom(models.Model):
     jenis_cetakan_isi = fields.Selection(related="bom_id.jenis_cetakan_isi", string="Jenis Cetakan Isi", readonly=True)
     jenis_cetakan_cover = fields.Selection(related="bom_id.jenis_cetakan_cover", string="Jenis Cetakan Cover", readonly=True)
     jmlh_halaman_buku = fields.Integer(related="bom_id.jmlh_halaman_buku", string="Jumlah Halaman Buku", readonly=True)
-    jasa_jilid = fields.Float(related="bom_id.jasa_jilid", string="Biaya Jilid", readonly=True)
-    isi_box = fields.Float(related="bom_id.isi_box", string="Isi Box (Buku/Box)", readonly=True)
-    qty_buku = fields.Float(related="bom_id.qty_buku", string="Quantity Buku", readonly=True)
+    jasa_jilid = fields.Integer(related="bom_id.jasa_jilid", string="Biaya Jilid", readonly=True)
+    isi_box = fields.Integer(related="bom_id.isi_box", string="Isi Box", readonly=True)
+    qty_buku = fields.Integer(related="bom_id.qty_buku", readonly=True)
     hpp_per_unit = fields.Float(related="bom_id.hpp_per_unit", string="Harga Satuan", readonly=True)
     hpp_total = fields.Float(related="bom_id.hpp_total", string="Harga Total", readonly=True)
     ppn = fields.Float(related="bom_id.ppn", string="PPn", readonly=True)
+
+    # Fields yang diambil dari BoM (sekarang integer)
+    gramasi_kertas_isi = fields.Integer(related="bom_id.gramasi_kertas_isi", readonly=True)
+    gramasi_kertas_cover = fields.Integer(related="bom_id.gramasi_kertas_cover", readonly=True)
+    overhead_percentage = fields.Integer(related="bom_id.overhead_percentage", readonly=True)
+    ppn_percentage = fields.Integer(related="bom_id.ppn_percentage", readonly=True)
+    waste_percentage = fields.Integer(related="bom_id.waste_percentage", readonly=True)
 
     # Function untuk ngitung detail isi dari BoM
     @api.depends('bom_id.bom_line_ids')
@@ -279,98 +286,102 @@ class SaleAdvancePaymentInv(models.TransientModel):
     
     # Field buat nyimpen nominal DP yang udah dihitung (readonly karena dihitung otomatis)
     nominal = fields.Float(string="Nominal", readonly=True, help="Computed Down Payment Nominal")
+    input_fixed_nominal = fields.Float(string="Fixed Amount", help="Enter fixed amount for down payment")
+    max_nominal = fields.Float(string="Maximum Amount", readonly=True, help="Maximum allowed amount")
+
 
     def _compute_advance_payment_method_selection(self):
         """
-        Function ini buat ngatur pilihan metode pembayaran, tapi 'fixed' option diilangin
-        Jadi usernya cuma bisa pilih:
+        Function ini buat ngatur pilihan metode pembayaran:
         - Regular invoice (bayar full)
         - Down payment pake persentase
+        - Fixed amount (nominal tetap)
         """
         selection = [
             ('all', 'Regular invoice'),
-            ('percentage', 'Down payment (percentage)'),
-            # Fixed option dimatiin
+            ('percentage', 'Percentage'),
+            ('fixed', 'Fixed amount')
         ]
         return selection
 
-    # Field buat pilihan metode pembayaran, pake function di atas
     advance_payment_method = fields.Selection(
         selection=_compute_advance_payment_method_selection,
         string='Create Invoice',
-        default='all',  # Default ke regular invoice
+        default='all',
         required=True,
     )
+    
+    @api.onchange('amount')
+    def _onchange_amount(self):
+        """
+        Update down_payment_percentage di sale order dan hitung ulang nominal
+        ketika amount (percentage) berubah
+        """
+        sale_order_id = self.env.context.get('active_id')
+        if sale_order_id and self.advance_payment_method == 'percentage':
+            sale_order = self.env['sale.order'].browse(sale_order_id)
+            # Update down_payment_percentage di sale order
+            sale_order.write({'down_payment_percentage': self.amount})
+            
+            # # Hitung ulang nominal
+            # amount_invoiced = sum(sale_order.invoice_ids.mapped('amount_total'))
+            # if sale_order.invoice_ids:
+            #     total_max_pay = sale_order.hpp_total - amount_invoiced
+            #     self.nominal = (total_max_pay * self.amount) / 100
+            # else:
+            #     self.nominal = (sale_order.hpp_total * self.amount) / 100
+
 
     @api.onchange('advance_payment_method') 
     def _onchange_advance_payment_method(self):
         """
-        Function ini kepanggil otomatis waktu user ganti metode pembayaran
-        Tugasnya:
-        1. Ngisi field 'amount' (persentase DP)
-        2. Ngitung nominal DP-nya
+        Function untuk menghitung nominal berdasarkan metode pembayaran:
+        - all: hpp_total - amount_invoiced
+        - percentage: (hpp_total * down_payment_percentage / 100) - amount_invoiced
+        - fixed: menggunakan fixed_amount yang diinput user
         """
-        # Ambil ID sales order yang lagi aktif
         sale_order_id = self.env.context.get('active_id')
         if sale_order_id:
-            # Load data sales ordernya
             sale_order = self.env['sale.order'].browse(sale_order_id)
+            amount_invoiced = sum(sale_order.invoice_ids.mapped('amount_total'))
 
-            if self.advance_payment_method == 'percentage':
-                # Kalo pilih DP:
-                # Set persentase sesuai yang ada di SO
+            if self.advance_payment_method == 'all':
+                # Regular invoice: hpp_total - amount_invoiced
+                self.nominal = sale_order.hpp_total - amount_invoiced
+                self.amount = 0.0
+                # self.amount_to_invoice = self.nominal
+            
+            elif self.advance_payment_method == 'percentage':
+                # Down payment dengan persentase
                 self.amount = sale_order.down_payment_percentage
 
-                # Hitung nominal DP-nya berdasarkan amount_total (harga jual), bukan hpp_total
+                # Hitung nominal DP berdasarkan persentase dari hpp_total
                 if sale_order.down_payment_yes_no and sale_order.down_payment_percentage:
-                    self.nominal = (sale_order.hpp_total * sale_order.down_payment_percentage) / 100
+                    # Total yang seharusnya dibayar berdasarkan persentase
+                    total_max_pay = (sale_order.hpp_total - amount_invoiced)
+                    # Kurangi dengan yang sudah dibayar (amount_invoiced)
+                    self.nominal = (total_max_pay * self.amount) / 100
                 else:
                     self.nominal = 0.0
-            else:
-                # Kalo regular invoice, reset field-fieldnya ke 0
-                self.amount = 0.0
-                self.nominal = 0.0
-
-
-    # def action_generate_pdf(self):
-    #     self.ensure_one()
-    #     try:
-    #         # Fetch the report using the correct report ID
-    #         report = self.env.ref('addons_sales_order_custom.action_report_draft_perjanjian')
-    #
-    #         # Generate the PDF content
-    #         pdf_content, content_type = report.render_qweb_pdf([self.id])
-    #
-    #         # Convert the PDF content to Base64
-    #         pdf_base64 = base64.b64encode(pdf_content)
-    #
-    #         # Remove any existing attachments for this record
-    #         existing_attachments = self.env['ir.attachment'].search([
-    #             ('res_model', '=', self._name),
-    #             ('res_id', '=', self.id),
-    #             ('name', '=', f"Draft_Perjanjian_{self.name}.pdf")
-    #         ])
-    #         existing_attachments.unlink()
-    #
-    #         # Save the generated PDF as an attachment
-    #         attachment = self.env['ir.attachment'].create({
-    #             'name': f"Draft_Perjanjian_{self.name}.pdf",
-    #             'type': 'binary',
-    #             'datas': pdf_base64,
-    #             'res_model': self._name,
-    #             'res_id': self.id,
-    #             'mimetype': 'application/pdf'
-    #         })
-    #
-    #         # Return a download link for the generated PDF
-    #         return {
-    #             'type': 'ir.actions.act_url',
-    #             'url': f'/web/content/{attachment.id}?download=true',
-    #             'target': 'self',
-    #         }
-    #     except Exception as e:
-    #         raise ValidationError(f"Error generating PDF: {e}")
-
+            
+            elif self.advance_payment_method == 'fixed':
+                # Fixed amount: gunakan nilai yang diinput user
+                self.amount = 0.0  # Reset percentage amount
+                self.max_nominal = amount_invoiced
+                self.fixed_amount = self.nominal  # Gunakan nominal sebagai fixed amount
+                
+                if self.input_fixed_nominal:
+                    if self.input_fixed_nominal > self.max_nominal:
+                        return {
+                            'warning': {
+                                'title': 'Warning',
+                                'message': f'Maximum allowed amount is {self.max_nominal}'
+                            }
+                        }
+                    self.nominal = self.input_fixed_nominal
+            # Pastikan nominal tidak negatif
+            self.nominal = max(0.0, self.nominal)
+            
     def action_generate_pdf(self):
         """
         Buat generate PDF dari template yang udah kita bikin
