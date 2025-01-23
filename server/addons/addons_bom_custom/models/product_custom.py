@@ -2,23 +2,32 @@ from odoo import models, fields, api
 
 from python.Lib.email.policy import default
 
-
+# Class untuk nambahin fitur custom di product template
 class ProductCustom(models.Model):
-    _inherit = "product.template"
+    _inherit = "product.template"  # Inherit dari product.template bawaan Odoo
 
-    # Fields untuk product tipe kertas
+    # Field buat nentuin tipe kertas/material
+    # Ini penting buat ngitung quantity di BOM lines
     tipe_kertas = fields.Selection([
-        ('isi', 'Kertas Isi'),
-        ('cover', 'Kertas Cover'),
-        ('plate_isi', 'Plate Isi'),
-        ('plate_cover', 'Plate Cover'),
-        ('box', 'Box')
-    ], string="Tipe Kertas", default="isi")
+        ('isi', 'Kertas Isi'),         # Kertas untuk isi buku
+        ('cover', 'Kertas Cover'),      # Kertas untuk cover buku
+        ('plate_isi', 'Plate Isi'),     # Plate cetak untuk isi
+        ('plate_cover', 'Plate Cover'), # Plate cetak untuk cover
+        ('box', 'Box')                  # Box untuk packaging
+    ], string="Tipe", default="isi")  # Default ke 'isi' kalo bikin produk baru
 
+    # Function yang dipanggil waktu tipe_kertas berubah
     @api.onchange('tipe_kertas')
     def _onchange_tipe_kertas(self):
-        """Update default_code when tipe_kertas changes"""
+        """
+        Update kode produk (default_code) otomatis berdasarkan tipe kertas.
+        Misal:
+        - Kertas Isi -> KERTAS_ISI
+        - Kertas Cover -> KERTAS_COVER
+        dst.
+        """
         if self.tipe_kertas:
+            # Set default_code sesuai tipe yang dipilih
             if self.tipe_kertas == 'isi':
                 self.default_code = 'KERTAS_ISI'
             elif self.tipe_kertas == 'cover':

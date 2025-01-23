@@ -4,32 +4,52 @@ from odoo import models, fields, api
 class MrpBomCustom(models.Model):
     _inherit = 'mrp.bom'
 
-    # Fields untuk ukuran buku
+    # === SECTION: Fields untuk spesifikasi buku ===
+    
+    # Pilihan ukuran buku - B5 atau A4
     ukuran_buku = fields.Selection([
         ('b5', 'B5 (17.6 x 25 cm)'),
         ('a4', 'A4 (21 x 29.7 cm)')
     ], string="Ukuran Buku", default='b5')
 
-    # Fields  untuk jenis cetakan
+    # Jenis cetakan untuk isi buku (1 sisi/2 sisi)
+    # Default 2 sisi karena lebih hemat & umum dipake
     jenis_cetakan_isi = fields.Selection([
         ('1_sisi', 'Full Color 1 Sisi'),
         ('2_sisi', 'Full Color 2 Sisi')
     ], string="Jenis Cetakan Kertas Isi", default='2_sisi')
 
+    # Jenis cetakan untuk cover (1 sisi/2 sisi)
+    # Default 1 sisi karena biasanya cuma bagian luar yang dicetak
     jenis_cetakan_cover = fields.Selection([
         ('1_sisi', 'Full Color 1 Sisi'),
         ('2_sisi', 'Full Color 2 Sisi')
     ], string="Jenis Cetakan Kertas Cover", default='1_sisi')
 
-    # Tambahkan field input untuk overhead, ppn, dan waste
-    overhead_percentage = fields.Integer(string="Overhead (%)", default=5,
-                                       help="Persentase overhead yang dihitung dari total biaya")
-    ppn_percentage = fields.Integer(string="PPn (%)", default=11,
-                                  help="Persentase pajak PPn yang dihitung dari total biaya")
-    waste_percentage = fields.Integer(string="Waste Produksi (%)", default=10,
-                                  help="Persentase tambahan untuk waste produksi")
+    # === SECTION: Fields untuk biaya tambahan ===
+    
+    # Overhead: biaya operasional tambahan (listrik, sewa, dll)
+    overhead_percentage = fields.Integer(
+        string="Overhead (%)", 
+        default=5,
+        help="Persentase overhead yang dihitung dari total biaya"
+    )
+    
+    # PPn: Pajak Pertambahan Nilai (11% sesuai aturan)
+    ppn_percentage = fields.Integer(
+        string="PPn (%)", 
+        default=11,
+        help="Persentase pajak PPn yang dihitung dari total biaya"
+    )
+    
+    # Waste: Persentase tambahan untuk antisipasi kerusakan/gagal cetak
+    waste_percentage = fields.Integer(
+        string="Waste Produksi (%)", 
+        default=10,
+        help="Persentase tambahan untuk waste produksi"
+    )
 
-    # Overwrite field lama (tidak perlu hardcode lagi)
+    # Fields hasil perhitungan overhead & ppn (dihitung otomatis)
     overhead = fields.Float(
         string="Overhead",
         compute="_compute_total_akhir",
@@ -43,12 +63,18 @@ class MrpBomCustom(models.Model):
         help="Hasil perhitungan pajak PPn berdasarkan persentase input user"
     )
 
+    # === SECTION: Fields untuk spesifikasi teknis ===
+    
+    # Gramasi: berat kertas per meter persegi
     gramasi_kertas_isi = fields.Integer(string="Gramasi Kertas Isi (gram)", default=70)
     gramasi_kertas_cover = fields.Integer(string="Gramasi Kertas Cover (gram)", default=210)
+    
+    # Jumlah halaman & quantity
     jmlh_halaman_buku = fields.Integer(string="Jumlah Halaman Buku", default=160)
     qty_buku = fields.Integer(string="Quantity Buku", default=1)
     isi_box = fields.Integer(string="Isi Box (Jumlah Buku/Box)", default=60)
     
+    # Jenis finishing
     jenis_jilid = fields.Selection([
         ('perfect_binding', 'Perfect Binding (Lem)'),
         ('stitching', 'Stitching (Kawat)')
@@ -59,13 +85,15 @@ class MrpBomCustom(models.Model):
         ('matte', 'Matte (Doff)')
     ], string="Jenis UV", default='glossy')
 
-    # Add Many2Many field to link multiple Purchase Requisitions
+    # Field buat link ke Purchase Agreements
     purchase_requisition_ids = fields.Many2many(
-        'purchase.requisition',  # Correct model reference
-        string="Purchase Agreements",  # Label to display in the form
+        'purchase.requisition',
+        string="Purchase Agreements",
         help="Pilih Purchase Agreements untuk BoM."
     )
 
+    # === SECTION: Fields untuk harga material ===
+    # Nanti bakal diisi otomatis dari Purchase Agreement, tapi untuk sementara manual input
     hrg_kertas_isi = fields.Integer(string="Harga Kertas Isi (Rp)")
     hrg_kertas_cover = fields.Integer(string="Harga Kertas Cover (Rp)")
     hrg_plate_isi = fields.Integer(string="Harga Plate Isi (Rp)")
@@ -81,12 +109,18 @@ class MrpBomCustom(models.Model):
     # hrg_box = fields.Float(string="Harga Box (Rp)", compute="_compute_material_prices", store=True)
     # hrg_uv = fields.Float(string="Harga UV (Rp)", compute="_compute_material_prices", store=True)
 
+    # === SECTION: Fields untuk biaya jasa ===
     jasa_cetak_isi = fields.Integer(string="Biaya Cetak Isi (Rp)")
     jasa_cetak_cover = fields.Integer(string="Biaya Cetak Cover (Rp)")
     jasa_jilid = fields.Integer(string="Biaya Jilid (Rp)")
 
-    total_biaya_kertas_isi = fields.Float(string="Total Biaya Kertas Isi", compute="_compute_biaya_bahan_baku",
-                                          store=True)
+    # === SECTION: Fields hasil perhitungan biaya bahan ===
+    # Semua field ini dihitung otomatis (compute)
+    total_biaya_kertas_isi = fields.Float(
+        string="Total Biaya Kertas Isi", 
+        compute="_compute_biaya_bahan_baku",
+        store=True
+    )
     total_biaya_kertas_cover = fields.Float(string="Total Biaya Kertas Cover", compute="_compute_biaya_bahan_baku",
                                             store=True)
     total_biaya_plate_isi = fields.Float(string="Total Biaya Plate Isi", compute="_compute_biaya_bahan_baku",
@@ -117,8 +151,6 @@ class MrpBomCustom(models.Model):
     kebutuhan_kg_cover = fields.Float(string="Kebutuhan Kertas Cover (KG)", compute="_compute_hpp_values", store=True)
     kebutuhan_kertasCover = fields.Float(string="Kebutuhan Kertas Cover", compute="_compute_hpp_values", store=True)
 
-    isi_box = fields.Integer(string="Isi Box (Jumlah Buku/Box)", default=60)
-
     # menambahkan field baru untuk melakukan kalkulasi quantity buku yang ditambah persentase waste
     qty_buku_plus_waste = fields.Float(
         string="Quantity Buku Plus Waste",
@@ -126,102 +158,129 @@ class MrpBomCustom(models.Model):
         store=True,
         help="Jumlah buku yang disiapkan termasuk tambahan waste."
     )
-
+    
+    # Function buat ngitung quantity buku + waste
     @api.depends('qty_buku', 'waste_percentage')
     def _compute_qty_buku_plus_waste(self):
         """
-        Menghitung jumlah buku yang harus disiapkan dengan waste percentage.
+        Ngehitung total buku yang harus disiapkan dengan tambahan waste.
+        Misal: 
+        - Qty buku = 1000
+        - Waste 10%
+        Total yang disiapkan = 1000 * (1 + 10/100) = 1100 buku
         """
         for bom in self:
+            # Pastiin qty_buku ada dan waste percentage gak minus
             if bom.qty_buku and bom.waste_percentage >= 0:
                 bom.qty_buku_plus_waste = bom.qty_buku * (1 + (bom.waste_percentage / 100))
             else:
-                bom.qty_buku_plus_waste = bom.qty_buku  # Default ke qty_buku jika waste_percentage tidak valid
+                bom.qty_buku_plus_waste = bom.qty_buku
 
+    # Function buat ngitung kebutuhan kertas (dalam rim dan kg)
     @api.depends('jmlh_halaman_buku', 'qty_buku', 'gramasi_kertas_isi', 'gramasi_kertas_cover', 'ukuran_buku')
     def _compute_hpp_values(self):
-        """Hitung kebutuhan rim dan kg berdasarkan formula HPP"""
+        """
+        Ngehitung kebutuhan kertas dalam satuan rim dan kg.
+        - Rim: 1 rim = 500 lembar
+        - Kg: tergantung ukuran kertas dan gramasi
+        
+        Rumus kg = (panjang * lebar * gramasi) / 20000
+        """
         for bom in self:
-            # Perhitungan Kertas Isi
+            # === Perhitungan Kertas Isi ===
+            # Ngitung kebutuhan kg berdasarkan ukuran buku
             if bom.ukuran_buku == 'a4':
-                # Logika perhitungan untuk ukuran A4
+                # Ukuran plano A4: 63 x 86 cm
                 kebutuhan_kg_isi = (63 * 86 * bom.gramasi_kertas_isi) / 20000
             elif bom.ukuran_buku == 'b5':
-                # Logika perhitungan untuk ukuran B5
+                # Ukuran plano B5: 54.6 x 73 cm
                 kebutuhan_kg_isi = (54.6 * 73 * bom.gramasi_kertas_isi) / 20000
             else:
-                kebutuhan_kg_isi = 0.0  # Default jika ukuran buku tidak dipilih
+                kebutuhan_kg_isi = 0.0
 
+            # Ngitung kebutuhan rim
+            # Rumus: (jmlh halaman / 16 lembar per katern * qty buku) / 500 lembar per rim
             bom.kebutuhan_rim_isi = (bom.jmlh_halaman_buku / 16 * bom.qty_buku) / 500
             bom.kebutuhan_kg_isi = kebutuhan_kg_isi
             bom.kebutuhan_kertasIsi = bom.kebutuhan_rim_isi * kebutuhan_kg_isi
 
-            # Perhitungan Kertas Cover
+            # === Perhitungan Kertas Cover ===
+            # Ngitung kebutuhan kg cover berdasarkan ukuran
             if bom.ukuran_buku == 'a4':
-                # Logika perhitungan untuk ukuran A4
+                # Ukuran plano cover A4: 65 x 100 cm
                 kebutuhan_kg_cover = (65 * 100 * bom.gramasi_kertas_cover) / 20000
             elif bom.ukuran_buku == 'b5':
-                # Logika perhitungan untuk ukuran B5
+                # Ukuran plano cover B5: 79 x 55 cm
                 kebutuhan_kg_cover = (79 * 55 * bom.gramasi_kertas_cover) / 20000
             else:
-                kebutuhan_kg_cover = 0.0  # Default jika ukuran buku tidak dipilih
+                kebutuhan_kg_cover = 0.0
 
+            # Ngitung kebutuhan rim cover
+            # Rumus: (qty buku / 4 cover per plano) / 500 lembar per rim
             bom.kebutuhan_rim_cover = (bom.qty_buku / 4) / 500
             bom.kebutuhan_kg_cover = kebutuhan_kg_cover
             bom.kebutuhan_kertasCover = bom.kebutuhan_rim_cover * kebutuhan_kg_cover
 
-    # Perhitungan Biaya Bahan Baku
-    @api.depends('ukuran_buku', 'jenis_cetakan_isi', 'jenis_cetakan_cover', 'jmlh_halaman_buku', 'qty_buku', 'hrg_plate_isi',
-                 'hrg_plate_cover', 'waste_percentage')
+    # Function buat ngitung biaya bahan baku
+    @api.depends('ukuran_buku', 'jenis_cetakan_isi', 'jenis_cetakan_cover', 'jmlh_halaman_buku', 
+                'qty_buku', 'hrg_plate_isi', 'hrg_plate_cover', 'waste_percentage')
     def _compute_biaya_bahan_baku(self):
         for record in self:
-            # Perhitungan untuk cari HPP Produksi
-            # Hitung Waste Factor
+            # Ngitung waste factor (misal: 10% = 0.1)
             waste_factor = (record.waste_percentage / 100)
-            # Kertas Isi
+
+            # === Ngitung biaya kertas isi ===
             kebutuhan_rim_isi = (record.jmlh_halaman_buku / 16 * record.qty_buku) / 500
+            # Ngitung kg berdasarkan ukuran
             kebutuhan_kg_isi = (((63 * 86 * record.gramasi_kertas_isi) / 20000) if record.ukuran_buku == 'a4'
                                 else ((54.6 * 73 * record.gramasi_kertas_isi) / 20000))
+            # Total biaya = (kebutuhan * harga) + waste
             record.total_biaya_kertas_isi = (kebutuhan_rim_isi * kebutuhan_kg_isi * record.hrg_kertas_isi) + (
                     (kebutuhan_rim_isi * kebutuhan_kg_isi * record.hrg_kertas_isi) * waste_factor)
 
-            # Kertas Cover
+            # === Ngitung biaya kertas cover ===
+            # (logika sama kayak kertas isi)
             kebutuhan_rim_cover = (record.qty_buku / 4) / 500
             kebutuhan_kg_cover = (((65 * 100 * record.gramasi_kertas_cover) / 20000) if record.ukuran_buku == 'a4'
                                   else (79 * 55 * record.gramasi_kertas_cover) / 20000)
             record.total_biaya_kertas_cover = (kebutuhan_rim_cover * kebutuhan_kg_cover * record.hrg_kertas_cover) + (
                     (kebutuhan_rim_cover * kebutuhan_kg_cover * record.hrg_kertas_cover) * waste_factor)
 
-            # Plate Isi
-            if record.jenis_cetakan_isi == '1_sisi':  # Jika 1 sisi
-                plat_isi = 4
-            elif record.jenis_cetakan_isi == '2_sisi':  # Jika 2 sisi
-                plat_isi = 8
+            # === Ngitung biaya plate isi ===
+            # Jumlah plate tergantung jenis cetakan (1/2 sisi)
+            if record.jenis_cetakan_isi == '1_sisi':
+                plat_isi = 4  # 4 plate untuk 1 sisi
+            elif record.jenis_cetakan_isi == '2_sisi':
+                plat_isi = 8  # 8 plate untuk 2 sisi
             else:
-                plat_isi = 0  # Default jika tidak dipilih
+                plat_isi = 0
 
+            # Total biaya plate = jumlah katern * jumlah plate * harga plate
             record.total_biaya_plate_isi = (
                     (record.jmlh_halaman_buku / 16 * plat_isi) * record.hrg_plate_isi
             )
 
-            # Kertas Cover (Plate Cover)
+            # === Ngitung biaya plate cover ===
+            # Jumlah plate cover tergantung jenis cetakan (1/2 sisi)
             if record.jenis_cetakan_cover == '1_sisi':  # Jika 1 sisi
-                plat_cover = 4
+                plat_cover = 4  # Butuh 4 plate (CMYK)
             elif record.jenis_cetakan_cover == '2_sisi':  # Jika 2 sisi
-                plat_cover = 8
+                plat_cover = 8  # Butuh 8 plate (CMYK x 2 sisi)
             else:
                 plat_cover = 0  # Default jika tidak dipilih
 
             record.total_biaya_plate_cover = (plat_cover * record.hrg_plate_cover)
 
-            # Box
+            # Ngitung biaya box
+            # Rumus: jumlah box yang dibutuhin * harga per box
             record.total_biaya_box = (record.qty_buku / record.isi_box) * record.hrg_box
 
-    # Total Biaya Bahan Baku
+    # Function buat ngitung total biaya bahan baku
     @api.depends('total_biaya_kertas_isi', 'total_biaya_kertas_cover', 'total_biaya_plate_isi',
                  'total_biaya_plate_cover', 'total_biaya_box')
     def _compute_total_bahan_baku(self):
         for record in self:
+            # Jumlah semua biaya bahan baku
             record.total_biaya_bahan_baku = (
                     record.total_biaya_kertas_isi
                     + record.total_biaya_kertas_cover
@@ -230,44 +289,48 @@ class MrpBomCustom(models.Model):
                     + record.total_biaya_box
             )
 
-    # Perhitungan Biaya Jasa
-    @api.depends('ukuran_buku', 'kebutuhan_rim_isi', 'kebutuhan_rim_cover', 'jasa_cetak_isi', 'jasa_cetak_cover', 'jasa_jilid',
-                 'hrg_uv')
+    # Function buat ngitung biaya jasa cetak dan finishing
+    @api.depends('ukuran_buku', 'kebutuhan_rim_isi', 'kebutuhan_rim_cover', 'jasa_cetak_isi', 
+                'jasa_cetak_cover', 'jasa_jilid', 'hrg_uv')
     def _compute_biaya_jasa(self):
         for record in self:
-            # Cetak Isi
-            # kebutuhan_isiRim = (record.jmlh_halaman_buku / 16 * record.qty_buku) / 500
+            # === Ngitung biaya cetak isi ===
+            # Rumus: jumlah rim * biaya cetak per rim
             record.total_biaya_cetak_isi = record.kebutuhan_rim_isi * record.jasa_cetak_isi
 
-            # Cetak Cover
-            # kebutuhan_rim_cover = (record.qty_buku / 4) / 500
+            # === Ngitung biaya cetak cover ===
+            # Rumus sama kayak cetak isi
             record.total_biaya_cetak_cover = record.kebutuhan_rim_cover * record.jasa_cetak_cover
 
-            # UV
+            # === Ngitung biaya UV ===
+            # Ukuran cover beda-beda tergantung ukuran buku
             if record.ukuran_buku == 'a4':
-                ukuran_cover = 65 * 100
+                ukuran_cover = 65 * 100  # cm2
             elif record.ukuran_buku == 'b5':
-                ukuran_cover = 79 * 55
+                ukuran_cover = 79 * 55  # cm2
             else:
-                ukuran_cover = 0  # Default jika ukuran_buku tidak dipilih
+                ukuran_cover = 0  
 
-            # Waste berdasarkan input user
-            waste_factor = 1 + (record.waste_percentage / 100) # 1.1
+            # Ngitung waste berdasarkan input user
+            waste_factor = 1 + (record.waste_percentage / 100)  # misal: 1.1 untuk waste 10%
 
+            # Total biaya UV = (ukuran * harga UV per cm2) * jumlah rim * waste factor
             record.total_biaya_uv = (
-                    (ukuran_cover * record.hrg_uv)  # Harga UV per cm
+                    (ukuran_cover * record.hrg_uv)  # Harga UV per cm2
                     * 500  # 1 rim
                     * (record.kebutuhan_rim_cover  # Jumlah rim
-                       * waste_factor)  # Tambah 10% Waste Produksi
+                       * waste_factor)  # Tambah waste
             )
 
-            # Jilid
+            # === Ngitung biaya jilid ===
+            # Rumus: jumlah halaman * biaya jilid per halaman * quantity
             record.total_biaya_jilid = record.jmlh_halaman_buku * record.jasa_jilid * record.qty_buku
 
-    # Total Biaya Jasa
+    # Function buat ngitung total biaya jasa
     @api.depends('total_biaya_cetak_isi', 'total_biaya_cetak_cover', 'total_biaya_uv', 'total_biaya_jilid')
     def _compute_total_jasa(self):
         for record in self:
+            # Jumlah semua biaya jasa
             record.total_biaya_jasa = (
                     record.total_biaya_cetak_isi
                     + record.total_biaya_cetak_cover
@@ -275,39 +338,46 @@ class MrpBomCustom(models.Model):
                     + record.total_biaya_jilid
             )
 
-    # Perhitungan Overhead, PPn, dan HPP
+    # Function buat ngitung total akhir (termasuk overhead dan PPn)
     @api.depends('total_biaya_bahan_baku', 'total_biaya_jasa', 'qty_buku', 'overhead_percentage', 'ppn_percentage')
     def _compute_total_akhir(self):
         for record in self:
+            # Total biaya dasar (bahan + jasa)
             total = record.total_biaya_bahan_baku + record.total_biaya_jasa
-            # Hitung Overhead berdasarkan input user
+            
+            # Hitung overhead (misal: 5% dari total biaya)
             record.overhead = total * (record.overhead_percentage / 100)
-            # Hitung PPn berdasarkan input user
+            
+            # Hitung PPn (11% dari total + overhead)
             record.ppn = (total + record.overhead) * (record.ppn_percentage / 100)
+            
+            # Total HPP = total biaya + overhead + PPn
             record.hpp_total = total + record.overhead + record.ppn
-            record.hpp_per_unit = record.hpp_total / record.qty_buku  # if record.qty_buku > 0 else 0.0
+            
+            # HPP per buku = total HPP / jumlah buku
+            record.hpp_per_unit = record.hpp_total / record.qty_buku
 
     '''Ini untuk menyamakan antara qty_buku yang ada dicustom dengan product_qty yang ada di BOM template'''
 
-    # Sinkronisasi Qty Buku ke Quantity Bawaan BOM
+    # Function buat sinkronin qty_buku ke product_qty bawaan BOM
     @api.onchange('qty_buku')
     def _onchange_qty_buku(self):
         for record in self:
             record.product_qty = record.qty_buku
 
-    # Sinkronisasi Quantity Bawaan BOM ke Qty Buku
+    # Function buat sinkronin product_qty bawaan BOM ke qty_buku
     @api.onchange('product_qty')
     def _onchange_product_qty(self):
         for record in self:
             record.qty_buku = record.product_qty
 
-    # ini belum jalan tolong dipikir gmn
-
+    # Function buat ngambil harga material dari Purchase Agreement
+    # Note: ini belum jalan, masih WIP
     @api.depends('purchase_requisition_ids')
     def _compute_material_prices(self):
-        """Compute material prices based on selected Purchase Agreements."""
+        """Ngitung harga material berdasarkan Purchase Agreement yang dipilih."""
         for bom in self:
-            # Reset prices
+            # Reset semua harga dulu
             bom.hrg_kertas_isi = 0.0
             bom.hrg_kertas_cover = 0.0
             bom.hrg_plate_isi = 0.0
@@ -315,7 +385,7 @@ class MrpBomCustom(models.Model):
             bom.hrg_box = 0.0
             bom.hrg_uv = 0.0
 
-            # Define product mappings
+            # Bikin mapping nama produk ke field harga
             material_map = {
                 'KERTAS_ISI': ['Kertas Isi (Virgin/HS)', 'Kertas Isi (Tabloid)'],
                 'KERTAS_COVER': ['Kertas Cover (Art Carton)', 'Kertas Cover (Art Paper)',
@@ -327,12 +397,12 @@ class MrpBomCustom(models.Model):
                 'UV': ['UV']
             }
 
-            # Loop through purchase agreements
+            # Loop setiap Purchase Agreement yang dipilih
             for requisition in bom.purchase_requisition_ids:
                 for line in requisition.line_ids:
                     product_name = line.product_id.name
 
-                    # Check for Kertas Isi
+                    # Cek tiap material dan update harganya
                     if any(name in product_name for name in material_map['KERTAS_ISI']):
                         bom.hrg_kertas_isi = line.price_unit
                         continue
@@ -366,7 +436,7 @@ class MrpBomCustom(models.Model):
 class MrpBomLineCustom(models.Model):
     _inherit = 'mrp.bom.line'
 
-    # Field tambahan di baris component
+    # Fields tambahan di baris component
     kebutuhan_rim_isi = fields.Float(string="Kebutuhan Rim Isi", compute="_compute_line_values", store=True)
     kebutuhan_kg_isi = fields.Float(string="Kebutuhan KG Isi", compute="_compute_line_values", store=True)
     kebutuhan_rim_cover = fields.Float(string="Kebutuhan Rim Cover", compute="_compute_line_values", store=True)
@@ -374,9 +444,10 @@ class MrpBomLineCustom(models.Model):
     isi_box = fields.Integer(related='bom_id.isi_box', string="Isi Box", store=True)
     qty_buku = fields.Integer(related='bom_id.qty_buku', string="Quantity Buku", store=True)
 
+    # Function buat ngambil nilai kebutuhan dari BOM header
     @api.depends('bom_id')
     def _compute_line_values(self):
-        """Ambil nilai kebutuhan dari mrp.bom."""
+        """Ngambil nilai kebutuhan dari mrp.bom."""
         for line in self:
             bom = line.bom_id
             line.kebutuhan_rim_isi = bom.kebutuhan_rim_isi
@@ -385,16 +456,17 @@ class MrpBomLineCustom(models.Model):
             line.kebutuhan_kg_cover = bom.kebutuhan_kg_cover
             line.isi_box = bom.isi_box
 
+    # Function buat update quantity komponen otomatis
     @api.onchange('product_id')
-    def _onchange_product_id(self): #ngarah e ke bom line
-        """Update otomatis field quantity (product_qty) berdasarkan product_id."""
-        for line in self: #ini ngarah ke
+    def _onchange_product_id(self):
+        """Update otomatis quantity komponen berdasarkan tipe material (quantity (product_qty) berdasarkan product_id)."""
+        for line in self:
             if line.product_id:
                 bom = line.bom_id
                 waste_factor = 1 + (bom.waste_percentage / 100)
                 product = line.product_id.product_tmpl_id
 
-                # Logika untuk Kertas Isi
+                # Logika quantity untuk tiap tipe material
                 if product.tipe_kertas == 'isi':
                     line.product_qty = (line.kebutuhan_rim_isi * line.kebutuhan_kg_isi) * waste_factor
                 # Logika untuk Kertas Cover
@@ -403,9 +475,9 @@ class MrpBomLineCustom(models.Model):
                 # Logika untuk Plate Isi
                 elif product.tipe_kertas == 'plate_isi':
                     if bom.jenis_cetakan_isi == '1_sisi':
-                        line.product_qty = 4
+                        line.product_qty = 4  # 4 plate CMYK
                     elif bom.jenis_cetakan_isi == '2_sisi':
-                        line.product_qty = 8
+                        line.product_qty = 8  # 8 plate (2 sisi)
                 # Logika untuk Plate Cover
                 elif product.tipe_kertas == 'plate_cover':
                     if bom.jenis_cetakan_cover == '1_sisi':
@@ -416,19 +488,22 @@ class MrpBomLineCustom(models.Model):
                 elif line.product_id.default_code == 'BOX':
                     line.product_qty = (line.qty_buku * waste_factor) / line.isi_box if line.isi_box > 0 else 0.0
 
+    # Function yang dipanggil pas bikin BOM line baru
     @api.model
     def create(self, vals):
         """Hitung product_qty saat komponen baru dibuat"""
         vals = self._update_product_qty(vals)
         return super(MrpBomLineCustom, self).create(vals)
 
+    # Function yang dipanggil pas update BOM line
     def write(self, vals):
         """Hitung ulang product_qty saat komponen BOM diperbarui"""
         vals = self._update_product_qty(vals)
         return super(MrpBomLineCustom, self).write(vals)
 
+    # Helper function buat update quantity
     def _update_product_qty(self, vals):
-        """Logika untuk menghitung product_qty sebelum menyimpan data"""
+        """Logic buat update product_qty sebelum simpan data"""
         product_id = vals.get('product_id') or self.product_id.id
         bom = self.bom_id or self.env['mrp.bom'].browse(vals.get('bom_id'))
         waste_factor = 1 + (bom.waste_percentage / 100)
@@ -437,7 +512,7 @@ class MrpBomLineCustom(models.Model):
             product = self.env['product.product'].browse(product_id)
             product_tmpl = product.product_tmpl_id
 
-            # Logika untuk menghitung product_qty
+            # Update quantity berdasarkan tipe material (product_qty : kertas isi, kertas cover, plate isi, plate cover, box)
             if product_tmpl.tipe_kertas == 'isi':
                 vals['product_qty'] = (bom.kebutuhan_rim_isi * bom.kebutuhan_kg_isi) * waste_factor
             elif product_tmpl.tipe_kertas == 'cover':
