@@ -449,7 +449,7 @@ class MrpWorkorderCustom(models.Model):
     hasil_join_cetak_isi = fields.Float(string="Hasil Join Cetak Isi")
     hasil_pemotongan_akhir = fields.Float(string="Hasil Pemotongan Akhir")
     qty_realita_buku = fields.Float(string="Qty Realita Buku")
-    qty_realita_box = fields.Float(string="Qty Realita Box")
+    # qty_realita_box = fields.Float(string="Qty Realita Box") --kyknya gaperlu krn sudah ada jumlah_bahan_baku
     qty_buku_dalam_box = fields.Float(string="Qty Buku dalam 1 Box")
 
     # Fields untuk proses UV
@@ -604,7 +604,7 @@ class MrpWorkorderCustom(models.Model):
         - Gak boleh kurang dari 90% custom_qty_to_produce
         """
         for record in self:
-            if record.work_center_step in ['produksi_cetak_cover', 'produksi_cetak_isi']:
+            if record.work_center_step in ['produksi_cetak_cover', 'produksi_cetak_isi', 'packing_buku']:
                 if record.jumlah_bahan_baku > record.custom_qty_to_produce:
                     raise ValidationError(_(
                         f"Jumlah bahan baku yang anda input ({record.jumlah_bahan_baku}) tidak boleh LEBIH dari "
@@ -624,7 +624,7 @@ class MrpWorkorderCustom(models.Model):
         - Kelebihan: > custom_qty_to_produce
         - Kekurangan: < 90% custom_qty_to_produce
         """
-        if self.work_center_step in ['produksi_cetak_cover', 'produksi_cetak_isi']:
+        if self.work_center_step in ['produksi_cetak_cover', 'produksi_cetak_isi', 'packing_buku']:
             if self.jumlah_bahan_baku > self.custom_qty_to_produce:
                 return {
                     'warning': {
@@ -759,182 +759,194 @@ class MrpWorkorderWizard(models.TransientModel):
 
     name = fields.Char(string="Name")
 
-# Add a new field to mrp.stock.move to store original quantities
 class StockMove(models.Model):
     _inherit = 'stock.move'
 
-    # Link ke Manufacturing Order
-    production_id = fields.Many2one(
+    # Field to select the manufacturing order
+    manufacturing_order_id = fields.Many2one(
         'mrp.production',
-        string="Production Order",
-        help="Relasi ke Manufacturing Order"
+        string="Manufacturing Order",
+        help="Select the related Manufacturing Order."
     )
-
-    # qty_plus_surplus_instok = fields.Float(
-    #     string="Quantity Plus Surplus",
-    #     compute="_compute_qty_plus_surplus_instok",
-    #     store=True,
-    #     help="Jumlah total termasuk surplus dari hasil produksi."
-    # )
     
-    # Field buat nyimpen qty plus surplus
-    qty_plus_surplus_instok = fields.Float(
-        string="Quantity Plus Surplus",
-        help="Jumlah total termasuk surplus dari hasil produksi."
+    # Field to fetch qty_plus_surplus from mrp.production
+    qty_plus_surplus = fields.Float(
+        string="Total Hasil Produksi",
+        compute="_compute_qty_plus_surplus",
+        store=True,
+        readonly=True,
+        help="Surplus quantity fetched from the related Manufacturing Order."
     )
-
-    # qty_plus_surplus_instok2 = fields.Float(
-    #     related="production_id.qty_plus_surplus",
-    #     string="Quantity Buku",
-    #     store=True,
-    #     readonly=True
-    # )
     
-    @api.depends('production_id.surplus_qty', 'production_id.workorder_ids.qty_realita_buku')
-    def _compute_qty_plus_surplus_instok(self):
+    @api.depends('production_id.qty_plus_surplus', 'manufacturing_order_id')
+    def _compute_qty_plus_surplus(self):
+        """
+        Compute qty_plus_surplus for stock.move based on the related mrp.production.
+        """
         for move in self:
             if move.production_id:
-                # Ambil nilai surplus_qty langsung dari production_id
-                surplus = move.production_id.surplus_qty or 0.0
-
-                # Ambil qty_realita_buku dari work orders
-                work_orders = move.production_id.workorder_ids.filtered(
-                    lambda w: w.work_center_step == 'packing_buku'
-                )
-                real_qty = sum(work_orders.mapped('qty_realita_buku'))
-
-                # Hitung total quantity plus surplus
-                move.qty_plus_surplus_instok = real_qty if real_qty > 0 else move.product_uom_qty + surplus
+                move.qty_plus_surplus = move.manufacturing_order_id.qty_plus_surplus
             else:
-                move.qty_plus_surplus_instok = move.product_uom_qty
+                move.qty_plus_surplus = 99.0
+                
+    # Field buat nyimpen qty yang ada di stok
+    qty_di_stok = fields.Float(
+        string="Quantity di Stok",
+        help="Jumlah total termasuk surplus dari hasil produksi."
+    )
+    
+    @api.onchange('qty_di_stok')
+    def _onchange_qty_di_stok(self):
+        """
+        When qty_di_stok is updated, set product_uom_qty to the same value.
+        """
+        for move in self:
+            if move.qty_di_stok:
+                move.product_uom_qty = move.qty_di_stok
     
     def write(self, vals):
-        # Panggil write bawaan Odoo dulu
-        res = super(StockMove, self).write(vals)
-        
-        # Kalo ada perubahan di qty_plus_surplus_instok
-        if 'qty_plus_surplus_instok' in vals:
+        """
+        Override write to ensure product_uom_qty matches qty_di_stok.
+        """
+        if 'qty_di_stok' in vals:
             for move in self:
-                # Update product_uom_qty di stock.move
-                move.product_uom_qty = vals['qty_plus_surplus_instok']
+                if 'qty_di_stok' in vals:
+                    vals['product_uom_qty'] = vals['qty_di_stok']
+        return super(StockMove, self).write(vals)
 
-                # Update quantity_done di stock.move.line
-                for line in move.move_line_ids:
-                    line.qty_done = vals['qty_plus_surplus_instok']
-        return res
+    #     # @api.depends('production_id.workorder_ids.qty_realita_buku', 'production_id.surplus_qty')
+    #     # def _compute_qty_plus_surplus_instok(self):
+    #     #     for move in self:
+    #     #         if move.production_id:
+    #     #             # Ambil qty_realita_buku dari semua work orders yang terkait
+    #     #             work_orders = move.production_id.workorder_ids.filtered(
+    #     #                 lambda w: w.work_center_step == 'packing_buku'
+    #     #             )
+    #     #             real_qty = sum(work_orders.mapped('qty_realita_buku'))
+    #     #             move.qty_plus_surplus_instok = real_qty if real_qty > 0 else move.product_qty
+    #     #         else:
+    #     #             move.qty_plus_surplus_instok = move.production_id.qty_plus_surplus
 
-    # def write(self, vals):
-    #     res = super(StockMove, self).write(vals)
-    #     if 'qty_plus_surplus_instok' in vals:
-    #         for move in self:
-    #             new_qty = vals['qty_plus_surplus_instok']
-    #             # Update product_uom_qty (planned quantity)
-    #             move.product_uom_qty = new_qty
-                
-    #             # Update quantity_done (actual processed quantity)
-    #             for line in move.move_line_ids:
-    #                 line.qty_done = new_qty
-                
-    #             # Update stock levels in the inventory
-    #             quants = self.env['stock.quant'].search([
-    #                 ('product_id', '=', move.product_id.id),
-    #                 ('location_id', '=', move.location_dest_id.id)
-    #             ])
-    #             for quant in quants:
-    #                 quant.quantity += new_qty - quant.quantity
-                
-    #             # Adjust inventory adjustments if necessary
-    #             move._action_assign()
-    #     return res
+    #     # @api.depends('production_id.workorder_ids.qty_realita_buku', 'production_id.qty_plus_surplus', 'product_uom_qty')
+    #     # def _compute_qty_plus_surplus_instok(self):
+    #     #     for move in self:
+    #     #         if move.production_id:
+    #     #             # Ambil qty_realita_buku dari Manufacturing Order
+    #     #             real_qty = sum(move.production_id.workorder_ids.mapped('qty_realita_buku'))
+    #     #             if real_qty > 0:
+    #     #                 move.qty_plus_surplus_instok = real_qty
+    #     #             else:
+    #     #                 move.qty_plus_surplus_instok = move.production_id.qty_plus_surplus
+    #     #         else:
+    #     #             move.qty_plus_surplus_instok = move.production_id.qty_plus_surplus
 
-    # @api.depends('production_id.workorder_ids.qty_realita_buku', 'production_id.surplus_qty')
-    # def _compute_qty_plus_surplus_instok(self):
+    #     # @api.depends('production_id', 'production_id.workorder_ids.qty_realita_buku', 'production_id.surplus_qty')
+    #     # def _compute_qty_plus_surplus_instok(self):
+    #     #     for move in self:
+    #     #         if move.production_id:
+    #     #             # Hitung qty_plus_surplus secara manual
+    #     #             real_qty = sum(move.production_id.workorder_ids.mapped('qty_realita_buku'))
+    #     #             if real_qty > 0:
+    #     #                 move.qty_plus_surplus_instok = real_qty
+    #     #             else:
+    #     #                 move.qty_plus_surplus_instok = 20.0
+    #     #         else:
+    #     #             move.qty_plus_surplus_instok = 22.0
+
+
+    # @api.depends('raw_material_production_id', 'production_id')
+    # def _compute_qty_plus_surplus(self):
+    #     """
+    #     Compute qty_plus_surplus for stock.move by searching for the related mrp.production.
+    #     """
     #     for move in self:
-    #         if move.production_id:
-    #             # Ambil qty_realita_buku dari semua work orders yang terkait
-    #             work_orders = move.production_id.workorder_ids.filtered(
-    #                 lambda w: w.work_center_step == 'packing_buku'
-    #             )
-    #             real_qty = sum(work_orders.mapped('qty_realita_buku'))
-    #             move.qty_plus_surplus_instok = real_qty if real_qty > 0 else move.product_qty
+    #         # Use raw_material_production_id or production_id to fetch the related production
+    #         production = self.env['mrp.production'].search([
+    #             '|',
+    #             ('id', '=', move.production_id.id),
+    #             ('id', '=', move.raw_material_production_id.id)
+    #         ], limit=1)
+
+    #         if production:
+    #             move.qty_plus_surplus = production.qty_plus_surplus
     #         else:
-    #             move.qty_plus_surplus_instok = move.production_id.qty_plus_surplus
-                
-    # @api.depends('production_id.workorder_ids.qty_realita_buku', 'production_id.qty_plus_surplus', 'product_uom_qty')
-    # def _compute_qty_plus_surplus_instok(self):
+    #             move.qty_plus_surplus = 19.0  # Fallback or default value
+
+    # Function buat ngitung qty_plus_surplus
+    # @api.depends('production_id.workorder_ids.qty_realita_buku')
+    # def _compute_qty_plus_surplus(self):
+    #     """
+    #     Ngitung total qty termasuk surplus dari hasil produksi.
+    #     Diambil dari qty_realita_buku di work order packing terakhir.
+    #     """
     #     for move in self:
-    #         if move.production_id:
-    #             # Ambil qty_realita_buku dari Manufacturing Order
-    #             real_qty = sum(move.production_id.workorder_ids.mapped('qty_realita_buku'))
-    #             if real_qty > 0:
-    #                 move.qty_plus_surplus_instok = real_qty
-    #             else:
-    #                 move.qty_plus_surplus_instok = move.production_id.qty_plus_surplus
+    #         # Cari work order yang tipe nya 'packing_buku'
+    #         packing_workorder = move.production_id.workorder_ids.filtered(
+    #             lambda w: w.work_center_step == 'packing_buku'
+    #         )
+    #         if packing_workorder != 0:
+    #             # Ambil qty_realita_buku dari packing terakhir
+    #             move.qty_plus_surplus = packing_workorder[-1].qty_realita_buku
     #         else:
-    #             move.qty_plus_surplus_instok = move.production_id.qty_plus_surplus
-
-    # @api.depends('production_id', 'production_id.workorder_ids.qty_realita_buku', 'production_id.surplus_qty')
-    # def _compute_qty_plus_surplus_instok(self):
-    #     for move in self:
-    #         if move.production_id:
-    #             # Hitung qty_plus_surplus secara manual
-    #             real_qty = sum(move.production_id.workorder_ids.mapped('qty_realita_buku'))
-    #             if real_qty > 0:
-    #                 move.qty_plus_surplus_instok = real_qty
-    #             else:
-    #                 move.qty_plus_surplus_instok = 20.0
-    #         else:
-    #             move.qty_plus_surplus_instok = 22.0
+    #             move.qty_plus_surplus = 111.0
 
 
-# Class buat handle pengiriman barang
+
+
 class StockPicking(models.Model):
     _inherit = 'stock.picking'
 
-    # Field buat total qty termasuk surplus
-    total_qty_plus_surplus = fields.Float(
-        string="Total Quantity Plus Surplus",
-        compute="_compute_total_qty_plus_surplus",
+    # Aggregate qty_plus_surplus from all stock.moves in this picking
+    qty_plus_surplus = fields.Float(
+        string="Total Hasil Produksi",
+        compute="_compute_qty_plus_surplus",
+        store=True,
+        readonly=True,
+        help="Sum of surplus quantities from all moves related to this picking."
+    )
+
+    @api.depends('move_ids_without_package.qty_plus_surplus')
+    def _compute_qty_plus_surplus(self):
+        """
+        Compute the total qty_plus_surplus for stock.picking by summing up related stock.moves.
+        """
+        for picking in self:
+            picking.qty_plus_surplus = sum(
+                picking.move_ids_without_package.mapped('qty_plus_surplus')
+            )
+            
+            
+    # Field buat total qty yang ada di stok
+    qty_di_stok = fields.Float(
+        string="Total Qty Di Stok",
+        compute="_compute_qty_di_stok",
         store=True,
         help="Total quantity termasuk surplus untuk semua stock moves dalam picking."
     )
 
-    @api.depends('move_ids_without_package.qty_plus_surplus_instok')
-    def _compute_total_qty_plus_surplus(self):
+    @api.depends('move_ids_without_package.qty_di_stok')
+    def _compute_qty_di_stok(self):
         """
         Ngitung total qty plus surplus dari semua stock moves
         """
         for picking in self:
-            picking.total_qty_plus_surplus = sum(
-                picking.move_ids_without_package.mapped('qty_plus_surplus_instok')
+            picking.qty_di_stok = sum(
+                picking.move_ids_without_package.mapped('qty_di_stok')
             )
             
-    # total_qty_plus_surplus2 = fields.Float(
-    #     string="Total Quantity Plus Surplus 2",
-    #     compute="_compute_total_qty_plus_surplus2",
-    #     store=True,
-    #     help="Total quantity termasuk surplus untuk semua stock moves dalam picking."
-    # )
-
-    # @api.depends('move_ids_without_package.qty_plus_surplus_instok2')
-    # def _compute_total_qty_plus_surplus2(self):
-    #     for picking in self:
-    #         picking.total_qty_plus_surplus2 = sum(
-    #             picking.move_ids_without_package.mapped('qty_plus_surplus_instok2')
-    #         )
-
-    def action_done(self):
-        """
-        Override action_done buat update qty sesuai surplus
-        """
-        # Panggil action_done bawaan Odoo dulu
-        res = super(StockPicking, self).action_done()
+    # def action_done(self):
+    #     """
+    #     Override action_done buat update qty sesuai surplus
+    #     """
+    #     # Panggil action_done bawaan Odoo dulu
+    #     res = super(StockPicking, self).action_done()
         
-        for picking in self:
-            for move in picking.move_ids_without_package:
-                if move.qty_plus_surplus_instok:
-                    # Sinkronisasi product_uom_qty dan move_line_ids.qty_done
-                    move.product_uom_qty = move.qty_plus_surplus_instok
-                    for line in move.move_line_ids:
-                        line.qty_done = move.qty_plus_surplus_instok
-        return res
+    #     for picking in self:
+    #         for move in picking.move_ids_without_package:
+    #             if move.qty_di_stok:
+    #                 # Sinkronisasi product_uom_qty dan move_line_ids.qty_done
+    #                 move.product_uom_qty = move.qty_di_stok
+    #                 move.quantity = move.qty_di_stok
+    #                 for line in move.move_line_ids:
+    #                     line.product_qty = move.qty_di_stok
+    #     return res

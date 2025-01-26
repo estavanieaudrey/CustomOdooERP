@@ -26,6 +26,8 @@
                         <field name="tanggal_spk"/>
                         <field name="nama_customer" readonly="1"/>
                         <field name="nomor_pesanan" readonly="1"/>
+                        <field name="surplus_qty" readonly="1"/>
+                        <field name="qty_plus_surplus" string="Total Quantity (Including Surplus)" readonly="1"/>
                     </group>
                 </xpath>
                 <!-- Tambahkan notebook baru -->
@@ -104,9 +106,11 @@
                         <group string="PILIH WORK ORDER">
                             <field name="work_center_step"/>
                         </group>
-                        <group string="INPUT BAHAN BAKU" invisible="not work_center_step in ('produksi_cetak_cover', 'produksi_cetak_isi', 'packing_buku')">
+                        <group string="INPUT BAHAN BAKU"
+                               invisible="not work_center_step in ('produksi_cetak_cover', 'produksi_cetak_isi', 'packing_buku')">
                             <group>
-                                <field name="custom_qty_to_produce" string="Maksimal Bahan Baku" readonly="1" invisible="not work_center_step in ('produksi_cetak_cover', 'produksi_cetak_isi', 'packing_buku')"/>
+                                <field name="custom_qty_to_produce" string="Maksimal Bahan Baku" readonly="1"
+                                       invisible="not work_center_step in ('produksi_cetak_cover', 'produksi_cetak_isi', 'packing_buku')"/>
                                 <field name="jumlah_bahan_baku"
                                        invisible="not work_center_step in ('produksi_cetak_cover', 'produksi_cetak_isi', 'packing_buku')"/>
                             </group>
@@ -149,7 +153,7 @@
                             <!-- Packing Process -->
                             <group invisible="work_center_step != 'packing_buku'">
                                 <field name="qty_realita_buku"/>
-                                <field name="qty_realita_box"/>
+                                <!-- <field name="qty_realita_box"/> -->
                                 <field name="qty_buku_dalam_box"/>
                             </group>
                         </group>
@@ -182,6 +186,25 @@
             </field>
         </record>
 
-
+        <!-- Inherit Stock Picking Form View -->
+        <record id="view_picking_form_inherit_custom" model="ir.ui.view">
+            <field name="name">stock.picking.form.inherit.custom</field>
+            <field name="model">stock.picking</field>
+            <field name="inherit_id" ref="stock.view_picking_form"/>
+            <field name="arch" type="xml">
+                <xpath expr="//group" position="inside">
+                    <group>
+                        <!-- <field name="surplus_qty2"/> -->
+                        <field name="qty_plus_surplus"/>
+                        <!-- <field name="total_qty_plus_surplus"/> -->
+                    </group>
+                </xpath>
+                <xpath expr="//notebook/page[@name='operations']/field[@name='move_ids_without_package']/list"
+                       position="inside">
+                    <field name="qty_di_stok" string="Qty akan dikirim" optional="show"/>
+                
+                </xpath>
+            </field>
+        </record>
     </data>
 </odoo>
