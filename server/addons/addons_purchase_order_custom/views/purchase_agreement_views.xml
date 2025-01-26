@@ -5,6 +5,11 @@
             <field name="model">purchase.requisition</field>
             <field name="inherit_id" ref="purchase_requisition.view_purchase_requisition_form"/>
             <field name="arch" type="xml">
+                <xpath expr="//group" position="inside">
+                    <group>
+                        <field name="bom_id" string="Bill Of Material"/>
+                    </group>
+                </xpath>
                 <!-- Menambahkan field ke dalam list view -->
                 <xpath expr="//notebook/page[@name='products']/field[@name='line_ids']/list" position="inside">
                     <field name="price_satuan" string="Price Satuan" optional="show"/>
