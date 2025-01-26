@@ -9,6 +9,7 @@
                     <field name="resi_number"/>
                     <field name="container_number"/>
                     <field name="container_arrival_date"/>
+                    <field name="manufacturing_order_id" />
                 </group>
             </xpath>
 
