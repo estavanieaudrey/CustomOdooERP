@@ -86,7 +86,7 @@ class SaleOrderCustom(models.Model):
     jenis_cetakan_isi = fields.Selection(related="bom_id.jenis_cetakan_isi", string="Jenis Cetakan Isi", readonly=True)
     jenis_cetakan_cover = fields.Selection(related="bom_id.jenis_cetakan_cover", string="Jenis Cetakan Cover", readonly=True)
     jmlh_halaman_buku = fields.Integer(related="bom_id.jmlh_halaman_buku", string="Jumlah Halaman Buku", readonly=True)
-    jasa_jilid = fields.Integer(related="bom_id.jasa_jilid", string="Biaya Jilid", readonly=True)
+    jasa_jilid = fields.Float(related="bom_id.jasa_jilid", string="Biaya Jilid", readonly=True)
     isi_box = fields.Integer(related="bom_id.isi_box", string="Isi Box", readonly=True)
     qty_buku = fields.Integer(related="bom_id.qty_buku", readonly=True)
     hpp_per_unit = fields.Float(related="bom_id.hpp_per_unit", string="Harga Satuan", readonly=True)
@@ -323,7 +323,7 @@ class SaleOrderCustom(models.Model):
         else:
             # Reset tanggal kalo status signed dimatiin
             self.signature_date = False
-
+            
 # Class khusus buat handle Down Payment
 class SaleAdvancePaymentInv(models.TransientModel):
     _inherit = 'sale.advance.payment.inv'

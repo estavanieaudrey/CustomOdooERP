@@ -93,13 +93,24 @@
         <field name="model">sale.advance.payment.inv</field>
         <field name="inherit_id" ref="sale.view_sale_advance_payment_inv"/>
         <field name="arch" type="xml">
-            <!-- Make Down Payment (amount) read-only -->
+            <!-- Hide amount field except for percentage method -->
             <xpath expr="//field[@name='amount']" position="attributes">
+                <attribute name="invisible">advance_payment_method != 'percentage'</attribute>
                 <attribute name="readonly">0</attribute>
             </xpath>
-            <!-- Memasukkan nominal ke dalam field nya selection create invoice-->
+
+            <!-- Add fixed amount input field -->
+            <!-- <xpath expr="//field[@name='amount']" position="after">
+                <field name="input_fixed_nominal" 
+                       invisible="advance_payment_method != 'fixed'"
+                       required="advance_payment_method == 'fixed'"/>
+                <field name="max_nominal" 
+                       invisible="advance_payment_method != 'fixed'"
+                       readonly="1"/>
+            </xpath> -->
+
+            <!-- Add nominal field -->
             <xpath expr="//field[@name='advance_payment_method']" position="after">
-                <!-- Nominal Field -->
                 <div class="o_row" style="margin-top: 10px;">
                     <span style="font-weight: bold;">Nominal:</span>
                     <field name="nominal" readonly="1" options="{'widget': 'float'}"/>

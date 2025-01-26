@@ -99,7 +99,7 @@ class MrpBomCustom(models.Model):
     hrg_plate_isi = fields.Integer(string="Harga Plate Isi (Rp)")
     hrg_plate_cover = fields.Integer(string="Harga Plate Cover (Rp)")
     hrg_box = fields.Integer(string="Harga Box (Rp)")
-    hrg_uv = fields.Integer(string="Harga UV (Rp)")
+    hrg_uv = fields.Float(string="Harga UV (Rp)")
 
     # Material price fields --> ini compute nya belum jalan hiks
     # hrg_kertas_isi = fields.Float(string="Harga Kertas Isi (Rp)", compute="_compute_material_prices", store=True)
@@ -112,7 +112,7 @@ class MrpBomCustom(models.Model):
     # === SECTION: Fields untuk biaya jasa ===
     jasa_cetak_isi = fields.Integer(string="Biaya Cetak Isi (Rp)")
     jasa_cetak_cover = fields.Integer(string="Biaya Cetak Cover (Rp)")
-    jasa_jilid = fields.Integer(string="Biaya Jilid (Rp)")
+    jasa_jilid = fields.Float(string="Biaya Jilid (Rp)")
 
     # === SECTION: Fields hasil perhitungan biaya bahan ===
     # Semua field ini dihitung otomatis (compute)
