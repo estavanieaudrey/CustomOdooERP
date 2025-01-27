@@ -332,8 +332,6 @@ class SaleOrderCustom(models.Model):
         else:
             # Reset tanggal kalo status signed dimatiin
             self.signature_date = False
-            
-        
 
 # Class khusus buat handle Down Payment
 class SaleAdvancePaymentInv(models.TransientModel):
