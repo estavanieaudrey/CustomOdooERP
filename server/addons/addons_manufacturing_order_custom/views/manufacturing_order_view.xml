@@ -104,6 +104,7 @@
                     <page string="Detail Produksi" name="production_details">
                         <!-- Raw Material Input Section -->
                         <group string="PILIH WORK ORDER">
+                            <!-- Field untuk memilih Work Center Step -->
                             <field name="work_center_step"/>
                         </group>
                         <group string="INPUT BAHAN BAKU"

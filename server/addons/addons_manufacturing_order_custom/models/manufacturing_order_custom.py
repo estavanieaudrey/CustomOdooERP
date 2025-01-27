@@ -488,6 +488,62 @@ class MrpWorkorderCustom(models.Model):
             record.qty_kirim_ke_uv_visible = step == 'mengirimkan_ke_uv_varnish'
             record.qty_terima_dari_uv_visible = step == 'menerima_dari_uv_varnish'
             record.qty_realita_buku_visible = step == 'packing_buku'
+    
+    @api.onchange('production_id')
+    def _onchange_production_id(self):
+        """
+        Filter opsi work_center_step berdasarkan langkah yang sudah dipilih di MO yang sama.
+        """
+        if self.production_id:
+            # Dapatkan langkah-langkah yang sudah dipilih dalam MO ini
+            used_steps = self.env['mrp.workorder'].search([
+                ('production_id', '=', self.production_id.id),
+                ('id', '!=', self.id)  # Kecualikan Work Order saat ini
+            ]).mapped('work_center_step')
+
+            # Jika ada langkah yang sudah dipakai, filter domain
+            return {
+                'domain': {
+                    'work_center_step': [('id', 'not in', used_steps)]
+                }
+            }
+            
+            
+    #custom biar work center tidak bisa disimpan > 1
+    @api.model
+    def create(self, vals):
+        """
+        Validasi pada saat membuat work order untuk memastikan hanya satu step yang aktif
+        dalam Manufacturing Order (MO) yang sama.
+        """
+        if 'work_center_step' in vals and 'production_id' in vals:
+            step = vals['work_center_step']
+            production_id = vals['production_id']
+            existing = self.search([
+                ('work_center_step', '=', step),
+                ('production_id', '=', production_id)
+            ])
+            if existing:
+                raise ValidationError(f"Work Center Step '{step}' sudah dipilih dalam Manufacturing Order ini.")
+        return super(MrpWorkorderCustom, self).create(vals)
+
+    # ini juga biar work center tidak bisa disimpan > 1
+    def write(self, vals):
+        """
+        Validasi agar step lain disembunyikan setelah disimpan, hanya dalam lingkup MO yang sama.
+        """
+        if 'work_center_step' in vals:
+            step = vals['work_center_step']
+            for record in self:
+                production_id = record.production_id.id
+                existing = self.search([
+                    ('work_center_step', '=', step),
+                    ('production_id', '=', production_id),
+                    ('id', '!=', record.id)
+                ])
+                if existing:
+                    raise ValidationError(f"Work Center Step '{step}' sudah digunakan dalam Manufacturing Order ini.")
+        return super(MrpWorkorderCustom, self).write(vals)
 
     @api.depends('qty_realita_buku', 'production_id.bom_id.qty_buku')
     def _compute_waste_difference(self):
