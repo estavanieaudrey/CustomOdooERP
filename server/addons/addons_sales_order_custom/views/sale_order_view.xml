@@ -5,7 +5,6 @@
         <field name="model">sale.order</field>
         <field name="inherit_id" ref="sale.view_order_form"/>
         <field name="arch" type="xml">
-
             <xpath expr="//header" position="inside">
 <!--                <button name="action_generate_pdf" string="Generate Draft PDF" type="object" class="oe_highlight"/>-->
                 <button name="action_generate_pdf"
@@ -63,15 +62,17 @@
                             <field name="price_unit"/>
                             <field name="total_amount"/>
                             <field name="down_payment_yes_no"/>
-                            <field name="down_payment_percentage"/>
-                            <field name="down_payment_nominal"/>
+                            <!-- Group conditional untuk persentase dan nominal -->
+                            <field name="down_payment_percentage"
+                                    modifiers="{'invisible': [('down_payment_yes_no', '=', False)]}"/>
+                                <field name="down_payment_nominal"
+                                    modifiers="{'invisible': [('down_payment_yes_no', '=', False)], 'readonly': [('down_payment_yes_no', '=', False)]}"/>
                         </group>
                         <group string="Transfer Rekening">
                             <field name="transfer_rekening_name" options="{'no_create': False}"/>
                             <field name="transfer_rekening_bank" options="{'no_create': False}"/>
                             <field name="transfer_rekening_number" options="{'no_create': False}"/>
                             <field name="transfer_rekening_branch" options="{'no_create': False}"/>
-
                         </group>
                     </page>
 

@@ -55,11 +55,20 @@ class SaleOrderCustom(models.Model):
     total_amount = fields.Monetary(related="amount_total", string="Total Harga", readonly=True)
     
     # Field2 untuk down payment
-    down_payment_yes_no = fields.Boolean(string="Down Payment (Yes/No)")  # Toggle DP aktif/tidak
-    down_payment_percentage = fields.Float(string="Down Payment (%)")      # Persentase DP
-    down_payment_nominal = fields.Float(                                   # Nominal DP (dihitung otomatis)
+    down_payment_yes_no = fields.Boolean( # Toggle DP aktif/tidak
+        string="Enable Down Payment",
+        default=True,  # Default aktif
+        help="Aktifkan atau nonaktifkan DP untuk pesanan ini."
+    ) 
+    # Default persentase DP 10% dan aktif
+    down_payment_percentage = fields.Float(
+        string="Down Payment Percentage", # Persentase DP
+        default=10.0,  # Default 10%
+        help="Persentase DP untuk pesanan ini."
+    ) 
+    down_payment_nominal = fields.Float(                                   
         string="Down Payment (Nominal)", 
-        compute="_compute_down_payment_nominal",
+        compute="_compute_down_payment_nominal", # Nominal DP (dihitung otomatis)
         store=True
     )
     
@@ -212,6 +221,19 @@ class SaleOrderCustom(models.Model):
                 record.down_payment_nominal = (record.hpp_total * record.down_payment_percentage) / 100
             else:
                 record.down_payment_nominal = 0.0
+                
+    @api.onchange('down_payment_yes_no')
+    def _onchange_down_payment_yes_no(self):
+        """Handle visibility and calculation when toggling the down payment checkbox."""
+        for record in self:
+            if record.down_payment_yes_no:
+                # If percentage is already filled, calculate the nominal
+                if record.down_payment_percentage:
+                    record.down_payment_nominal = (record.hpp_total * record.down_payment_percentage) / 100
+            else:
+                # Reset values when down payment is disabled
+                record.down_payment_percentage = 0.0
+                record.down_payment_nominal = 0.0
 
     # Update data ke order lines waktu BoM dipilih
     @api.onchange('bom_id')
@@ -256,19 +278,6 @@ class SaleOrderCustom(models.Model):
         """
         # Manggil template report yang udah didaftarin di XML, terus langsung dirender
         return self.env.ref('addons_sales_order_custom.action_report_draft_perjanjian').report_action(self)
-
-    # Default persentase DP 10% dan aktif
-    down_payment_percentage = fields.Float(
-        string="Down Payment Percentage",
-        default=10.0,  # Default 10%
-        help="Persentase DP untuk pesanan ini."
-    )
-
-    down_payment_yes_no = fields.Boolean(
-        string="Enable Down Payment",
-        default=True,  # Default aktif
-        help="Aktifkan atau nonaktifkan DP untuk pesanan ini."
-    )
 
     # Override Method action_confirm di sale.order
     # Nambahin logika untuk hubungin SO dengan MO lewat field sale_id
@@ -324,6 +333,8 @@ class SaleOrderCustom(models.Model):
             # Reset tanggal kalo status signed dimatiin
             self.signature_date = False
             
+        
+
 # Class khusus buat handle Down Payment
 class SaleAdvancePaymentInv(models.TransientModel):
     _inherit = 'sale.advance.payment.inv'
@@ -369,13 +380,13 @@ class SaleAdvancePaymentInv(models.TransientModel):
             # Update down_payment_percentage di sale order
             sale_order.write({'down_payment_percentage': self.amount})
             
-            # # Hitung ulang nominal
-            # amount_invoiced = sum(sale_order.invoice_ids.mapped('amount_total'))
-            # if sale_order.invoice_ids:
-            #     total_max_pay = sale_order.hpp_total - amount_invoiced
-            #     self.nominal = (total_max_pay * self.amount) / 100
-            # else:
-            #     self.nominal = (sale_order.hpp_total * self.amount) / 100
+            # Hitung ulang nominal
+            amount_invoiced = sum(sale_order.invoice_ids.mapped('amount_total'))
+            if sale_order.invoice_ids:
+                total_max_pay = sale_order.hpp_total - amount_invoiced
+                self.nominal = (total_max_pay * self.amount) / 100
+            else:
+                self.nominal = (sale_order.hpp_total * self.amount) / 100
 
 
     # Function yang dipanggil waktu metode pembayaran berubah
