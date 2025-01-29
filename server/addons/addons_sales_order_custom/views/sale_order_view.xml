@@ -96,7 +96,7 @@
         <field name="arch" type="xml">
             <!-- Hide amount field except for percentage method -->
             <xpath expr="//field[@name='amount']" position="attributes">
-                <attribute name="invisible">advance_payment_method != 'percentage'</attribute>
+                <!-- <attribute name="invisible">advance_payment_method != 'percentage'</attribute> -->
                 <attribute name="readonly">0</attribute>
             </xpath>
 

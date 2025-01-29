@@ -379,51 +379,40 @@ class SaleAdvancePaymentInv(models.TransientModel):
             sale_order.write({'down_payment_percentage': self.amount})
             
             # Hitung ulang nominal
-            amount_invoiced = sum(sale_order.invoice_ids.mapped('amount_total'))
-            if sale_order.invoice_ids:
-                total_max_pay = sale_order.hpp_total - amount_invoiced
-                self.nominal = (total_max_pay * self.amount) / 100
-            else:
-                self.nominal = (sale_order.hpp_total * self.amount) / 100
-
+            self.nominal = sale_order.amount_to_invoice - sale_order.amount_invoiced
 
     # Function yang dipanggil waktu metode pembayaran berubah
     @api.onchange('advance_payment_method') 
     def _onchange_advance_payment_method(self):
         """
         Function untuk menghitung nominal berdasarkan metode pembayaran:
-        - all: hpp_total - amount_invoiced (bayar full sisa)
-        - percentage: (hpp_total * down_payment_percentage / 100) - amount_invoiced
+        - all: amount_to_invoice - amount_invoiced (bayar full sisa)
+        - percentage: (amount_to_invoice * down_payment_percentage / 100) - amount_invoiced
         - fixed: menggunakan fixed_amount yang diinput user
         """
         sale_order_id = self.env.context.get('active_id')
         if sale_order_id:
             sale_order = self.env['sale.order'].browse(sale_order_id)
+            
             # Hitung total yang udah dibayar
-            amount_invoiced = sum(sale_order.invoice_ids.mapped('amount_total'))
-
+            amount_invoiced = sale_order.amount_invoiced
+            amount_to_invoice = sale_order.amount_to_invoice
+            
             if self.advance_payment_method == 'all':
                 # Regular invoice: bayar sisa yang belum dibayar
-                self.nominal = sale_order.hpp_total - amount_invoiced
-                self.amount = 0.0
-            
+                self.nominal = amount_to_invoice - amount_invoiced
+                self.amount = amount_to_invoice - amount_invoiced
+                
+            # saat ini hitung %nya dari total amount_to_invoice (total harga deal awal)
             elif self.advance_payment_method == 'percentage':
                 # Down payment dengan persentase
                 self.amount = sale_order.down_payment_percentage
-
-                # Hitung nominal DP berdasarkan persentase dari hpp_total
-                if sale_order.down_payment_yes_no and sale_order.down_payment_percentage:
-                    # Total yang seharusnya dibayar berdasarkan persentase
-                    total_max_pay = (sale_order.hpp_total - amount_invoiced)
-                    # Kurangi dengan yang sudah dibayar
-                    self.nominal = (total_max_pay * self.amount) / 100
-                else:
-                    self.nominal = 0.0
+                self.nominal = (amount_to_invoice * self.amount) / 100 - amount_invoiced
             
             elif self.advance_payment_method == 'fixed':
                 # Fixed amount: pake nominal yang diinput user
                 self.amount = 0.0  # Reset percentage amount
-                self.max_nominal = amount_invoiced
+                self.max_nominal = amount_to_invoice - amount_invoiced
                 self.fixed_amount = self.nominal
                 
                 # Validasi nominal yang diinput gak boleh lebih dari max
@@ -439,6 +428,17 @@ class SaleAdvancePaymentInv(models.TransientModel):
             
             # Pastikan nominal gak minus
             self.nominal = max(0.0, self.nominal)
+            
+            # Update nilai nominal ke draft invoice (account.move.line)
+            draft_invoice = self.env['account.move'].search([
+                ('invoice_origin', '=', sale_order.name),
+                ('state', '=', 'draft')
+            ], limit=1)
+            
+            if draft_invoice:
+                for line in draft_invoice.invoice_line_ids:
+                    line.price_subtotal = self.nominal  # Update price_subtotal di invoice line
+
             
     # Function buat generate PDF dari template
     def action_generate_pdf(self):
