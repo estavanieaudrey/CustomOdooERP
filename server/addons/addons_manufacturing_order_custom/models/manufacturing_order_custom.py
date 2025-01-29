@@ -729,6 +729,15 @@ class MrpWorkorderCustom(models.Model):
         # Pastikan state MO sesuai sebelum memulai work order
         if self.production_id.state not in ['confirmed', 'progress']:
             self.production_id.write({'state': 'confirmed'})
+            
+        # Set date_start secara otomatis jika belum terisi
+        if not self.date_start:
+            self.date_start = fields.Datetime.now()
+
+        # Pastikan Odoo tidak memeriksa date_finished (bukan date_end)
+        if hasattr(self, 'date_finished') and not self.date_finished:
+            self.date_finished = False  # Biarkan kosong tanpa validasi
+        
 
         # Panggil method asli
         res = super().button_start()
