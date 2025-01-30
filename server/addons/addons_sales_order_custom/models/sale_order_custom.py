@@ -7,6 +7,13 @@ import base64
 # Class utama buat custom Sales Order - nambahin fitur2 untuk perjanjian jual beli
 class SaleOrderCustom(models.Model):
     _inherit = 'sale.order'
+    
+    # Link ke Manufacturing Order - biar tau ini MO untuk SO yang mana
+    mo_id = fields.Many2one(
+        'mrp.production',
+        string="Manufacturing Order",
+        help="Link to the related Manufacturing Order"
+    )
 
     # === PASAL 2: Detail Produk ===
     # Field2 untuk nyimpen detail produk, kebanyakan diambil otomatis dari BoM

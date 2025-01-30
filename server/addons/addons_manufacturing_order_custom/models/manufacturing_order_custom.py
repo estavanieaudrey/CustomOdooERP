@@ -19,6 +19,14 @@ class MrpProductionCustom(models.Model):
         string="Sale Order",
         help="Link to the related Sale Order"
     )
+    
+    # Link ke sale id dan mo id
+    @api.depends('sale_id')
+    def _compute_sale_order_fields(self):
+        for production in self:
+            production.sale_id.mo_id = production.id
+            
+    
     # Link ke Bill Of Material - buat ngambil data HPP
     bom_id = fields.Many2one(
         'mrp.bom',
@@ -132,10 +140,12 @@ class MrpProductionCustom(models.Model):
         compute="_compute_fields_from_sale_order",
         store=True
     )
-    jumlah_plat = fields.Integer(
+    jumlah_plat = fields.Float(  # Ubah dari Integer ke Float
         string="Jumlah Plat",
-        compute="_compute_jumlah_plat",  # Dihitung otomatis berdasarkan jenis cetakan
-        store=True
+        compute="_compute_jumlah_plat",
+        store=True,
+        digits=(16, 0),  # Menentukan presisi desimal
+        help="Jumlah plat yang dibutuhkan untuk mencetak cover"
     )
 
     # Field untuk finishing
@@ -265,17 +275,34 @@ class MrpProductionCustom(models.Model):
     @api.depends('jenis_cetakan_cover')
     def _compute_jumlah_plat(self):
         """
-        Ngitung jumlah plat yang dibutuhin berdasarkan jenis cetakan:
+        Menghitung jumlah plat yang dibutuhkan berdasarkan jenis cetakan:
         - 1 sisi: butuh 4 plat (CMYK)
         - 2 sisi: butuh 8 plat (CMYK x 2)
         """
         for record in self:
             if record.jenis_cetakan_cover == '1_sisi':
-                record.jumlah_plat = 4
+                record.jumlah_plat = 4.0  # Ubah ke float
             elif record.jenis_cetakan_cover == '2_sisi':
-                record.jumlah_plat = 8
+                record.jumlah_plat = 8.0  # Ubah ke float
             else:
-                record.jumlah_plat = 0
+                record.jumlah_plat = 0.0  # Ubah ke float
+
+    # @api.model
+    # def create(self, vals):
+    #     """Override create method untuk memastikan jumlah plat yang benar"""
+    #     res = super(MrpProductionCustom, self).create(vals)
+    #     if res.jenis_cetakan_cover:
+    #         # Recalculate jumlah_plat
+    #         res._compute_jumlah_plat()
+    #     return res
+
+    # def write(self, vals):
+    #     """Override write method untuk memastikan jumlah plat yang benar"""
+    #     res = super(MrpProductionCustom, self).write(vals)
+    #     if 'jenis_cetakan_cover' in vals:
+    #         # Recalculate jumlah_plat
+    #         self._compute_jumlah_plat()
+    #     return res
 
     # 4. Compute Ukuran Bahan Kertas Isi
     # @api.depends('sale_id.order_line.product_id')
@@ -370,6 +397,15 @@ class MrpProductionCustom(models.Model):
                 # Update qty_plus_surplus_instok di stock.move
                 move.qty_plus_surplus_instok = real_qty if real_qty > 0 else move.product_uom_qty
                 
+        return res
+
+    # Override button_mark_done buat update qty sesuai surplus
+    def button_mark_done(self):
+        res = super(MrpProductionCustom, self).button_mark_done()
+        unit_price = self.sale_id.order_line.price_unit # Simpen harga per unit
+        self.sale_id.order_line.product_uom_qty = self.qty_plus_surplus # Update qty
+        self.sale_id.order_line.price_unit = unit_price # Update harga per unit
+        self.sale_id.write({'state': 'sale'}) # Update state
         return res
 
     # Field to store the sum of qty_realita_buku
@@ -738,7 +774,6 @@ class MrpWorkorderCustom(models.Model):
         if hasattr(self, 'date_finished') and not self.date_finished:
             self.date_finished = False  # Biarkan kosong tanpa validasi
         
-
         # Panggil method asli
         res = super().button_start()
 
@@ -843,17 +878,17 @@ class StockMove(models.Model):
         help="Surplus quantity fetched from the related Manufacturing Order."
     )
     
-    @api.depends('production_id.qty_plus_surplus', 'manufacturing_order_id')
+    @api.depends('production_id.qty_plus_surplus')
     def _compute_qty_plus_surplus(self):
         """
         Compute qty_plus_surplus for stock.move based on the related mrp.production.
         """
         for move in self:
             if move.production_id:
-                move.qty_plus_surplus = move.manufacturing_order_id.qty_plus_surplus
+                move.qty_plus_surplus = move.production_id.qty_plus_surplus
             else:
-                move.qty_plus_surplus = 99.0
-                
+                move.qty_plus_surplus = 145.0
+
     # Field buat nyimpen qty yang ada di stok
     qty_di_stok = fields.Float(
         string="Quantity di Stok",
@@ -960,6 +995,8 @@ class StockMove(models.Model):
 
 class StockPicking(models.Model):
     _inherit = 'stock.picking'
+    
+
 
     # Aggregate qty_plus_surplus from all stock.moves in this picking
     qty_plus_surplus = fields.Float(
@@ -970,15 +1007,13 @@ class StockPicking(models.Model):
         help="Sum of surplus quantities from all moves related to this picking."
     )
 
-    @api.depends('move_ids_without_package.qty_plus_surplus')
+    @api.depends('manufacturing_order_id.qty_plus_surplus', 'manufacturing_order_id')
     def _compute_qty_plus_surplus(self):
         """
         Compute the total qty_plus_surplus for stock.picking by summing up related stock.moves.
         """
         for picking in self:
-            picking.qty_plus_surplus = sum(
-                picking.move_ids_without_package.mapped('qty_plus_surplus')
-            )
+            picking.qty_plus_surplus = picking.manufacturing_order_id.qty_plus_surplus
             
             
     # Field buat total qty yang ada di stok
