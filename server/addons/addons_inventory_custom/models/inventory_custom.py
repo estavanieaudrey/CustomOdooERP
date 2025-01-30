@@ -31,52 +31,89 @@ class StockPickingCustom(models.Model):
         help="Pilih MO buat auto-isi Serial Numbers"
     )
 
-    @api.onchange('manufacturing_order_id')
-    def _onchange_manufacturing_order_id(self):
-        """
-        Fungsi ini jalan pas MO dipilih/diganti.
-        Tugasnya: Auto-isi Serial Numbers (lot_ids) di stock move lines
-        berdasarkan data dari MO yang dipilih.
-        """
-        if self.manufacturing_order_id:
-            mo = self.manufacturing_order_id
-            _logger.info(f"Selected Manufacturing Order: {mo.name}")
+class StockMoveCustom(models.Model):
+    _inherit = 'stock.move'
 
-            # Loop setiap produk di picking
-            for move in self.move_ids_without_package:
-                # Cari lot/serial numbers dari MO yang cocok sama produknya
-                matching_lots = mo.finished_move_line_ids.filtered(
-                    lambda l: l.product_id == move.product_id
-                )
-                if matching_lots:
-                    try:
-                        # Ambil lot_producing_id dari MO
-                        lot_ids = matching_lots.mapped('lot_producing_id')
-                        if lot_ids:
-                            # Update lot_id di move lines
-                            move.move_line_ids.write({'lot_id': lot_ids[0].id})
-                    except KeyError:
-                        _logger.error(
-                            f"'lot_producing_id' gak ada di finished_move_line_ids untuk produk {move.product_id.name}."
-                        )
-                else:
-                    _logger.warning(f"Gak ketemu lot yang cocok untuk produk {move.product_id.name} di MO {mo.name}.")
+    lot_id = fields.Many2one('stock.production.lot', string="Lot/Serial Number")
+    max_qty = fields.Float(string="Max Quantity", compute="_compute_max_qty", store=True)
+
+    @api.depends('lot_id')
+    def _compute_max_qty(self):
+        """Mengisi max_qty berdasarkan quantity dari lot yang dipilih."""
+        for record in self:
+            if record.lot_id:
+                quants = self.env['stock.quant'].search([
+                    ('lot_id', '=', record.lot_id.id),
+                    ('location_id', '=', record.location_id.id)
+                ])
+                record.max_qty = sum(quants.mapped('quantity'))
+            else:
+                record.max_qty = 0.0
+
+    @api.onchange('lot_id')
+    def _onchange_lot_id(self):
+        """Mengatur quantity berdasarkan lot yang dipilih."""
+        for record in self:
+            if record.lot_id:
+                quants = self.env['stock.quant'].search([
+                    ('lot_id', '=', record.lot_id.id),
+                    ('location_id', '=', record.location_id.id)
+                ])
+                available_qty = sum(quants.mapped('quantity'))
+                # Set product_uom_qty to available quantity
+                record.product_uom_qty = available_qty
+                # Also update quantity_done if it exists
+                if hasattr(record, 'quantity_done'):
+                    record.quantity_done = available_qty
+                
+                
+                
+    # @api.onchange('manufacturing_order_id')
+    # def _onchange_manufacturing_order_id(self):
+    #     """
+    #     Fungsi ini jalan pas MO dipilih/diganti.
+    #     Tugasnya: Auto-isi Serial Numbers (lot_ids) di stock move lines
+    #     berdasarkan data dari MO yang dipilih.
+    #     """
+    #     if self.manufacturing_order_id:
+    #         mo = self.manufacturing_order_id
+    #         _logger.info(f"Selected Manufacturing Order: {mo.name}")
+
+    #         # Loop setiap produk di picking
+    #         for move in self.move_ids_without_package:
+    #             # Cari lot/serial numbers dari MO yang cocok sama produknya
+    #             matching_lots = mo.finished_move_line_ids.filtered(
+    #                 lambda l: l.product_id == move.product_id
+    #             )
+    #             if matching_lots:
+    #                 try:
+    #                     # Ambil lot_producing_id dari MO
+    #                     lot_ids = matching_lots.mapped('lot_producing_id')
+    #                     if lot_ids:
+    #                         # Update lot_id di move lines
+    #                         move.move_line_ids.write({'lot_id': lot_ids[0].id})
+    #                 except KeyError:
+    #                     _logger.error(
+    #                         f"'lot_producing_id' gak ada di finished_move_line_ids untuk produk {move.product_id.name}."
+    #                     )
+    #             else:
+    #                 _logger.warning(f"Gak ketemu lot yang cocok untuk produk {move.product_id.name} di MO {mo.name}.")
 
 
-class StockMoveLineCustom(models.Model):
-    _inherit = 'stock.move.line'
+# class StockMoveLineCustom(models.Model):
+#     _inherit = 'stock.move.line'
 
-    @api.onchange('product_id', 'lot_id')
-    def _onchange_product_and_lot(self):
-        """
-        Ensure the lot_id matches the product and is pre-filled based on the linked MO.
-        """
-        if self.move_id.picking_id.manufacturing_order_id:
-            mo = self.move_id.picking_id.manufacturing_order_id
-            matching_lots = mo.finished_move_line_ids.filtered(
-                lambda l: l.product_id == self.product_id
-            ).mapped('lot_producing_id')
+#     @api.onchange('product_id', 'lot_id')
+#     def _onchange_product_and_lot(self):
+#         """
+#         Ensure the lot_id matches the product and is pre-filled based on the linked MO.
+#         """
+#         if self.move_id.picking_id.manufacturing_order_id:
+#             mo = self.move_id.picking_id.manufacturing_order_id
+#             matching_lots = mo.finished_move_line_ids.filtered(
+#                 lambda l: l.product_id == self.product_id
+#             ).mapped('lot_producing_id')
 
-            if matching_lots:
-                self.lot_id = matching_lots[0]  # Assign the first matching lot
-                _logger.info(f"Pre-filled lot {matching_lots[0].name} for product {self.product_id.name}")
+#             if matching_lots:
+#                 self.lot_id = matching_lots[0]  # Assign the first matching lot
+#                 _logger.info(f"Pre-filled lot {matching_lots[0].name} for product {self.product_id.name}")

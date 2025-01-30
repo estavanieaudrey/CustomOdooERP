@@ -7,7 +7,7 @@
         SPK details, and integration with Sales Orders and Bill of Materials (BoM).
     """,
     'author': 'Your Name',
-    'depends': ['mrp', 'sale', 'product', 'base'],
+    'depends': ['mrp', 'sale', 'product', 'base', 'sale_stock', 'addons_inventory_custom'],
     'data': [
         'views/manufacturing_order_view.xml',
         'views/nota_permintaan_barang_view.xml',
