@@ -1,6 +1,6 @@
 # Import library yang dibutuhin
 from odoo import models, fields, api, _
-from odoo.exceptions import ValidationError
+from odoo.exceptions import ValidationError, UserError
 from odoo.tools import float_compare
 from datetime import timedelta
 import logging
@@ -9,6 +9,10 @@ _logger = logging.getLogger(__name__)
 
 # Class untuk nambahin fitur custom di manufacturing order
 class MrpProductionCustom(models.Model):
+    """
+    Class ini buat custom-in Manufacturing Order (MO).
+    Nambahin fitur khusus buat produksi percetakan.
+    """
     _inherit = 'mrp.production'  # Inherit dari mrp.production bawaan Odoo
     
     # === Fields untuk tracking hasil produksi per step ===
@@ -34,12 +38,16 @@ class MrpProductionCustom(models.Model):
         help="Pilih BoM untuk mengambil data HPP."
     )
 
-    # Fields dari Sale Order - data customer
+    # === SECTION: Fields untuk info dasar MO ===
+    
+    # Field buat nyimpen nama customer
     nama_customer = fields.Char(
         string="Nama Customer",
         compute="_compute_fields_from_sale_order",  # Dihitung otomatis dari SO
         store=True  # Disimpen di database biar gak perlu ngitung ulang
     )
+    
+    # Nomor pesanan dari SO
     nomor_pesanan = fields.Char(
         string="Nomor Pesanan",
         compute="_compute_fields_from_sale_order",
@@ -68,18 +76,20 @@ class MrpProductionCustom(models.Model):
     # Field dari BoM - spesifikasi produk
     jumlah_halaman = fields.Integer(
         string="Jumlah Halaman",
-        compute="_compute_fields_from_bom",
+        compute="_compute_fields_from_bom",  # Diambil dari BoM
         store=True
     )
     ukuran_produk_jadi = fields.Selection(
         [('a4', 'A4 (21 x 29.7 cm)'), ('b5', 'B5 (17.6 x 25 cm)')],
         string="Ukuran Produk Jadi",
-        compute="_compute_fields_from_bom",
+        compute="_compute_fields_from_bom",  # Diambil dari BoM
         store=True
     )
+    
+    # Total produk yang mau dibuat
     total_produk = fields.Float(
         string="Total Produk",
-        compute="_compute_fields_from_bom",
+        compute="_compute_fields_from_bom",  # Diambil dari BoM
         store=True
     )
     # === Spesifikasi Teknis - Bahan Cover ===
@@ -87,22 +97,30 @@ class MrpProductionCustom(models.Model):
         string="Ukuran Bahan Kertas",
         default="65 x 100"  # Default ukuran kertas cover
     )
+
+    # Ukuran hasil cetakan
     ukuran_cetak = fields.Char(
         string="Ukuran Cetak"  # Ukuran hasil cetakan
     )
+    
+    # Berapa banyak cover yang bisa dicetak per lembar
     jumlah_up_per_lembar = fields.Float(
-        string="Jumlah up/Lembar"  # Berapa banyak cover yang bisa dicetak per lembar
+        string="Jumlah up/Lembar"  # Misal: 1 lembar bisa 4 cover
     )
+    
+    # Berapa banyak kertas cover yang dibutuhin
     kebutuhan_kertas_cover = fields.Float(
         string="Kebutuhan Bahan Kertas Cetak",
         compute="_compute_fields_from_bom",  # Dihitung dari BoM
         store=True
     )
 
-    # Spesifikasi Teknis - Cetak Isi
+    # === SECTION: Fields untuk spesifikasi cetak isi ===
+    
+    # Pilihan mesin cetak buat isi buku
     mesin_cetak_isi = fields.Selection([
-        ('digital', 'Digital'),   # Pake mesin digital printing
-        ('offset', 'Offset')      # Pake mesin offset
+        ('digital', 'Digital'),   # Pake mesin digital printing (buat qty kecil)
+        ('offset', 'Offset')      # Pake mesin offset (buat qty besar)
     ], string="Mesin Cetak Isi")
     
     bahan_kertas_isi = fields.Char(
@@ -207,17 +225,25 @@ class MrpProductionCustom(models.Model):
         store=True
     )
 
+    # === SECTION: Fungsi-fungsi compute dan onchange ===
     # 1. Compute dari Sale Order
     @api.depends('sale_id')
     def _compute_fields_from_sale_order(self):
         """
-        Ngisi field yang diambil dari Sale Order.
-        Misal: nama customer, nomor pesanan, jenis kertas, dll.
+        Ngambil data dari Sale Order dan update field-field terkait.
+        
+        Yang diambil:
+        - Nama customer
+        - Nomor pesanan
+        - Jenis kertas cover & isi
+        - Jenis UV
+        - dll
         """
         for production in self:
+            # Ambil SO yang terkait
             sale_order = production.sale_id
             if sale_order:
-                # Isi data dari SO kalau ada
+                # Update field-field dari data SO
                 production.nama_customer = sale_order.partner_id.name or "Tidak Ada"
                 production.nomor_pesanan = sale_order.name or "Tidak Ada"
                 production.jenis_kertas_cover = sale_order.detail_cover or "Tidak Ada"
@@ -225,7 +251,7 @@ class MrpProductionCustom(models.Model):
                 production.bahan_kertas_isi = sale_order.detail_isi or "Tidak Ada"
                 production.jenis_cetakan_cover = sale_order.jenis_cetakan_cover or False
             else:
-                # Default values kalo gak ada SO
+                # Kalo gak ada SO, isi default values
                 production.nama_customer = "Tidak Ada"
                 production.nomor_pesanan = "Tidak Ada"
                 production.jenis_kertas_cover = "Tidak Ada"
@@ -251,20 +277,27 @@ class MrpProductionCustom(models.Model):
     @api.depends('bom_id')
     def _compute_fields_from_bom(self):
         """
-        Ngisi field yang diambil dari BoM.
-        Misal: jumlah halaman, ukuran produk, kebutuhan kertas, dll.
+        Ngambil data dari Bill of Materials dan update field-field terkait.
+        
+        Yang diambil:
+        - Jumlah halaman
+        - Ukuran produk
+        - Total produk
+        - Kebutuhan kertas
         """
         for production in self:
+            # Ambil BoM yang terkait
             bom = production.bom_id
             if bom:
-                # Hanya update kalo data kosong (biar gak overwrite data yang udah ada)
+                # Update field cuma kalo masih kosong
+                # Ini biar gak overwrite data yang udah diisi manual
                 production.jumlah_halaman = production.jumlah_halaman or bom.jmlh_halaman_buku or 0
                 production.ukuran_produk_jadi = production.ukuran_produk_jadi or bom.ukuran_buku or False
                 production.total_produk = production.total_produk or bom.qty_buku or 0.0
                 production.kebutuhan_kertas_cover = production.kebutuhan_kertas_cover or bom.kebutuhan_kertasCover or 0.0
                 production.kebutuhan_kertas_isi = production.kebutuhan_kertas_isi or bom.kebutuhan_kertasIsi or 0.0
             else:
-                # Default values kalo gak ada BoM
+                # Kalo gak ada BoM, tetep pake nilai yang udah ada atau 0
                 production.jumlah_halaman = production.jumlah_halaman or 0
                 production.ukuran_produk_jadi = production.ukuran_produk_jadi or False
                 production.total_produk = production.total_produk or 0.0
@@ -275,35 +308,20 @@ class MrpProductionCustom(models.Model):
     @api.depends('jenis_cetakan_cover')
     def _compute_jumlah_plat(self):
         """
-        Menghitung jumlah plat yang dibutuhkan berdasarkan jenis cetakan:
-        - 1 sisi: butuh 4 plat (CMYK)
-        - 2 sisi: butuh 8 plat (CMYK x 2)
+        Ngitung jumlah plat yang dibutuhin buat cetak cover.
+        
+        Rumusnya gampang:
+        - Cetak 1 sisi: butuh 4 plat (CMYK)
+        - Cetak 2 sisi: butuh 8 plat (CMYK x 2)
         """
         for record in self:
             if record.jenis_cetakan_cover == '1_sisi':
-                record.jumlah_plat = 4.0  # Ubah ke float
+                record.jumlah_plat = 4.0  # CMYK = 4 plat
             elif record.jenis_cetakan_cover == '2_sisi':
-                record.jumlah_plat = 8.0  # Ubah ke float
+                record.jumlah_plat = 8.0  # CMYK x 2 = 8 plat
             else:
-                record.jumlah_plat = 0.0  # Ubah ke float
-
-    # @api.model
-    # def create(self, vals):
-    #     """Override create method untuk memastikan jumlah plat yang benar"""
-    #     res = super(MrpProductionCustom, self).create(vals)
-    #     if res.jenis_cetakan_cover:
-    #         # Recalculate jumlah_plat
-    #         res._compute_jumlah_plat()
-    #     return res
-
-    # def write(self, vals):
-    #     """Override write method untuk memastikan jumlah plat yang benar"""
-    #     res = super(MrpProductionCustom, self).write(vals)
-    #     if 'jenis_cetakan_cover' in vals:
-    #         # Recalculate jumlah_plat
-    #         self._compute_jumlah_plat()
-    #     return res
-
+                record.jumlah_plat = 0.0
+                
     # 4. Compute Ukuran Bahan Kertas Isi
     # @api.depends('sale_id.order_line.product_id')
     # def _compute_ukuran_bahan_kertas_isi(self):
@@ -329,10 +347,13 @@ class MrpProductionCustom(models.Model):
 
     def action_generate_nota(self):
         """
-        Generate Nota Permintaan Barang dan tampilkan sebagai laporan PDF.
-        Nota ini isinya list barang yang dibutuhin buat produksi.
+        Generate Nota Permintaan Barang dalam bentuk PDF.
+        
+        Fungsinya:
+        1. Ngecek dulu ada komponen yang mau diminta apa nggak
+        2. Bikin data buat nota dari move_raw_ids (list barang yang dibutuhin)
+        3. Return action buat nampilin PDF nota
         """
-        # Gunakan move_raw_ids untuk mengambil data aktual dari MO, bukan langsung dari BoM
         # Cek dulu ada komponen yang mau diminta apa nggak
         if not self.move_raw_ids:
             raise UserError("Tidak ada komponen yang terkait dengan Manufacturing Order ini.")
@@ -352,25 +373,36 @@ class MrpProductionCustom(models.Model):
     def action_generate_spk(self): #manggil template report --> render PDF
         """
         Generate Surat Perintah Kerja (SPK) dalam bentuk PDF.
-        SPK ini isinya detail instruksi kerja buat tim produksi.
+        
+        SPK ini isinya:
+        - Detail instruksi kerja
+        - Spesifikasi produk
+        - Info customer
+        - dll
         """
-        # Manggil template report yang udah didaftarin di XML, langsung return action buat nampilin PDF SPK
-        return self.env.ref('addons_manufacturing_order_custom.action_report_surat_perjanjian_kerja').report_action(self)
+        # Langsung return action buat nampilin PDF SPK
+        return self.env.ref(
+            'addons_manufacturing_order_custom.action_report_surat_perjanjian_kerja'
+        ).report_action(self)
 
     # Function buat ngitung surplus produksi
     @api.depends('workorder_ids.qty_realita_buku', 'product_qty')
     def _compute_surplus_qty(self):
         """
-        Ngitung surplus dengan cara bandingin qty_realita_buku sama rencana produksi.
-        Surplus = qty aktual - qty rencana (kalo minus jadi 0)
+        Ngitung surplus produksi.
+        
+        Cara kerjanya:
+        1. Cari work order yang tipe nya 'packing_buku'
+        2. Ambil qty_realita_buku dari packing terakhir
+        3. Surplus = qty aktual - qty rencana (kalo minus jadi 0)
         """
         for production in self:
-            # Cari work order yang tipe nya 'packing_buku'
+            # Cari work order packing
             packing_workorder = production.workorder_ids.filtered(
                 lambda w: w.work_center_step == 'packing_buku'
             )
             if packing_workorder:
-                # Ambil jumlah aktual dari packing workorder terakhir
+                # Ambil qty aktual dari packing terakhir
                 actual_qty = packing_workorder[-1].qty_realita_buku
                 # Hitung surplus (aktual - rencana), kalo minus dijadiin 0
                 production.surplus_qty = actual_qty - production.product_qty if actual_qty > production.product_qty else 0.0
@@ -379,11 +411,18 @@ class MrpProductionCustom(models.Model):
                 
     # Function yang dipanggil waktu MO selesai        
     def action_done(self):
-        # Panggil dulu function bawaan Odoo
+        """
+        Function yang jalan pas MO selesai.
+        
+        Yang dikerjain:
+        1. Jalanin function bawaan Odoo dulu
+        2. Update qty di stock.move sesuai hasil produksi
+        """
+        # Panggil function bawaan Odoo
         res = super(MrpProductionCustom, self).action_done()
         
         for production in self:
-            # Cari semua stock.move yang terkait dengan production_id ini
+            # Cari semua stock.move yang terkait
             moves = self.env['stock.move'].search([('production_id', '=', production.id)])
             
             for move in moves:
@@ -394,18 +433,37 @@ class MrpProductionCustom(models.Model):
                 # Total qty_realita_buku dari semua work orders
                 real_qty = sum(work_orders.mapped('qty_realita_buku'))
 
-                # Update qty_plus_surplus_instok di stock.move
+                # Update qty di stock.move
                 move.qty_plus_surplus_instok = real_qty if real_qty > 0 else move.product_uom_qty
                 
         return res
 
     # Override button_mark_done buat update qty sesuai surplus
     def button_mark_done(self):
+        """
+        Override button_mark_done bawaan Odoo.
+        
+        Yang dikerjain:
+        1. Jalanin function bawaan dulu
+        2. Update qty di SO sesuai hasil produksi + surplus
+        3. Update harga per unit (jaga biar gak berubah)
+        4. Update state SO jadi 'sale'
+        """
+        # Jalanin function bawaan dulu
         res = super(MrpProductionCustom, self).button_mark_done()
-        unit_price = self.sale_id.order_line.price_unit # Simpen harga per unit
-        self.sale_id.order_line.product_uom_qty = self.qty_plus_surplus # Update qty
-        self.sale_id.order_line.price_unit = unit_price # Update harga per unit
-        self.sale_id.write({'state': 'sale'}) # Update state
+        
+        # Simpen harga per unit yang lama
+        unit_price = self.sale_id.order_line.price_unit
+        
+        # Update qty di SO pake qty_plus_surplus
+        self.sale_id.order_line.product_uom_qty = self.qty_plus_surplus
+        
+        # Pasang lagi harga per unit yang lama
+        self.sale_id.order_line.price_unit = unit_price
+        
+        # Update state SO jadi 'sale'
+        self.sale_id.write({'state': 'sale'})
+        
         return res
 
     # Field to store the sum of qty_realita_buku
@@ -421,7 +479,11 @@ class MrpProductionCustom(models.Model):
     def _compute_qty_plus_surplus(self):
         """
         Ngitung total qty termasuk surplus dari hasil produksi.
-        Diambil dari qty_realita_buku di work order packing terakhir.
+        
+        Caranya:
+        1. Cari work order yang tipe nya 'packing_buku'
+        2. Ambil qty_realita_buku dari packing terakhir
+        3. Itu jadi qty_plus_surplus
         """
         for production in self:
             # Cari work order yang tipe nya 'packing_buku'
@@ -434,32 +496,18 @@ class MrpProductionCustom(models.Model):
             else:
                 production.qty_plus_surplus = 0.0
 
-    #gajadi hrse, ini buat update product_qty jadi mengikuti qty_realita_buku
-    # def action_done(self):
-    #     # Call the parent method to retain standard functionality
-    #     super(MrpProductionCustom, self).action_done()
-
-    #     # Ensure product_qty is updated based on qty_realita_buku
-    #     for production in self:
-    #         # Get the last workorder linked to the MO
-    #         last_workorder = production.workorder_ids.filtered(lambda w: w.qty_realita_buku).sorted(lambda w: w.id)[-1] if production.workorder_ids else None
-    #         if last_workorder:
-    #             # Update product_qty with the calculated value
-    #             if production.product_uom_id:
-    #                 production.product_qty = last_workorder.qty_realita_buku 
-    #             else:
-    #                 raise UserError("The UOM factor for the product is missing or invalid.")
-    #         else:
-    #             raise UserError("No work order with qty_realita_buku is found for this Manufacturing Order.")
-
     isi_box = fields.Integer(related='bom_id.isi_box', string="Isi Box", store=True)
 
 
 # untuk mengedit custom quantity di bagian work order di Manufacturing Order
 class MrpWorkorderCustom(models.Model):
+    """
+    Class ini buat custom-in Work Order di MO.
+    Nambahin fitur tracking hasil per step produksi.
+    """
     _inherit = "mrp.workorder"
 
-    # Dropdown to select Work Center Step
+    # Pilihan step/tahapan produksi
     work_center_step = fields.Selection([
         ('produksi_cetak_cover', 'Produksi Cetak Cover'),
         ('mengirimkan_ke_uv_varnish', 'Mengirimkan ke UV Varnish'),
@@ -470,13 +518,14 @@ class MrpWorkorderCustom(models.Model):
         ('packing_buku', 'Packing Buku kedalam Box'),
     ], string="Work Center Step", required=True)
 
-    # Fields untuk ngatur visibility di form
-    jumlah_bahan_baku_visible = fields.Boolean(compute="_compute_visibility", string="Jumlah Bahan Baku Visible")
-    hasil_produksi_cover_visible = fields.Boolean(compute="_compute_visibility", string="Hasil Produksi Cover Visible")
-    hasil_produksi_isi_visible = fields.Boolean(compute="_compute_visibility", string="Hasil Produksi Isi Visible")
-    qty_kirim_ke_uv_visible = fields.Boolean(compute="_compute_visibility", string="Qty Kirim ke UV Visible")
-    qty_terima_dari_uv_visible = fields.Boolean(compute="_compute_visibility", string="Qty Terima dari UV Visible")
-    qty_realita_buku_visible = fields.Boolean(compute="_compute_visibility", string="Qty Realita Buku Visible")
+    # Fields buat ngatur visibility di form
+    # Ini pake compute biar field muncul/ilang sesuai step yang dipilih
+    jumlah_bahan_baku_visible = fields.Boolean(compute="_compute_visibility")
+    hasil_produksi_cover_visible = fields.Boolean(compute="_compute_visibility")
+    hasil_produksi_isi_visible = fields.Boolean(compute="_compute_visibility")
+    qty_kirim_ke_uv_visible = fields.Boolean(compute="_compute_visibility")
+    qty_terima_dari_uv_visible = fields.Boolean(compute="_compute_visibility")
+    qty_realita_buku_visible = fields.Boolean(compute="_compute_visibility")
 
     # Fields untuk input hasil produksi
     jumlah_bahan_baku = fields.Float(string="Jumlah Bahan Baku Digunakan")
@@ -488,7 +537,7 @@ class MrpWorkorderCustom(models.Model):
     # qty_realita_box = fields.Float(string="Qty Realita Box") --kyknya gaperlu krn sudah ada jumlah_bahan_baku
     qty_buku_dalam_box = fields.Float(string="Qty Buku dalam 1 Box")
 
-    # Fields untuk proses UV
+    # Fields buat proses UV
     qty_kirim_ke_uv = fields.Float(string="Qty Kirim ke UV")
     qty_terima_dari_uv = fields.Float(string="Qty Terima dari UV")
 
@@ -513,7 +562,10 @@ class MrpWorkorderCustom(models.Model):
     def _compute_visibility(self):
         """
         Ngatur visibility fields berdasarkan step yang dipilih.
-        Misal: field UV cuma muncul di step UV, dll.
+        
+        Contoh:
+        - Step UV: cuma munculin field UV
+        - Step packing: cuma munculin field qty buku
         """
         for record in self:
             step = record.work_center_step
@@ -524,14 +576,31 @@ class MrpWorkorderCustom(models.Model):
             record.qty_kirim_ke_uv_visible = step == 'mengirimkan_ke_uv_varnish'
             record.qty_terima_dari_uv_visible = step == 'menerima_dari_uv_varnish'
             record.qty_realita_buku_visible = step == 'packing_buku'
-    
+
+    @api.model
+    def create(self, vals):
+        """
+        Override create buat validasi step.
+        Mastiin gak ada step yang dobel dalam satu MO.
+        """
+        if 'work_center_step' in vals and 'production_id' in vals:
+            step = vals['work_center_step']
+            production_id = vals['production_id']
+            existing = self.search([
+                ('work_center_step', '=', step),
+                ('production_id', '=', production_id)
+            ])
+            if existing:
+                raise ValidationError(f"Work Center Step '{step}' sudah dipilih dalam Manufacturing Order ini.")
+        return super(MrpWorkorderCustom, self).create(vals)
+
     @api.onchange('production_id')
     def _onchange_production_id(self):
         """
         Filter opsi work_center_step berdasarkan langkah yang sudah dipilih di MO yang sama.
         """
         if self.production_id:
-            # Dapatkan langkah-langkah yang sudah dipilih dalam MO ini
+            # Dapatkan langkah-langkah yang sudah dipakai dalam MO ini
             used_steps = self.env['mrp.workorder'].search([
                 ('production_id', '=', self.production_id.id),
                 ('id', '!=', self.id)  # Kecualikan Work Order saat ini

@@ -20,11 +20,16 @@ class ProductCustom(models.Model):
     @api.onchange('tipe_kertas')
     def _onchange_tipe_kertas(self):
         """
-        Update kode produk (default_code) otomatis berdasarkan tipe kertas.
-        Misal:
-        - Kertas Isi -> KERTAS_ISI
-        - Kertas Cover -> KERTAS_COVER
-        dst.
+        Update kode produk otomatis pas milih tipe kertas.
+        
+        Contoh:
+        - Pilih tipe 'Kertas Isi' -> kodenya jadi 'KERTAS_ISI'
+        - Pilih tipe 'Box' -> kodenya jadi 'BOX'
+        
+        Ini berguna buat:
+        1. Gampang nyari produk
+        2. Gampang filter di laporan
+        3. Konsistensi penamaan
         """
         if self.tipe_kertas:
             # Set default_code sesuai tipe yang dipilih

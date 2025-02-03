@@ -6,9 +6,14 @@ import base64
 
 # Class utama buat custom Sales Order - nambahin fitur2 untuk perjanjian jual beli
 class SaleOrderCustom(models.Model):
+    """
+    Class ini buat custom-in Sales Order.
+    Nambahin fitur2 untuk perjanjian jual beli buku.
+    """
     _inherit = 'sale.order'
     
-    # Link ke Manufacturing Order - biar tau ini MO untuk SO yang mana
+    # Link ke Manufacturing Order
+    # Biar gampang tracking: SO ini diproses di MO mana
     mo_id = fields.Many2one(
         'mrp.production',
         string="Manufacturing Order",
@@ -19,6 +24,7 @@ class SaleOrderCustom(models.Model):
     # Field2 untuk nyimpen detail produk, kebanyakan diambil otomatis dari BoM
     
     # Detail isi buku (diambil dari BoM, field compute)
+    # Misal: "HVS 70gsm (A4, Putih)"
     detail_isi = fields.Char(
         string="Detail Isi",
         compute="_compute_detail_isi",
@@ -26,40 +32,63 @@ class SaleOrderCustom(models.Model):
     )
     
     # Detail cover buku (diambil dari BoM, field compute)
+    # Misal: "Art Carton 230gsm (A3+, Glossy)"
     detail_cover = fields.Char(
         string="Detail Cover",
         compute="_compute_detail_cover",
         store=True
     )
     
-    # Detail design (diisi manual)
+    # Detail design (diisi manual sama user)
     detail_design = fields.Char(string="Design")
     
     # Dropdown untuk jenis jilid (diambil dari BoM)
     # Perfect binding = jilid lem
     # Stitching = jilid kawat
     jenis_jilid = fields.Selection([
-        ('perfect_binding', 'Perfect Binding (Lem)'),
-        ('stitching', 'Stitching (Kawat)')
-    ], string="Jenis Jilid", compute="_compute_jenis_jilid", store=True)
+        ('perfect_binding', 'Perfect Binding (Lem)'),  # Jilid pake lem
+        ('stitching', 'Stitching (Kawat)')            # Jilid pake kawat
+    ], string="Jenis Jilid", 
+       compute="_compute_jenis_jilid", 
+       store=True)
 
     # Dropdown untuk jenis UV (diambil dari BoM)
     # Glossy = mengkilap
     # Matte = doff/tidak mengkilap
     jenis_uv = fields.Selection([
-        ('glossy', 'Glossy'),
-        ('matte', 'Matte (Doff)')
-    ], string="Jenis UV", compute="_compute_jenis_uv", store=True)
+        ('glossy', 'Glossy'),        # UV mengkilap
+        ('matte', 'Matte (Doff)')    # UV doff/tidak mengkilap
+    ], string="Jenis UV", 
+       compute="_compute_jenis_uv", 
+       store=True)
 
     # Detail packing (diambil dari BoM, dihitung otomatis)
-    detail_packing = fields.Char(string="Packing", compute="_compute_detail_packing", readonly=True)
+    # Misal: "100 /box"
+    detail_packing = fields.Char(
+        string="Packing", 
+        compute="_compute_detail_packing", 
+        readonly=True
+    )
+    
     # Quantity buku (diambil dari BoM)
-    detail_quantity = fields.Integer(related="bom_id.qty_buku", string="Quantity Buku", readonly=True)
+    detail_quantity = fields.Integer(
+        related="bom_id.qty_buku", 
+        string="Quantity Buku", 
+        readonly=True
+    )
 
     # === PASAL 3: Harga dan Pembayaran ===
     # Field2 untuk harga, diambil dari order line
-    price_unit = fields.Float(related="order_line.price_unit", string="Unit Price", readonly=True)
-    total_amount = fields.Monetary(related="amount_total", string="Total Harga", readonly=True)
+    price_unit = fields.Float(
+        related="order_line.price_unit", 
+        string="Unit Price", 
+        readonly=True
+    )
+    total_amount = fields.Monetary(
+        related="amount_total", 
+        string="Total Harga", 
+        readonly=True
+    )
     
     # Field2 untuk down payment
     down_payment_yes_no = fields.Boolean( # Toggle DP aktif/tidak
@@ -94,20 +123,63 @@ class SaleOrderCustom(models.Model):
     # customer_signature = fields.Binary(string="Tanda Tangan", attachment=True)  # Deprecated, pake is_signed
 
     # Field untuk pilih BoM yang akan dipakai sebagai sumber data
-    bom_id = fields.Many2one('mrp.bom', string="Bill of Materials", help="Pilih BoM untuk mengambil data HPP.")
+    bom_id = fields.Many2one(
+        'mrp.bom', 
+        string="Bill of Materials", 
+        help="Pilih BoM untuk mengambil data HPP."
+    )
     
     # === Fields yang diambil dari BoM ===
     # Fields ini otomatis keisi waktu pilih BoM, readonly karena cuma bisa diubah dari BoM
-    ukuran_buku = fields.Selection(related="bom_id.ukuran_buku", string="Ukuran Buku", readonly=True)
-    jenis_cetakan_isi = fields.Selection(related="bom_id.jenis_cetakan_isi", string="Jenis Cetakan Isi", readonly=True)
-    jenis_cetakan_cover = fields.Selection(related="bom_id.jenis_cetakan_cover", string="Jenis Cetakan Cover", readonly=True)
-    jmlh_halaman_buku = fields.Integer(related="bom_id.jmlh_halaman_buku", string="Jumlah Halaman Buku", readonly=True)
-    jasa_jilid = fields.Float(related="bom_id.jasa_jilid", string="Biaya Jilid", readonly=True)
-    isi_box = fields.Integer(related="bom_id.isi_box", string="Isi Box", readonly=True)
-    qty_buku = fields.Integer(related="bom_id.qty_buku", readonly=True)
-    hpp_per_unit = fields.Float(related="bom_id.hpp_per_unit", string="Harga Satuan", readonly=True)
-    hpp_total = fields.Float(related="bom_id.hpp_total", string="Harga Total", readonly=True)
-    ppn = fields.Float(related="bom_id.ppn", string="PPn", readonly=True)
+    ukuran_buku = fields.Selection(
+        related="bom_id.ukuran_buku", 
+        string="Ukuran Buku", 
+        readonly=True
+    )
+    jenis_cetakan_isi = fields.Selection(
+        related="bom_id.jenis_cetakan_isi", 
+        string="Jenis Cetakan Isi", 
+        readonly=True
+    )
+    jenis_cetakan_cover = fields.Selection(
+        related="bom_id.jenis_cetakan_cover", 
+        string="Jenis Cetakan Cover", 
+        readonly=True
+    )
+    jmlh_halaman_buku = fields.Integer(
+        related="bom_id.jmlh_halaman_buku", 
+        string="Jumlah Halaman Buku", 
+        readonly=True
+    )
+    jasa_jilid = fields.Float(
+        related="bom_id.jasa_jilid", 
+        string="Biaya Jilid", 
+        readonly=True
+    )
+    isi_box = fields.Integer(
+        related="bom_id.isi_box", 
+        string="Isi Box", 
+        readonly=True
+    )
+    qty_buku = fields.Integer(
+        related="bom_id.qty_buku", 
+        readonly=True
+    )
+    hpp_per_unit = fields.Float(
+        related="bom_id.hpp_per_unit", 
+        string="Harga Satuan", 
+        readonly=True
+    )
+    hpp_total = fields.Float(
+        related="bom_id.hpp_total", 
+        string="Harga Total", 
+        readonly=True
+    )
+    ppn = fields.Float(
+        related="bom_id.ppn", 
+        string="PPn", 
+        readonly=True
+    )
 
     # Fields persentase dari BoM (semuanya integer)
     gramasi_kertas_isi = fields.Integer(related="bom_id.gramasi_kertas_isi", readonly=True)
@@ -172,7 +244,11 @@ class SaleOrderCustom(models.Model):
     @api.onchange('bom_id')
     def _onchange_bom_id(self):
         """
-        Update detail_isi dan detail_cover waktu BoM berubah
+        Auto-update order lines pas pilih BoM.
+        Yang dikerjain:
+        1. Reset order lines yang lama
+        2. Ambil produk dari BoM
+        3. Set quantity dan harga sesuai BoM
         """
         for record in self:
             if record.bom_id:
@@ -189,6 +265,9 @@ class SaleOrderCustom(models.Model):
     # Ngambil jenis jilid dari BoM
     @api.depends('bom_id.jenis_jilid')
     def _compute_jenis_jilid(self):
+        """
+        Ngambil jenis jilid dari BoM (perfect binding/stitching)
+        """
         for record in self:
             if record.bom_id:
                 # Ambil nilai jenis_jilid dari BoM
@@ -200,6 +279,9 @@ class SaleOrderCustom(models.Model):
     # Ngambil jenis UV dari BoM
     @api.depends('bom_id.jenis_uv')
     def _compute_jenis_uv(self):
+        """
+        Ngambil jenis UV dari BoM (glossy/matte)
+        """
         for record in self:
             if record.bom_id:
                 # Ambil nilai jenis_uv dari BoM
@@ -211,6 +293,10 @@ class SaleOrderCustom(models.Model):
     # Ngitung detail packing di isi_box (tambahin "/box" di belakang angka)
     @api.depends('bom_id.isi_box')
     def _compute_detail_packing(self):
+        """
+        Bikin string detail packing.
+        Misal: isi_box = 100 -> "100 /box"
+        """
         for record in self:
             if record.bom_id.isi_box:
                 record.detail_packing = f"{record.bom_id.isi_box} /box"
@@ -220,7 +306,10 @@ class SaleOrderCustom(models.Model):
     # Ngitung nominal DP dari persentase
     @api.depends('down_payment_percentage', 'hpp_total')
     def _compute_down_payment_nominal(self):
-        """Hitung nominal Down Payment berdasarkan persentase."""
+        """
+        Hitung nominal Down Payment berdasarkan persentase.
+        Rumus: total harga * persentase / 100
+        """
         for record in self:
             # Cek dulu DP aktif gak & ada persentasenya gak
             if record.down_payment_yes_no and record.down_payment_percentage:
@@ -231,7 +320,11 @@ class SaleOrderCustom(models.Model):
                 
     @api.onchange('down_payment_yes_no')
     def _onchange_down_payment_yes_no(self):
-        """Handle visibility and calculation when toggling the down payment checkbox."""
+        """
+        Handle pas checkbox DP di-toggle:
+        - Kalo dicentang: hitung nominal DP
+        - Kalo dimatiin: reset nilai DP jadi 0
+        """
         for record in self:
             if record.down_payment_yes_no:
                 # If percentage is already filled, calculate the nominal
@@ -261,10 +354,23 @@ class SaleOrderCustom(models.Model):
                 })]
 
     # Field untuk draft perjanjian
-    draft_perjanjian = fields.Binary(string="Draft Perjanjian PDF")  # File PDF-nya
-    draft_perjanjian_name = fields.Char(string="Nama File")          # Nama filenya
-    is_signed = fields.Boolean(string="Telah Ditandatangani", default=False)  # Status ttd
-    signature_date = fields.Date(string="Tanggal Tanda Tangan")      # Tanggal ttd
+    draft_perjanjian = fields.Binary(
+        string="Draft Perjanjian PDF",  # File PDF-nya
+        help="Upload draft perjanjian dalam format PDF"
+    )
+    draft_perjanjian_name = fields.Char(
+        string="Nama File",          # Nama filenya
+        help="Nama file draft perjanjian"
+    )
+    is_signed = fields.Boolean(
+        string="Telah Ditandatangani", 
+        default=False,  # Status ttd
+        help="Centang jika perjanjian sudah ditandatangani"
+    )
+    signature_date = fields.Date(
+        string="Tanggal Tanda Tangan",      # Tanggal ttd
+        help="Tanggal perjanjian ditandatangani"
+    )
 
     # is_confirmed = fields.Boolean(string="Confirmed", default=False)
 
@@ -287,8 +393,13 @@ class SaleOrderCustom(models.Model):
         return self.env.ref('addons_sales_order_custom.action_report_draft_perjanjian').report_action(self)
 
     # Override Method action_confirm di sale.order
-    # Nambahin logika untuk hubungin SO dengan MO lewat field sale_id
     def action_confirm(self):
+        """
+        Override method confirm bawaan Odoo.
+        Nambahin:
+        1. Validasi draft perjanjian
+        2. Auto-create MO
+        """
         # Cek dulu ada draft perjanjiannya gak
         for order in self:
             if not order.draft_perjanjian:
@@ -317,6 +428,11 @@ class SaleOrderCustom(models.Model):
     # Validasi: Pastiin ada draft perjanjian sebelum bisa ditandatangani
     @api.constrains('is_signed', 'draft_perjanjian')
     def _check_draft_perjanjian(self):
+        """
+        Validasi sebelum tanda tangan:
+        - Harus ada draft perjanjian dulu
+        - Kalo belum ada, lempar error
+        """
         for record in self:
             if record.is_signed and not record.draft_perjanjian:
                 raise ValidationError("Tidak dapat menandatangani perjanjian! Harap upload draft perjanjian terlebih dahulu.")
@@ -324,6 +440,12 @@ class SaleOrderCustom(models.Model):
     # Update tanggal tanda tangan otomatis waktu status signed berubah
     @api.onchange('is_signed')
     def _onchange_is_signed(self):
+        """
+        Handle pas status signed berubah:
+        - Kalo dicentang: Set tanggal hari ini
+        - Kalo dimatiin: Reset tanggal
+        - Validasi harus ada draft dulu
+        """
         if self.is_signed:
             # Cek dulu ada draft perjanjiannya gak
             if not self.draft_perjanjian:
@@ -342,12 +464,29 @@ class SaleOrderCustom(models.Model):
 
 # Class khusus buat handle Down Payment
 class SaleAdvancePaymentInv(models.TransientModel):
+    """
+    Class ini buat custom-in wizard Down Payment.
+    Nambahin fitur:
+    - Nominal DP yang dihitung otomatis
+    - Pilihan fixed amount
+    """
     _inherit = 'sale.advance.payment.inv'
     
     # Field buat nyimpen nominal DP yang udah dihitung (readonly karena dihitung otomatis)
-    nominal = fields.Float(string="Nominal", readonly=True, help="Computed Down Payment Nominal")
-    input_fixed_nominal = fields.Float(string="Fixed Amount", help="Enter fixed amount for down payment")
-    max_nominal = fields.Float(string="Maximum Amount", readonly=True, help="Maximum allowed amount")
+    nominal = fields.Float(
+        string="Nominal", 
+        readonly=True, 
+        help="Computed Down Payment Nominal"
+    )
+    input_fixed_nominal = fields.Float(
+        string="Fixed Amount", 
+        help="Enter fixed amount for down payment"
+    )
+    max_nominal = fields.Float(
+        string="Maximum Amount", 
+        readonly=True, 
+        help="Maximum allowed amount"
+    )
 
     # Function buat ngatur pilihan metode pembayaran
     def _compute_advance_payment_method_selection(self):

@@ -2,24 +2,39 @@ from odoo import models, fields, api
 
 # Class untuk nambahin fitur custom di purchase.order (pesanan pembelian)
 class PurchaseOrderCustom(models.Model):
+    """
+    Class ini buat custom-in Purchase Order (PO).
+    Nambahin fitur link ke SO dan MO, plus alamat vendor.
+    """
     _inherit = 'purchase.order'
 
-    # Ngehubungin PO ke SO dan MO
+    # === SECTION: Link ke dokumen lain ===
+    
+    # Link ke Sales Order
+    # Berguna buat:
+    # - Tracking PO dari SO mana
+    # - Gampang cek status pesanan customer
     sale_order_id = fields.Many2one(
         'sale.order', 
         string="Sales Order",
         help="Sales Order yang terkait dengan pembelian ini"
     )
+
+    # Link ke Manufacturing Order
+    # Berguna buat:
+    # - Auto-isi produk dari MO
+    # - Ngambil harga dari BoM
     manufacturing_order_id = fields.Many2one(
         'mrp.production', 
         string="Manufacturing Order",
         help="Manufacturing Order yang terkait dengan pembelian ini"
     )
 
-    # Field buat nyimpen alamat vendor
+    # Field buat nyimpen alamat lengkap vendor
+    # Di-compute otomatis dari data partner
     vendor_address = fields.Text(
         string="Vendor Address", 
-        compute="_compute_vendor_address",  # Dihitung otomatis
+        compute="_compute_vendor_address",
         help="Alamat lengkap vendor"
     )
 
@@ -27,7 +42,10 @@ class PurchaseOrderCustom(models.Model):
     def _compute_vendor_address(self):
         """
         Ngambil alamat vendor otomatis dari data partner.
-        Kalo gak ada alamat, isi "No Address Available"
+        
+        Cara kerjanya:
+        1. Ambil contact_address dari partner
+        2. Kalo gak ada, isi "No Address Available"
         """
         for record in self:
             record.vendor_address = record.partner_id.contact_address or "No Address Available"
@@ -35,12 +53,16 @@ class PurchaseOrderCustom(models.Model):
     @api.onchange('manufacturing_order_id')
     def _onchange_manufacturing_order_id(self):
         """
-        Fungsi ini bakal jalan pas MO-nya diganti:
-        - Ngisi tab Products otomatis
-        - Ngambil harga dari BoM
-        - Set lot/serial number dari MO
+        Auto-isi produk dan harga pas pilih MO.
+        
+        Yang dikerjain:
+        1. Reset dulu line yang ada
+        2. Ambil produk dari MO
+        3. Set harga dari BoM
+        4. Update line PO
         """
         if self.manufacturing_order_id:
+            # Ambil BoM dari MO
             bom = self.manufacturing_order_id.bom_id
             if not bom:
                 return
@@ -63,9 +85,6 @@ class PurchaseOrderCustom(models.Model):
                     'date_planned': fields.Datetime.now(),
                     'product_uom': line.product_id.uom_po_id.id or line.product_id.uom_id.id,
                 }
-                # Tambahkan lot_ids jika ada lot_producing_id di MO
-                # if self.manufacturing_order_id.lot_producing_id:
-                #     vals['lot_ids'] = [(4, self.manufacturing_order_id.lot_producing_id.id)]
                 new_lines.append((0, 0, vals))
 
             # Update order lines dengan data baru
@@ -79,6 +98,9 @@ class PurchaseOrderCustom(models.Model):
     def _get_price_from_bom(self, product_id, bom):
         """
         Ngambil harga dari BoM berdasarkan nama produk.
+        
+        Cara kerjanya:
+        Cek nama produk, terus ambil harga yang sesuai dari BoM.
         Misal:
         - Kertas Cover -> ambil hrg_kertas_cover
         - Kertas Isi -> ambil hrg_kertas_isi
@@ -110,16 +132,21 @@ class PurchaseOrderCustom(models.Model):
     #     return res
 
 
-class PurchaseOrderLineCustom(models.Model): #memastikan harga di PO line selalu diambil dari BoM
+class PurchaseOrderLineCustom(models.Model):
+    """
+    Class ini buat custom-in Purchase Order Line.
+    Tujuannya: mastiin harga di PO line selalu diambil dari BoM
+    """
     _inherit = 'purchase.order.line'
 
     @api.onchange('product_id', 'order_id.manufacturing_order_id')
     def _onchange_product_id(self):
         """
-        Fungsi ini bakal jalan pas:
-        - Produk di line PO diganti
-        - MO di header PO diganti
-        Tugasnya: ngeset harga dari BoM
+        Update harga otomatis pas:
+        - Ganti produk di line PO
+        - Ganti MO di header PO
+        
+        Tujuannya: Mastiin harga selalu dari BoM
         """
         if self.product_id and self.order_id.manufacturing_order_id:
             bom = self.order_id.manufacturing_order_id.bom_id
@@ -127,18 +154,12 @@ class PurchaseOrderLineCustom(models.Model): #memastikan harga di PO line selalu
             # Pake write biar UI-nya ke-update
             self.write({'price_unit': self.price_unit})
 
-    # def _update_ui_price_unit(self):
-    #     """
-    #     Helper method to ensure price_unit is updated on UI dynamically.
-    #     """
-    #     self.ensure_one()
-    #     self.write({'price_unit': self.price_unit})
-
     @api.model
     def default_get(self, fields):
         """
-        Fungsi bawaan Odoo buat ngeset nilai default.
-        Di sini kita override biar bisa ngeset harga dari BoM pas bikin line PO baru.
+        Set nilai default pas bikin line PO baru.
+        
+        Yang penting: Set harga dari BoM kalo ada MO-nya
         """
         res = super(PurchaseOrderLineCustom, self).default_get(fields)
         # Cek kalo ada PO ID di context
@@ -152,8 +173,8 @@ class PurchaseOrderLineCustom(models.Model): #memastikan harga di PO line selalu
     @api.onchange('order_id.manufacturing_order_id')
     def _onchange_order_id_manufacturing_order_id(self):
         """
-        Fungsi ini bakal jalan pas MO di header PO diganti.
-        Mirip kayak _onchange_product_id, tapi khusus buat perubahan MO aja.
+        Update harga pas MO di header PO diganti.
+        Mirip kayak _onchange_product_id, tapi khusus buat perubahan MO.
         """
         if self.order_id.manufacturing_order_id:
             bom = self.order_id.manufacturing_order_id.bom_id
@@ -213,9 +234,9 @@ class PurchaseOrderLineCustom(models.Model): #memastikan harga di PO line selalu
     @api.depends('product_qty', 'product_uom', 'company_id', 'order_id.partner_id', 'order_id.manufacturing_order_id')
     def _compute_price_unit_and_date_planned_and_name(self):
         """
-        # Override fungsi compute bawaan Odoo
-        # Ini dipanggil pas ada perubahan di field-field yang di @api.depends
-        # Mastiin harga dari BoM tetep kepake, ga ke-override sama logic harga default
+        Override fungsi compute bawaan Odoo.
+        Ini dipanggil pas ada perubahan di field-field yang di @api.depends.
+        Mastiin harga dari BoM tetep kepake, ga ke-override sama logic harga default.
         """
         super()._compute_price_unit_and_date_planned_and_name()
         for line in self:
