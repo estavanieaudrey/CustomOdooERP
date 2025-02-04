@@ -906,6 +906,15 @@ class MrpWorkorderCustom(models.Model):
             workorder.hasil_pemotongan_akhir_total = sum(workorders.mapped('hasil_pemotongan_akhir'))
             workorder.qty_realita_buku_total = sum(workorders.mapped('qty_realita_buku'))
 
+    def action_generate_laporan_produksi(self):
+        """
+        Generate Laporan Hasil Produksi dalam bentuk PDF.
+        Berisi rekap semua hasil produksi dari setiap step.
+        """
+        return self.env.ref(
+            'addons_manufacturing_order_custom.action_report_laporan_hasil_produksi'
+        ).report_action(self)
+
 
 # Class untuk extend BoM Line (buat logging)
 class MrpBomLine(models.Model):

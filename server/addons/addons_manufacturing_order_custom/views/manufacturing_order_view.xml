@@ -165,16 +165,22 @@
 
                 <xpath expr="//notebook" position="inside">
                     <page string="Rekap Hasil Produksi">
+                        <!-- Add button at the top of the page -->
+                        <button 
+                            name="action_generate_laporan_produksi" 
+                            string="Generate Laporan Hasil Produksi" 
+                            type="object" 
+                            class="oe_highlight"
+                        />
+                        
                         <group string="Rekap Hasil Produksi">
                             <field name="hasil_produksi_cover_total" readonly="1" string="Total Hasil Produksi Cover"/>
                             <field name="qty_kirim_ke_uv_total" readonly="1" string="Total Kirim ke UV"/>
                             <field name="qty_terima_dari_uv_total" readonly="1" string="Total Terima dari UV"/>
                             <field name="hasil_produksi_isi_total" readonly="1" string="Total Hasil Produksi Isi"/>
                             <field name="hasil_join_cetak_isi_total" readonly="1" string="Total Hasil Join Cetak Isi"/>
-                            <field name="hasil_pemotongan_akhir_total" readonly="1"
-                                   string="Total Hasil Pemotongan Akhir"/>
-                            <field name="qty_realita_buku_total" readonly="1"
-                                   string="Total Buku yang Masuk ke Dalam Box"/>
+                            <field name="hasil_pemotongan_akhir_total" readonly="1" string="Total Hasil Pemotongan Akhir"/>
+                            <field name="qty_realita_buku_total" readonly="1" string="Total Buku yang Masuk ke Dalam Box"/>
                         </group>
 
                         <!-- Waste Calculation Section -->
