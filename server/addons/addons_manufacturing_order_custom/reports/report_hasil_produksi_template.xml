@@ -7,7 +7,7 @@
                     <!-- Logo -->
                     <div style="width:300px; float:left; margin-left: 20px;">
                         <img src="/addons_sales_order_custom/static/img/logo_company_1.png" alt="Company Logo"
-                             style="height: 150px;"/>
+                            style="height: 150px;"/>
                     </div>
                     <!-- Address Details -->
                     <div style="width: 300px; float: right; text-align: left; line-height: 1.2; margin: 0; padding-top: 30px;">

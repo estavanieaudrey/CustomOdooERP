@@ -10,6 +10,7 @@ class StockPickingCustom(models.Model):
     Nambah field kayak nomor resi, kontainer, dll.
     """
     _inherit = 'stock.picking'
+    
 
     # Field buat nyimpen nomor resi pengiriman
     # Berguna buat:
@@ -46,6 +47,71 @@ class StockPickingCustom(models.Model):
         help="Pilih MO buat auto-isi Serial Numbers"
     )
 
+    # Link ke Sale Order
+    sale_id = fields.Many2one(
+        'sale.order',
+        string="Sale Order",
+        help="Link to the related Sale Order"
+    )
+    
+    lot_producing_id = fields.Many2one(
+        related='manufacturing_order_id.lot_producing_id',
+        string='Lot/Serial Number Production',
+        readonly=True,
+    )
+
+    # Tambahkan definisi field lot_id_stock
+    lot_id_stock = fields.Char(
+        string="Lot/Serial Number Stock",
+        help="Lot/Serial Number yang dipilih oleh user"
+    )
+
+    @api.onchange('lot_id_stock')
+    def _onchange_lot_id_stock(self):
+        """
+        Auto-fill lot numbers when lot_id_stock is selected
+        """
+        if self.lot_id_stock:
+            for move in self.move_ids_without_package:
+                # Find existing lot/serial number
+                lot = self.env['stock.lot'].search([
+                    ('name', '=', self.lot_id_stock),
+                    ('product_id', '=', move.product_id.id),
+                    ('company_id', '=', self.company_id.id)
+                ], limit=1)
+                
+                # If lot doesn't exist, create it
+                if not lot:
+                    lot = self.env['stock.lot'].create({
+                        'name': self.lot_id_stock,
+                        'product_id': move.product_id.id,
+                        'company_id': self.company_id.id,
+                    })
+
+                # Update lot_ids in move
+                move.lot_ids = [(4, lot.id)]
+                
+                # Create move lines if needed
+                if move.move_line_ids:
+                    for move_line in move.move_line_ids:
+                        move_line.lot_id = lot.id
+                        move_line.lot_name = self.lot_id_stock
+                else:
+                    self.env['stock.move.line'].create({
+                        'move_id': move.id,
+                        'product_id': move.product_id.id,
+                        'product_uom_id': move.product_uom.id,
+                        'location_id': move.location_id.id,
+                        'location_dest_id': move.location_dest_id.id,
+                        'picking_id': self.id,
+                        'lot_id': lot.id,
+                        'lot_name': self.lot_id_stock,
+                        'product_uom_qty': move.product_uom_qty,
+                        'company_id': self.company_id.id,
+                    })
+                _logger.info(f"Created/Updated lot {self.lot_id_stock} for product {move.product_id.name}")
+
+
 class StockMoveCustom(models.Model):
     """
     Class ini buat custom di pergerakan stok (stock.move).
@@ -53,79 +119,72 @@ class StockMoveCustom(models.Model):
     """
     _inherit = 'stock.move'
 
-    # Field buat pilih lot/serial number
-    lot_id = fields.Many2one('stock.production.lot', string="Lot/Serial Number")
-    
-    # Field buat batasan max quantity
-    # Dihitung otomatis berdasarkan stok yang ada di lot
-    max_qty = fields.Float(string="Max Quantity", compute="_compute_max_qty", store=True)
+    # Link to Manufacturing Order through picking
+    manufacturing_order_id = fields.Many2one(
+        'mrp.production',
+        related='picking_id.manufacturing_order_id',
+        store=True,
+        string="Manufacturing Order"
+    )
 
-    @api.depends('lot_id')
-    def _compute_max_qty(self):
+    # Field for lot selection
+    lot_id = fields.Many2one(
+        'stock.lot',
+        string="Lot/Serial Number"
+    )
+
+    @api.onchange('picking_id.lot_id_stock')
+    def _onchange_picking_lot_id_stock(self):
         """
-        Ngitung max quantity yang bisa diambil dari lot yang dipilih.
-        
-        Cara kerjanya:
-        1. Cari semua quant (record stok) yang punya lot yang sama
-        2. Di lokasi yang sama
-        3. Jumlahin quantitynya
+        Auto-fill lot when lot_id_stock changes in picking
         """
-        for record in self:
-            if record.lot_id:
-                # Cari stok yang ada di lot ini
-                quants = self.env['stock.quant'].search([
-                    ('lot_id', '=', record.lot_id.id),
-                    ('location_id', '=', record.location_id.id)
-                ])
-                # Total semua quantity
-                record.max_qty = sum(quants.mapped('quantity'))
+        if self.picking_id.lot_id_stock:
+            # Find or create lot
+            lot = self.env['stock.lot'].search([
+                ('name', '=', self.picking_id.lot_id_stock),
+                ('product_id', '=', self.product_id.id),
+                ('company_id', '=', self.company_id.id)
+            ], limit=1)
+            
+            if not lot:
+                lot = self.env['stock.lot'].create({
+                    'name': self.picking_id.lot_id_stock,
+                    'product_id': self.product_id.id,
+                    'company_id': self.company_id.id,
+                })
+            
+            # Update lot_ids using 4 command to add to many2many
+            self.lot_ids = [(4, lot.id)]
+            
+            # Update move lines if they exist
+            if self.move_line_ids:
+                for move_line in self.move_line_ids:
+                    move_line.lot_id = lot.id
+                    move_line.lot_name = self.picking_id.lot_id_stock
             else:
-                record.max_qty = 0.0
+                self.env['stock.move.line'].create({
+                    'move_id': self.id,
+                    'product_id': self.product_id.id,
+                    'product_uom_id': self.product_uom.id,
+                    'location_id': self.location_id.id,
+                    'location_dest_id': self.location_dest_id.id,
+                    'picking_id': self.picking_id.id,
+                    'lot_id': lot.id,
+                    'lot_name': self.picking_id.lot_id_stock,
+                    'product_uom_qty': self.product_uom_qty,
+                    'company_id': self.company_id.id,
+                })
+            _logger.info(f"Created/Updated lot {self.picking_id.lot_id_stock} for product {self.product_id.name}")
 
-    @api.onchange('lot_id')
-    def _onchange_lot_id(self):
+class StockMoveLineCustom(models.Model):
+    _inherit = 'stock.move.line'
+
+    @api.onchange('move_id.picking_id.lot_id_stock')
+    def _onchange_picking_lot_id_stock(self):
         """
-        Update quantity otomatis pas pilih lot.
-        
-        Fungsinya:
-        1. Ngecek stok yang tersedia di lot
-        2. Update quantity jadi sebanyak stok yang ada
-        3. Update quantity_done juga (kalo ada)
-        
-        Ini ngebantu biar gak input quantity manual
-        dan mencegah input quantity lebih dari stok
+        Auto-fill lot when lot_id_stock changes at move line level
         """
-        for record in self:
-            if record.lot_id:
-                # Cari stok yang tersedia
-                quants = self.env['stock.quant'].search([
-                    ('lot_id', '=', record.lot_id.id),
-                    ('location_id', '=', record.location_id.id)
-                ])
-                available_qty = sum(quants.mapped('quantity'))
-                
-                # Update quantity sesuai stok
-                record.product_uom_qty = available_qty
-                
-                # Update quantity_done juga kalo fieldnya ada
-                if hasattr(record, 'quantity_done'):
-                    record.quantity_done = available_qty
-
-    # Di bawah ini ada code yang di-comment
-    # Ini buat auto-isi serial number dari MO
-    # Masih WIP (Work in Progress), belum jalan sempurna
-    
-    # @api.onchange('manufacturing_order_id')
-    # def _onchange_manufacturing_order_id(self):
-    #     """
-    #     Auto-isi Serial Numbers dari MO yang dipilih.
-    #     """
-    #     ... (kode yang di-comment) ...
-
-# Class ini juga masih WIP
-# class StockMoveLineCustom(models.Model):
-#     """
-#     Custom untuk stock move lines.
-#     Rencananya buat auto-fill lot berdasarkan MO.
-#     """
-#     ... (kode yang di-comment) ...
+        if self.move_id.picking_id.lot_id_stock:
+            self.lot_id = self.move_id.picking_id.lot_id_stock.id
+            self.lot_name = self.move_id.picking_id.lot_id_stock.name
+            _logger.info(f"Auto-filled lot {self.move_id.picking_id.lot_id_stock.name} for product {self.product_id.name}")

@@ -7,7 +7,12 @@
         including Resi Number, Container Number, and Container Arrival Date.
     """,
     'author': 'Your Name',
-    'depends': ['stock', 'sale'],
+    'depends': [
+        'base',
+        'stock',
+        'mrp',  # jika menggunakan manufacturing
+        'sale',
+    ],
     'data': [
         'views/inventory_custom_views.xml',
         'reports/inventory_custom_template.xml',

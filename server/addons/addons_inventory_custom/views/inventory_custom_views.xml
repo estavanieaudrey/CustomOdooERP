@@ -10,6 +10,8 @@
                     <field name="container_number"/>
                     <field name="container_arrival_date"/>
                     <field name="manufacturing_order_id" />
+                    <field name="lot_producing_id" readonly="1"/>
+                    <field name="lot_id_stock"/>
                 </group>
             </xpath>
 
