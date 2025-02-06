@@ -462,6 +462,28 @@ class SaleOrderCustom(models.Model):
             # Reset tanggal kalo status signed dimatiin
             self.signature_date = False
 
+    # Validasi persentase DP tidak boleh lebih dari 100%
+    @api.constrains('down_payment_percentage')
+    def _check_down_payment_percentage(self):
+        for record in self:
+            if record.down_payment_percentage > 100:
+                raise ValidationError("Persentase down payment tidak bisa lebih dari 100%")
+
+    @api.onchange('down_payment_percentage')
+    def _onchange_down_payment_percentage(self):
+        '''
+        Memberikan peringatan secara real-time saat user menginput nilai dan 
+        otomatis menyesuaikan nilai ke 100 jika melebihi batas
+        '''
+        if self.down_payment_percentage > 100:
+            self.down_payment_percentage = 100
+            return {
+                'warning': {
+                    'title': 'Peringatan',
+                    'message': 'Persentase down payment tidak bisa lebih dari 100%'
+                }
+            }
+
 # Class khusus buat handle Down Payment
 class SaleAdvancePaymentInv(models.TransientModel):
     """
