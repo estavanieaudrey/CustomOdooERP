@@ -153,6 +153,53 @@ class MrpBomCustom(models.Model):
         store=True,
         help="Jumlah buku yang disiapkan termasuk tambahan waste."
     )
+    @api.onchange('ukuran_buku')
+    def _onchange_ukuran_buku(self):
+        """
+        Filter dan set product_tmpl_id berdasarkan ukuran_buku yang dipilih.
+        
+        Cara kerja:
+        1. Filter products yang tipe_kertas nya sesuai ukuran_buku
+        2. Set domain untuk product_tmpl_id
+        3. Reset product_tmpl_id kalo ukurannya gak cocok
+        """
+        if self.ukuran_buku:
+            # Cari product yang sesuai dengan ukuran yang dipilih
+            ProductTemplate = self.env['product.template']
+            if self.ukuran_buku == 'a4':
+                matching_products = ProductTemplate.search([('tipe_kertas', '=', 'a4')])
+                # Set product pertama yang ditemukan (jika ada)
+                if matching_products:
+                    self.product_tmpl_id = matching_products[0].id
+                else:
+                    self.product_tmpl_id = False
+                # Set domain untuk membatasi pilihan product
+                return {'domain': {'product_tmpl_id': [('tipe_kertas', '=', 'a4')]}}
+            
+            elif self.ukuran_buku == 'b5':
+                matching_products = ProductTemplate.search([('tipe_kertas', '=', 'b5')])
+                # Set product pertama yang ditemukan (jika ada)
+                if matching_products:
+                    self.product_tmpl_id = matching_products[0].id
+                else:
+                    self.product_tmpl_id = False
+                # Set domain untuk membatasi pilihan product
+                return {'domain': {'product_tmpl_id': [('tipe_kertas', '=', 'b5')]}}
+        
+        # Jika tidak ada ukuran yang dipilih, reset product dan domain
+        self.product_tmpl_id = False
+        return {'domain': {'product_tmpl_id': []}}
+
+    @api.onchange('product_tmpl_id')
+    def _onchange_product_tmpl_id(self):
+        """
+        Set ukuran_buku otomatis berdasarkan tipe_kertas dari product yang dipilih
+        """
+        if self.product_tmpl_id:
+            if self.product_tmpl_id.tipe_kertas == 'a4':
+                self.ukuran_buku = 'a4'
+            elif self.product_tmpl_id.tipe_kertas == 'b5':
+                self.ukuran_buku = 'b5'
     
     # Function buat ngitung quantity buku + waste
     @api.depends('qty_buku', 'waste_percentage')

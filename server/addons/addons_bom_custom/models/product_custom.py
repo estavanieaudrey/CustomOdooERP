@@ -9,11 +9,13 @@ class ProductCustom(models.Model):
     # Field buat nentuin tipe kertas/material
     # Ini penting buat ngitung quantity di BOM lines
     tipe_kertas = fields.Selection([
-        ('isi', 'Kertas Isi'),         # Kertas untuk isi buku
-        ('cover', 'Kertas Cover'),      # Kertas untuk cover buku
-        ('plate_isi', 'Plate Isi'),     # Plate cetak untuk isi
+        ('a4', 'A4'),               # Kertas ukuran A4
+        ('b5', 'B5'),               # Kertas ukuran B5
+        ('isi', 'Kertas Isi'),      # Kertas untuk isi buku
+        ('cover', 'Kertas Cover'),   # Kertas untuk cover buku
+        ('plate_isi', 'Plate Isi'),  # Plate cetak untuk isi
         ('plate_cover', 'Plate Cover'), # Plate cetak untuk cover
-        ('box', 'Box')                  # Box untuk packaging
+        ('box', 'Box')               # Box untuk packaging
     ], string="Tipe", default="isi")  # Default ke 'isi' kalo bikin produk baru
 
     # Function yang dipanggil waktu tipe_kertas berubah
@@ -23,6 +25,8 @@ class ProductCustom(models.Model):
         Update kode produk otomatis pas milih tipe kertas.
         
         Contoh:
+        - Pilih tipe 'A4' -> kodenya jadi 'A4'
+        - Pilih tipe 'B5' -> kodenya jadi 'B5'
         - Pilih tipe 'Kertas Isi' -> kodenya jadi 'KERTAS_ISI'
         - Pilih tipe 'Box' -> kodenya jadi 'BOX'
         
@@ -33,7 +37,11 @@ class ProductCustom(models.Model):
         """
         if self.tipe_kertas:
             # Set default_code sesuai tipe yang dipilih
-            if self.tipe_kertas == 'isi':
+            if self.tipe_kertas == 'a4':
+                self.default_code = 'A4'
+            elif self.tipe_kertas == 'b5':
+                self.default_code = 'B5'
+            elif self.tipe_kertas == 'isi':
                 self.default_code = 'KERTAS_ISI'
             elif self.tipe_kertas == 'cover':
                 self.default_code = 'KERTAS_COVER'
