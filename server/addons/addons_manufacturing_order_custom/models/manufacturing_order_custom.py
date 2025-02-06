@@ -225,6 +225,10 @@ class MrpProductionCustom(models.Model):
         store=True
     )
 
+    
+    
+    
+
     # === SECTION: Fungsi-fungsi compute dan onchange ===
     # 1. Compute dari Sale Order
     @api.depends('sale_id')
@@ -497,6 +501,8 @@ class MrpProductionCustom(models.Model):
                 production.qty_plus_surplus = 0.0
 
     isi_box = fields.Integer(related='bom_id.isi_box', string="Isi Box", store=True)
+
+    
 
 
 # untuk mengedit custom quantity di bagian work order di Manufacturing Order
@@ -966,32 +972,6 @@ class StockMove(models.Model):
             else:
                 move.qty_plus_surplus = 145.0 #default value
 
-    # Field buat nyimpen qty yang ada di stok
-    qty_di_stok = fields.Float(
-        string="Quantity di Stok",
-        help="Jumlah total termasuk surplus dari hasil produksi."
-    )
-    
-    @api.onchange('qty_di_stok')
-    def _onchange_qty_di_stok(self):
-        """
-        When qty_di_stok is updated, set product_uom_qty to the same value.
-        """
-        for move in self:
-            if move.qty_di_stok:
-                move.product_uom_qty = move.qty_di_stok
-    
-    def write(self, vals):
-        """
-        Override write to ensure product_uom_qty matches qty_di_stok.
-        """
-        if 'qty_di_stok' in vals:
-            for move in self:
-                if 'qty_di_stok' in vals:
-                    vals['product_uom_qty'] = vals['qty_di_stok']
-        return super(StockMove, self).write(vals)
-
-
 
 class StockPicking(models.Model):
     _inherit = 'stock.picking'
@@ -1013,21 +993,3 @@ class StockPicking(models.Model):
         for picking in self:
             picking.qty_plus_surplus = picking.manufacturing_order_id.qty_plus_surplus #ambil dari MO
             
-            
-    # Field buat total qty yang ada di stok
-    qty_di_stok = fields.Float(
-        string="Total Qty Di Stok",
-        compute="_compute_qty_di_stok",
-        store=True,
-        help="Total quantity termasuk surplus untuk semua stock moves dalam picking."
-    )
-
-    @api.depends('move_ids_without_package.qty_di_stok')
-    def _compute_qty_di_stok(self):
-        """
-        Ngitung total qty plus surplus dari semua stock moves
-        """
-        for picking in self:
-            picking.qty_di_stok = sum(
-                picking.move_ids_without_package.mapped('qty_di_stok')
-            )

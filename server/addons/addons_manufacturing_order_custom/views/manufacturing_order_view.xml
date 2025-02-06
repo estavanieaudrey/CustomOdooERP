@@ -206,11 +206,6 @@
                         <!-- <field name="total_qty_plus_surplus"/> -->
                     </group>
                 </xpath>
-                <xpath expr="//notebook/page[@name='operations']/field[@name='move_ids_without_package']/list"
-                       position="inside">
-                    <field name="qty_di_stok" string="Qty akan dikirim" optional="show"/>
-                
-                </xpath>
             </field>
         </record>
     </data>
