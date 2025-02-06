@@ -111,6 +111,54 @@ class StockPickingCustom(models.Model):
                     })
                 _logger.info(f"Created/Updated lot {self.lot_id_stock} for product {move.product_id.name}")
 
+    def write(self, vals):
+        """Override write method to handle lot_id_stock updates"""
+        result = super().write(vals)
+        
+        # If lot_id_stock was updated, ensure lot_ids are updated
+        if 'lot_id_stock' in vals and vals['lot_id_stock']:
+            for picking in self:
+                for move in picking.move_ids_without_package:
+                    lot = self.env['stock.lot'].search([
+                        ('name', '=', picking.lot_id_stock),
+                        ('product_id', '=', move.product_id.id),
+                        ('company_id', '=', picking.company_id.id)
+                    ], limit=1)
+                    
+                    if not lot:
+                        lot = self.env['stock.lot'].create({
+                            'name': picking.lot_id_stock,
+                            'product_id': move.product_id.id,
+                            'company_id': picking.company_id.id,
+                        })
+
+                    # Update lot_ids in move
+                    move.lot_ids = [(4, lot.id)]
+                    
+                    # Update or create move lines
+                    if move.move_line_ids:
+                        for move_line in move.move_line_ids:
+                            move_line.write({
+                                'lot_id': lot.id,
+                                'lot_name': picking.lot_id_stock
+                            })
+                    else:
+                        self.env['stock.move.line'].create({
+                            'move_id': move.id,
+                            'product_id': move.product_id.id,
+                            'product_uom_id': move.product_uom.id,
+                            'location_id': move.location_id.id,
+                            'location_dest_id': move.location_dest_id.id,
+                            'picking_id': picking.id,
+                            'lot_id': lot.id,
+                            'lot_name': picking.lot_id_stock,
+                            'product_uom_qty': move.product_uom_qty,
+                            'company_id': picking.company_id.id,
+                        })
+                    
+                    _logger.info(f"Updated lot {picking.lot_id_stock} for product {move.product_id.name} during save")
+        
+        return result
 
 class StockMoveCustom(models.Model):
     """
