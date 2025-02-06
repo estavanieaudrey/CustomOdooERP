@@ -12,7 +12,7 @@
                 </xpath>
                 <!-- Menambahkan field ke dalam list view -->
                 <xpath expr="//notebook/page[@name='products']/field[@name='line_ids']/list" position="inside">
-                    <field name="price_satuan" string="Price Satuan" optional="show"/>
+                    <field name="price_total" string="Price Total" optional="show"/>
                 </xpath>
 
             </field>

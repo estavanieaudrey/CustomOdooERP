@@ -8,32 +8,32 @@ class PurchaseRequisitionLine(models.Model):
     """
     _inherit = 'purchase.requisition.line'
 
-    # Field buat nyimpen harga per satuan
-    # Misal: Harga per kg untuk kertas, harga per pcs untuk plate
-    price_satuan = fields.Float(
-        string="Price Satuan", 
-        help="Harga per satuan item"
+    # Field buat nyimpen total harga
+    price_total = fields.Float(
+        string="Price Total", 
+        help="Total harga item (quantity × harga satuan)",
+        compute='_compute_price_total',
+        store=True
     )
 
-    @api.onchange('price_satuan', 'product_qty')
-    def _onchange_price_satuan_or_quantity(self):
+    @api.depends('price_unit', 'product_qty')
+    def _compute_price_total(self):
         """
-        Update total harga otomatis pas:
-        - Harga satuan diubah
-        - Quantity diubah
+        Menghitung total harga otomatis berdasarkan:
+        - Harga satuan (price_unit) yang diinput manual
+        - Quantity (product_qty)
         
-        Rumusnya simple:
-        Total harga (price_unit) = harga satuan × quantity
+        Rumus:
+        Total harga = harga satuan × quantity
         
         Contoh:
-        - Harga kertas 10.000/kg
+        - Harga satuan 10.000/kg
         - Quantity 5 kg
         - Total = 50.000
         """
         for line in self:
-            if line.price_satuan and line.product_qty:
-                line.price_unit = line.price_satuan * line.product_qty
-    
+            line.price_total = line.price_unit * line.product_qty
+
 class PurchaseRequisition(models.Model):
     """
     Class ini buat custom-in Purchase Agreement.
