@@ -28,6 +28,7 @@
                         <field name="nomor_pesanan" readonly="1"/>
                         <field name="surplus_qty" readonly="1"/>
                         <field name="qty_plus_surplus" string="Total Quantity (Including Surplus)" readonly="1"/>
+                        <field name="lot_id_mrp" placeholder="Enter Lot/Serial Number"/>
                     </group>
                 </xpath>
                 <!-- Tambahkan notebook baru -->
@@ -201,9 +202,7 @@
             <field name="arch" type="xml">
                 <xpath expr="//group" position="inside">
                     <group>
-                        <!-- <field name="surplus_qty2"/> -->
                         <field name="qty_plus_surplus"/>
-                        <!-- <field name="total_qty_plus_surplus"/> -->
                     </group>
                 </xpath>
             </field>
