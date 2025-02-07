@@ -247,28 +247,6 @@ class PurchaseOrderLineCustom(models.Model):
                     if price > 0:
                         line.price_unit = price
 
-    # @api.onchange('product_id')
-    # def _onchange_product_id(self):
-    #     """Override untuk menambahkan pengisian lot_ids"""
-    #     res = super(PurchaseOrderLineCustom, self)._onchange_product_id()
-        
-    #     # Tambahkan lot dari MO jika ada
-    #     if self.order_id.manufacturing_order_id and self.order_id.manufacturing_order_id.lot_producing_id:
-    #         self.lot_ids = [(4, self.order_id.manufacturing_order_id.lot_producing_id.id)]
-        
-    #     return res
-
-    # def _prepare_stock_moves(self, picking):
-    #     """Override untuk memastikan lot_ids terbawa ke stock moves"""
-    #     res = super(PurchaseOrderLineCustom, self)._prepare_stock_moves(picking)
-        
-    #     # Tambahkan lot_ids ke stock moves jika ada
-    #     if self.order_id.manufacturing_order_id and self.order_id.manufacturing_order_id.lot_producing_id:
-    #         for move_vals in res:
-    #             move_vals['lot_ids'] = [(4, self.order_id.manufacturing_order_id.lot_producing_id.id)]
-        
-    #     return res
-
 
 
 
