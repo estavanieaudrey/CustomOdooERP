@@ -1,0 +1,38 @@
+<odoo>
+    <record id="view_stock_quant_dashboard_tree" model="ir.ui.view">
+        <field name="name">stock.quant.dashboard.tree</field>
+        <field name="model">stock.quant</field>
+        <field name="inherit_id" ref="stock.view_stock_quant_tree"/>
+        <field name="mode">primary</field>
+        <field name="arch" type="xml">
+            <field name="location_id" position="after">
+                <field name="customer_id"/>
+                <field name="sale_order_id"/>
+                <field name="manufacturing_order_id"/>
+                <!-- <field name="quantity"/>
+                <field name="lot_producing_id"/> -->
+                <button name="action_create_delivery" string="Send" type="object" class="btn-primary"/>
+            </field>
+        </field>
+    </record>
+
+    <record id="action_stock_quant_dashboard" model="ir.actions.act_window">
+        <field name="name">Stock Quant Dashboard</field>
+        <field name="res_model">stock.quant</field>
+        <field name="view_mode">list,form</field>
+        <field name="view_ids" eval="[(5, 0, 0),
+            (0, 0, {'view_mode': 'list', 'view_id': ref('view_stock_quant_dashboard_tree')}),
+            (0, 0, {'view_mode': 'form', 'view_id': ref('stock.view_stock_quant_form')})]"/>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                No records found. Create new stock entries to see data.
+            </p>
+        </field>
+    </record>
+
+    <menuitem id="menu_stock_quant_dashboard" 
+            name="Stock Quant Dashboard"
+            parent="spreadsheet_dashboard.spreadsheet_dashboard_menu_root" 
+            action="action_stock_quant_dashboard"
+            sequence="10"/>
+</odoo>
