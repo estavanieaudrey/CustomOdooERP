@@ -2,6 +2,12 @@ from odoo import models, fields, api
 
 class StockQuantCustom(models.Model):
     _inherit = 'stock.quant'
+    '''
+        dashboard hanya akan menampilkan:
+        - Barang yang berada di lokasi internal (bukan virtual)
+        - Mengecualikan lokasi produksi
+        - Hanya menampilkan stok yang positif (sudah masuk gudang)
+    '''
 
     customer_id = fields.Many2one(
         'res.partner',
@@ -105,3 +111,11 @@ class StockQuantCustom(models.Model):
                 'res_id': picking.id,
                 'target': 'current',
             }
+            
+    @api.model
+    def get_dashboard_data(self):
+        return self.search([
+            ('location_id.usage', '=', 'internal'),
+            ('location_id.name', 'not ilike', 'Production'),  # Exclude Production locations
+            ('quantity', '>', 0)  # Only show positive quantities
+        ])
