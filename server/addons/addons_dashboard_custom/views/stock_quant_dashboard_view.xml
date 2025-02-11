@@ -9,6 +9,7 @@
                 <field name="customer_id"/>
                 <field name="sale_order_id"/>
                 <field name="manufacturing_order_id"/>
+
                 <!-- <field name="quantity"/>
                 <field name="lot_producing_id"/> -->
                 <button name="action_create_delivery" string="Send" type="object" class="btn-primary"/>
