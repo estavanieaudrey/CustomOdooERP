@@ -61,6 +61,7 @@
                             <tr>
                                 <th>Deskripsi</th>
                                 <th>Jumlah</th>
+                                <th>Catatan</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -69,11 +70,19 @@
                                 <td>
                                     <span t-field="docs.hasil_produksi_cover_total"/>
                                 </td>
+                                <td>
+                                    <t t-set="cover_wo" t-value="docs.production_id.workorder_ids.filtered(lambda w: w.work_center_step == 'produksi_cetak_cover')"/>
+                                    <span t-field="cover_wo.catatan_per_workorder" t-if="cover_wo"/>
+                                </td>
                             </tr>
                             <tr>
                                 <td>Total Kirim ke UV</td>
                                 <td>
                                     <span t-field="docs.qty_kirim_ke_uv_total"/>
+                                </td>
+                                <td>
+                                    <t t-set="uv_kirim_wo" t-value="docs.production_id.workorder_ids.filtered(lambda w: w.work_center_step == 'mengirimkan_ke_uv_varnish')"/>
+                                    <span t-field="uv_kirim_wo.catatan_per_workorder" t-if="uv_kirim_wo"/>
                                 </td>
                             </tr>
                             <tr>
@@ -81,11 +90,19 @@
                                 <td>
                                     <span t-field="docs.qty_terima_dari_uv_total"/>
                                 </td>
+                                <td>
+                                    <t t-set="uv_terima_wo" t-value="docs.production_id.workorder_ids.filtered(lambda w: w.work_center_step == 'menerima_dari_uv_varnish')"/>
+                                    <span t-field="uv_terima_wo.catatan_per_workorder" t-if="uv_terima_wo"/>
+                                </td>
                             </tr>
                             <tr>
                                 <td>Total Hasil Produksi Isi</td>
                                 <td>
                                     <span t-field="docs.hasil_produksi_isi_total"/>
+                                </td>
+                                <td>
+                                    <t t-set="isi_wo" t-value="docs.production_id.workorder_ids.filtered(lambda w: w.work_center_step == 'produksi_cetak_isi')"/>
+                                    <span t-field="isi_wo.catatan_per_workorder" t-if="isi_wo"/>
                                 </td>
                             </tr>
                             <tr>
@@ -93,17 +110,29 @@
                                 <td>
                                     <span t-field="docs.hasil_join_cetak_isi_total"/>
                                 </td>
+                                <td>
+                                    <t t-set="join_wo" t-value="docs.production_id.workorder_ids.filtered(lambda w: w.work_center_step == 'join_cetak_cover_dan_isi')"/>
+                                    <span t-field="join_wo.catatan_per_workorder" t-if="join_wo"/>
+                                </td>
                             </tr>
                             <tr>
                                 <td>Total Hasil Pemotongan Akhir</td>
                                 <td>
                                     <span t-field="docs.hasil_pemotongan_akhir_total"/>
                                 </td>
+                                <td>
+                                    <t t-set="potong_wo" t-value="docs.production_id.workorder_ids.filtered(lambda w: w.work_center_step == 'pemotongan_akhir')"/>
+                                    <span t-field="potong_wo.catatan_per_workorder" t-if="potong_wo"/>
+                                </td>
                             </tr>
                             <tr>
                                 <td>Total Buku yang Masuk ke Dalam Box</td>
                                 <td>
                                     <span t-field="docs.qty_realita_buku_total"/>
+                                </td>
+                                <td>
+                                    <t t-set="packing_wo" t-value="docs.production_id.workorder_ids.filtered(lambda w: w.work_center_step == 'packing_buku')"/>
+                                    <span t-field="packing_wo.catatan_per_workorder" t-if="packing_wo"/>
                                 </td>
                             </tr>
                         </tbody>
