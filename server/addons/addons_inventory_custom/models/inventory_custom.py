@@ -230,9 +230,34 @@ class StockMoveLineCustom(models.Model):
     @api.onchange('move_id.picking_id.lot_id_stock')
     def _onchange_picking_lot_id_stock(self):
         """
-        Auto-fill lot when lot_id_stock changes at move line level
+        Auto-fill lot and quantity when lot_id_stock changes at move line level
         """
         if self.move_id.picking_id.lot_id_stock:
-            self.lot_id = self.move_id.picking_id.lot_id_stock.id
-            self.lot_name = self.move_id.picking_id.lot_id_stock.name
-            _logger.info(f"Auto-filled lot {self.move_id.picking_id.lot_id_stock.name} for product {self.product_id.name}")
+            # self.lot_id = self.move_id.picking_id.lot_id_stock.id
+            # self.lot_name = self.move_id.picking_id.lot_id_stock.name
+            # _logger.info(f"Auto-filled lot {self.move_id.picking_id.lot_id_stock.name} for product {self.product_id.name}")
+            # Find the lot record
+            lot = self.env['stock.lot'].search([
+                ('name', '=', self.move_id.picking_id.lot_id_stock),
+                ('product_id', '=', self.product_id.id),
+                ('company_id', '=', self.company_id.id)
+            ], limit=1)
+            
+            if lot:
+                self.lot_id = lot.id
+                self.lot_name = lot.name
+                # Get the total quantity from the lot (on_hand)
+                quant = self.env['stock.quant'].search([
+                    ('lot_id', '=', lot.id),
+                    ('location_id', '=', self.location_id.id),
+                    ('product_id', '=', self.product_id.id)
+                ], limit=1)
+                
+                if quant:
+                    # self.product_uom_qty = quant.quantity
+                    # _logger.info(f"Auto-filled lot {lot.name} with quantity {quant.quantity} for product {self.product_id.name}")
+
+                    # Menggunakan quantity (on_hand) bukan reserved quantity
+                    total_quantity = quant.quantity
+                    self.product_uom_qty = total_quantity
+                    _logger.info(f"Auto-filled lot {lot.name} with total quantity {total_quantity} for product {self.product_id.name}")
