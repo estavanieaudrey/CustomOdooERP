@@ -472,6 +472,9 @@ class MrpProductionCustom(models.Model):
         
         return res
 
+    
+    
+
     # Field to store the sum of qty_realita_buku
     qty_plus_surplus = fields.Float(
         string="Qty Plus Surplus",
@@ -657,6 +660,49 @@ class MrpWorkorderCustom(models.Model):
         string="Warning Message",
         readonly=True
     )
+
+    # Add new field for notes
+    catatan_per_workorder = fields.Text(
+        string="Catatan Work Order",
+        help="Catatan khusus untuk tahapan produksi ini"
+    )
+
+    # Add compute method to get notes for selected step in recap
+    catatan_terpilih = fields.Text(
+        string="Catatan Work Order Terpilih",
+        compute='_compute_catatan_terpilih',
+        help="Menampilkan catatan dari work center step yang dipilih"
+    )
+    
+    # Add field for step selection in recap
+    selected_step_for_notes = fields.Selection([
+        ('produksi_cetak_cover', 'Produksi Cetak Cover'),
+        ('mengirimkan_ke_uv_varnish', 'Mengirimkan ke UV Varnish'),
+        ('menerima_dari_uv_varnish', 'Menerima Cetak Cover dari UV Varnish'),
+        ('produksi_cetak_isi', 'Produksi Cetak Isi'),
+        ('join_cetak_cover_dan_isi', 'Join Cetak Cover dan Isi'),
+        ('pemotongan_akhir', 'Pemotongan Akhir'),
+        ('packing_buku', 'Packing Buku kedalam Box'),
+    ], string="Pilih Step untuk Melihat Catatan")
+
+    @api.depends('selected_step_for_notes', 'production_id.workorder_ids.catatan_per_workorder')
+    def _compute_catatan_terpilih(self):
+        """
+        Menampilkan catatan dari work center step yang dipilih.
+        Jika tidak ada catatan, tampilkan pesan default.
+        """
+        for record in self:
+            if record.selected_step_for_notes:
+                # Find workorder with matching step
+                matching_workorder = record.production_id.workorder_ids.filtered(
+                    lambda w: w.work_center_step == record.selected_step_for_notes
+                )
+                if matching_workorder and matching_workorder.catatan_per_workorder:
+                    record.catatan_terpilih = matching_workorder.catatan_per_workorder
+                else:
+                    record.catatan_terpilih = "Tidak ada catatan tambahan untuk proses ini"
+            else:
+                record.catatan_terpilih = "Silakan pilih work center step untuk melihat catatan"
 
     @api.depends("work_center_step")
     def _compute_visibility(self):

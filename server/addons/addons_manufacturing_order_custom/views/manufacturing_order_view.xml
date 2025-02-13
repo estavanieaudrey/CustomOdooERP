@@ -160,7 +160,10 @@
                             </group>
                         </group>
 
-
+                        <!-- Add notes field in production details -->
+                        <group string="CATATAN TAMBAHAN">
+                            <field name="catatan_per_workorder" placeholder="Masukkan catatan untuk tahapan ini..."/>
+                        </group>
                     </page>
                 </xpath>
 
@@ -188,6 +191,14 @@
                         <group string="PERHITUNGAN WASTE">
                             <field name="selisih_qty_buku" readonly="1"/>
                             <field name="warning_message" readonly="1"/>
+                        </group>
+
+                        <!-- Add notes section in recap -->
+                        <group string="CATATAN PER TAHAPAN">
+                            <group>
+                                <field name="selected_step_for_notes"/>
+                                <field name="catatan_terpilih" readonly="1"/>
+                            </group>
                         </group>
                     </page>
                 </xpath>
