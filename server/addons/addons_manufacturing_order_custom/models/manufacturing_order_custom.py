@@ -93,9 +93,11 @@ class MrpProductionCustom(models.Model):
         store=True
     )
     # === Spesifikasi Teknis - Bahan Cover ===
-    ukuran_bahan_kertas = fields.Char(
-        string="Ukuran Bahan Kertas",
-        default="65 x 100"  # Default ukuran kertas cover
+    ukuran_bahan_kertas_cover = fields.Char(
+        string="Ukuran Bahan Kertas Cover",
+        compute="_compute_ukuran_bahan_kertas_cover",
+        store=True,
+        help="Ukuran bahan kertas cover berdasarkan ukuran buku"
     )
 
     # Ukuran hasil cetakan
@@ -130,8 +132,8 @@ class MrpProductionCustom(models.Model):
     )
     ukuran_bahan_kertas_isi = fields.Char(
         string="Uk. Bahan Kertas Isi",
-        # compute="_compute_ukuran_bahan_kertas_isi",  # Commented: mungkin mau dibikin auto
-        # store=True
+        compute="_compute_ukuran_bahan_kertas_isi",  # Commented: mungkin mau dibikin auto
+        store=True
     )
     kebutuhan_kertas_isi = fields.Float(
         string="Kebutuhan Bahan Kertas Isi",
@@ -171,12 +173,6 @@ class MrpProductionCustom(models.Model):
         ('laminating', 'Laminating'),
         ('spot_uv', 'Spot UV')
     ], string="Finishing Cetak")
-
-    # ukuran_bahan_kertas_isi = fields.Char(
-    #     string="Ukuran Bahan Kertas Isi",
-    #     compute="_compute_ukuran_bahan_kertas_isi",
-    #     store=True
-    # )
     
     # Fields untuk catatan dan info tambahan
     note = fields.Text(string="Note")  # Catatan umum
@@ -329,27 +325,48 @@ class MrpProductionCustom(models.Model):
                 record.jumlah_plat = 0.0
                 
     # 4. Compute Ukuran Bahan Kertas Isi
-    # @api.depends('sale_id.order_line.product_id')
-    # def _compute_ukuran_bahan_kertas_isi(self):
-    #     """
-    #     Compute the Ukuran Bahan Kertas Isi based on the product in the linked sale order lines.
-    #     """
-    #     for production in self:
-    #         # Ensure the sale order exists
-    #         if production.sale_id and production.sale_id.order_line:
-    #             # Get the first product in the sale order lines (assuming it's the primary product)
-    #             product = production.sale_id.order_line[0].product_id
-    #             if product:
-    #                 if product.name == 'B5':
-    #                     production.ukuran_bahan_kertas_isi = "54.6 x 73"
-    #                 elif product.name == 'A4':
-    #                     production.ukuran_bahan_kertas_isi = "63 x 86"
-    #                 else:
-    #                     production.ukuran_bahan_kertas_isi = "Tidak Diketahui"
-    #             else:
-    #                 production.ukuran_bahan_kertas_isi = "Tidak Diketahui"
-    #         else:
-    #             production.ukuran_bahan_kertas_isi = "Tidak Diketahui"
+    @api.depends('bom_id.ukuran_buku')
+    def _compute_ukuran_bahan_kertas_isi(self):
+        """
+        Compute the Ukuran Bahan Kertas Isi based on ukuran_buku from BoM.
+        
+        If ukuran_buku is:
+        - a4: set to "63 x 86"
+        - b5: set to "54.6 x 73"
+        """
+        for production in self:
+            if production.bom_id and production.bom_id.ukuran_buku:
+                if production.bom_id.ukuran_buku == 'a4':
+                    production.ukuran_bahan_kertas_isi = "63 x 86"
+                elif production.bom_id.ukuran_buku == 'b5':
+                    production.ukuran_bahan_kertas_isi = "54.6 x 73"
+                else:
+                    production.ukuran_bahan_kertas_isi = "Tidak Diketahui"
+            else:
+                production.ukuran_bahan_kertas_isi = "Tidak Diketahui"
+                
+    # 5. Compute Ukuran Bahan Kertas Cover
+    @api.depends('bom_id.ukuran_buku')
+    def _compute_ukuran_bahan_kertas_cover(self):
+        """
+        Compute ukuran bahan kertas cover based on ukuran_buku from BoM.
+        
+        For A4: depends on ukuran_kertas_cover selection
+        For B5: always "79 x 55"
+        """
+        for production in self:
+            if production.bom_id and production.bom_id.ukuran_buku:
+                if production.bom_id.ukuran_buku == 'a4':
+                    if production.bom_id.ukuran_kertas_cover == '65x100':
+                        production.ukuran_bahan_kertas_cover = "65 x 100"
+                    else:  # '79x109'
+                        production.ukuran_bahan_kertas_cover = "79 x 109"
+                elif production.bom_id.ukuran_buku == 'b5':
+                    production.ukuran_bahan_kertas_cover = "79 x 55"
+                else:
+                    production.ukuran_bahan_kertas_cover = "Tidak Diketahui"
+            else:
+                production.ukuran_bahan_kertas_cover = "Tidak Diketahui"
 
     def action_generate_nota(self):
         """
