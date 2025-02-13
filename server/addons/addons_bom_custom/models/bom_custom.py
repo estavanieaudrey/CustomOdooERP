@@ -27,6 +27,13 @@ class MrpBomCustom(models.Model):
         ('2_sisi', 'Full Color 2 Sisi')
     ], string="Jenis Cetakan Kertas Cover", default='1_sisi')
 
+    # Tambahkan field untuk pilihan ukuran kertas cover
+    ukuran_kertas_cover = fields.Selection([
+        ('65x100', '65 x 100'),
+        ('79x109', '79 x 109')
+    ], string="Ukuran Kertas Cover", default='65x100',
+       help="Pilihan ukuran kertas cover untuk buku A4. B5 akan otomatis menggunakan 79 x 55")
+
     # === SECTION: Fields untuk biaya tambahan ===
     
     # Overhead: biaya operasional kayak listrik, sewa, dll
@@ -157,12 +164,18 @@ class MrpBomCustom(models.Model):
     def _onchange_ukuran_buku(self):
         """
         Filter dan set product_tmpl_id berdasarkan ukuran_buku yang dipilih.
+        Juga mengatur ukuran_kertas_cover berdasarkan ukuran_buku:
+        - Untuk B5: selalu 79x55, field disembunyikan
+        - Untuk A4: tampilkan pilihan 65x100 atau 79x109
         
         Cara kerja:
         1. Filter products yang tipe_kertas nya sesuai ukuran_buku
         2. Set domain untuk product_tmpl_id
         3. Reset product_tmpl_id kalo ukurannya gak cocok
+        4. Set ukuran_kertas_cover sesuai ukuran_buku
         """
+        result = {'domain': {'product_tmpl_id': []}}
+        
         if self.ukuran_buku:
             # Cari product yang sesuai dengan ukuran yang dipilih
             ProductTemplate = self.env['product.template']
@@ -174,7 +187,11 @@ class MrpBomCustom(models.Model):
                 else:
                     self.product_tmpl_id = False
                 # Set domain untuk membatasi pilihan product
-                return {'domain': {'product_tmpl_id': [('tipe_kertas', '=', 'a4')]}}
+                result['domain']['product_tmpl_id'] = [('tipe_kertas', '=', 'a4')]
+                
+                # Untuk A4, set default ke 65x100 jika belum dipilih
+                if not self.ukuran_kertas_cover:
+                    self.ukuran_kertas_cover = '65x100'
             
             elif self.ukuran_buku == 'b5':
                 matching_products = ProductTemplate.search([('tipe_kertas', '=', 'b5')])
@@ -184,11 +201,17 @@ class MrpBomCustom(models.Model):
                 else:
                     self.product_tmpl_id = False
                 # Set domain untuk membatasi pilihan product
-                return {'domain': {'product_tmpl_id': [('tipe_kertas', '=', 'b5')]}}
+                result['domain']['product_tmpl_id'] = [('tipe_kertas', '=', 'b5')]
+                
+                # Untuk B5, tidak perlu pilihan ukuran kertas cover
+                self.ukuran_kertas_cover = False
         
-        # Jika tidak ada ukuran yang dipilih, reset product dan domain
-        self.product_tmpl_id = False
-        return {'domain': {'product_tmpl_id': []}}
+        else:
+            # Jika tidak ada ukuran yang dipilih, reset product dan ukuran_kertas_cover
+            self.product_tmpl_id = False
+            self.ukuran_kertas_cover = False
+            
+        return result
 
     @api.onchange('product_tmpl_id')
     def _onchange_product_tmpl_id(self):
@@ -222,7 +245,7 @@ class MrpBomCustom(models.Model):
                 bom.qty_buku_plus_waste = bom.qty_buku
 
     # Function buat ngitung kebutuhan kertas (dalam rim dan kg)
-    @api.depends('jmlh_halaman_buku', 'qty_buku', 'gramasi_kertas_isi', 'gramasi_kertas_cover', 'ukuran_buku')
+    @api.depends('jmlh_halaman_buku', 'qty_buku', 'gramasi_kertas_isi', 'gramasi_kertas_cover', 'ukuran_buku', 'ukuran_kertas_cover')
     def _compute_hpp_values(self):
         """
         Ngehitung kebutuhan kertas dalam satuan rim dan kg.
@@ -253,10 +276,12 @@ class MrpBomCustom(models.Model):
             # === Perhitungan Kertas Cover ===
             # Ngitung kebutuhan kg cover berdasarkan ukuran
             if bom.ukuran_buku == 'a4':
-                # Ukuran plano cover A4: 65 x 100 cm
-                kebutuhan_kg_cover = (65 * 100 * bom.gramasi_kertas_cover) / 20000
+                if bom.ukuran_kertas_cover == '65x100':
+                    kebutuhan_kg_cover = (65 * 100 * bom.gramasi_kertas_cover) / 20000
+                else:  # '79x109'
+                    kebutuhan_kg_cover = (79 * 109 * bom.gramasi_kertas_cover) / 20000
             elif bom.ukuran_buku == 'b5':
-                # Ukuran plano cover B5: 79 x 55 cm
+                # B5 selalu menggunakan ukuran 79 x 55
                 kebutuhan_kg_cover = (79 * 55 * bom.gramasi_kertas_cover) / 20000
             else:
                 kebutuhan_kg_cover = 0.0
@@ -269,14 +294,14 @@ class MrpBomCustom(models.Model):
 
     # Function buat ngitung biaya bahan baku
     @api.depends('ukuran_buku', 'jenis_cetakan_isi', 'jenis_cetakan_cover', 'jmlh_halaman_buku', 
-                'qty_buku', 'hrg_plate_isi', 'hrg_plate_cover', 'waste_percentage')
+                'qty_buku', 'hrg_plate_isi', 'hrg_plate_cover', 'waste_percentage', 'ukuran_kertas_cover')
     def _compute_biaya_bahan_baku(self):
         """
         Ngitung total biaya bahan yang dipake.
         
         Yang dihitung:
         - Kertas isi + waste
-        - Kertas cover + waste
+        - Kertas cover + waste (dengan ukuran yang bisa dipilih untuk A4)
         - Plate cetak isi (tergantung 1/2 sisi)
         - Plate cetak cover (tergantung 1/2 sisi)
         - Box packaging
@@ -297,8 +322,16 @@ class MrpBomCustom(models.Model):
             # === Biaya kertas cover ===
             # Logikanya sama kayak kertas isi
             kebutuhan_rim_cover = (record.qty_buku / 4) / 500
-            kebutuhan_kg_cover = (((65 * 100 * record.gramasi_kertas_cover) / 20000) if record.ukuran_buku == 'a4'
-                                  else (79 * 55 * record.gramasi_kertas_cover) / 20000)
+            
+            # Update perhitungan kebutuhan_kg_cover berdasarkan ukuran yang dipilih
+            if record.ukuran_buku == 'a4':
+                if record.ukuran_kertas_cover == '65x100':
+                    kebutuhan_kg_cover = (65 * 100 * record.gramasi_kertas_cover) / 20000
+                else:  # '79x109'
+                    kebutuhan_kg_cover = (79 * 109 * record.gramasi_kertas_cover) / 20000
+            else:  # B5
+                kebutuhan_kg_cover = (79 * 55 * record.gramasi_kertas_cover) / 20000
+
             record.total_biaya_kertas_cover = (kebutuhan_rim_cover * kebutuhan_kg_cover * record.hrg_kertas_cover) + (
                     (kebutuhan_rim_cover * kebutuhan_kg_cover * record.hrg_kertas_cover) * waste_factor)
 
@@ -351,7 +384,7 @@ class MrpBomCustom(models.Model):
 
     # Function buat ngitung biaya jasa cetak dan finishing
     @api.depends('ukuran_buku', 'kebutuhan_rim_isi', 'kebutuhan_rim_cover', 'jasa_cetak_isi', 
-                'jasa_cetak_cover', 'jasa_jilid', 'hrg_uv')
+                'jasa_cetak_cover', 'jasa_jilid', 'hrg_uv', 'ukuran_kertas_cover')
     def _compute_biaya_jasa(self):
         """
         Ngitung semua biaya jasa yang dipake buat produksi.
@@ -374,7 +407,10 @@ class MrpBomCustom(models.Model):
             # === Biaya UV ===
             # UV coating buat cover buku, ukurannya beda-beda
             if record.ukuran_buku == 'a4':
-                ukuran_cover = 65 * 100  # cm2 untuk A4
+                if record.ukuran_kertas_cover == '65x100':
+                    ukuran_cover = 65 * 100  # cm2 untuk A4 dengan ukuran 65x100
+                else:  # '79x109'
+                    ukuran_cover = 79 * 109  # cm2 untuk A4 dengan ukuran 79x109
             elif record.ukuran_buku == 'b5':
                 ukuran_cover = 79 * 55   # cm2 untuk B5
             else:

@@ -46,6 +46,11 @@
                                 <field name="waste_percentage"/>
                                 <field name="jenis_jilid"/>
                                 <field name="jenis_uv"/>
+                                <field name="ukuran_kertas_cover" 
+                                    widget="radio" 
+                                    invisible="ukuran_buku == 'b5'"
+                                    required="ukuran_buku == 'a4'"
+                                    options="{'horizontal': true}"/>
                             </group>
                         </group>
                         <group string="Jenis Cetakan">
@@ -59,7 +64,7 @@
                         <group>
                             <group string="Purchase Agreements">
                                 <field name="purchase_requisition_ids"
-                                       options="{'no_create': True}"/>
+                                    options="{'no_create': True}"/>
                             </group>
                             <group string="Material Prices">
                                 <field name="hrg_kertas_isi"/>
