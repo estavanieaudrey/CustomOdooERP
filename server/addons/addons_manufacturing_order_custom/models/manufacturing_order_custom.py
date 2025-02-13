@@ -459,6 +459,56 @@ class MrpProductionCustom(models.Model):
                 
         return res
 
+    # # Override button_mark_done buat update qty sesuai surplus
+    # def button_mark_done(self):
+    #     """
+    #     Override button_mark_done bawaan Odoo.
+        
+    #     Yang dikerjain:
+    #     1. Jalanin function bawaan dulu
+    #     2. Update qty di SO sesuai hasil produksi + surplus
+    #     3. Update harga per unit (jaga biar gak berubah)
+    #     4. Update state SO jadi 'sale'
+    #     """
+    #     # Jalanin function bawaan dulu
+    #     res = super(MrpProductionCustom, self).button_mark_done()
+        
+        
+    #     # Update SO hanya jika ada sale_id dan order_line
+    #     if self.sale_id and self.sale_id.order_line:
+    #         for line in self.sale_id.order_line:
+    #             # Skip non-stockable products
+    #             if line.product_id.type not in ['product', 'consu']:
+    #                 continue
+                    
+    #             # Simpan nilai original
+    #             original_price = line.price_unit
+                
+    #             # Update qty dan price dengan write
+    #             line.write({
+    #                 'product_uom_qty': self.qty_plus_surplus,
+    #                 'price_unit': original_price
+    #             })
+        
+    #         # Update state SO jadi 'sale' jika belum
+    #         if self.sale_id.state not in ['sale', 'done']:
+    #             self.sale_id.write({'state': 'sale'})
+                
+    #     # CODE LAMA ERROR :
+    #     # # Simpen harga per unit yang lama
+    #     # unit_price = self.sale_id.order_line.price_unit
+        
+    #     # # Update qty di SO pake qty_plus_surplus
+    #     # self.sale_id.order_line.product_uom_qty = self.qty_plus_surplus
+        
+    #     # # Pasang lagi harga per unit yang lama
+    #     # self.sale_id.order_line.price_unit = unit_price
+        
+    #     # # Update state SO jadi 'sale'
+    #     # self.sale_id.write({'state': 'sale'})
+    #     return res
+    
+    
     # Override button_mark_done buat update qty sesuai surplus
     def button_mark_done(self):
         """
@@ -468,23 +518,34 @@ class MrpProductionCustom(models.Model):
         1. Jalanin function bawaan dulu
         2. Update qty di SO sesuai hasil produksi + surplus
         3. Update harga per unit (jaga biar gak berubah)
-        4. Update state SO jadi 'sale'
         """
         # Jalanin function bawaan dulu
         res = super(MrpProductionCustom, self).button_mark_done()
-        
-        # Simpen harga per unit yang lama
-        unit_price = self.sale_id.order_line.price_unit
-        
-        # Update qty di SO pake qty_plus_surplus
-        self.sale_id.order_line.product_uom_qty = self.qty_plus_surplus
-        
-        # Pasang lagi harga per unit yang lama
-        self.sale_id.order_line.price_unit = unit_price
-        
-        # Update state SO jadi 'sale'
-        self.sale_id.write({'state': 'sale'})
-        
+
+        # Pastikan ada SO yang terkait
+        if self.sale_id:
+            # Ambil satu order line yang relevan, misalnya berdasarkan produk
+            order_line = self.sale_id.order_line.filtered(lambda line: line.product_id == self.product_id)
+            
+            if order_line:
+                # Simpen harga per unit yang lama
+                unit_price = order_line[0].price_unit  # Ambil satu record
+                
+                # Update qty di SO pake qty_plus_surplus
+                order_line[0].product_uom_qty = self.qty_plus_surplus
+
+                # Pasang lagi harga per unit yang lama
+                order_line[0].price_unit = unit_price
+
+            # Update state SO jadi 'sale'
+            self.sale_id.write({'state': 'sale'})
+            
+        # Update stock.move.line sesuai qty_plus_surplus
+        for move in self.move_finished_ids:  # Mengambil pergerakan stok hasil produksi
+            for move_line in move.move_line_ids:
+                move_line.quantity = self.qty_plus_surplus  # Update quantity
+                # move_line.product_uom_qty = self.qty_plus_surplus  # Update qty yang diharapkan
+
         return res
 
     
@@ -615,6 +676,8 @@ class MrpProductionCustom(models.Model):
                     _logger.info(f"Updated lot {production.lot_id_mrp} for product {line.product_id.name} during save")
         
         return result
+
+    
 
 
 # untuk mengedit custom quantity di bagian work order di Manufacturing Order
