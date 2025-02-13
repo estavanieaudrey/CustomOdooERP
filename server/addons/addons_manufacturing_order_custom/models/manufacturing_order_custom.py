@@ -182,8 +182,6 @@ class MrpProductionCustom(models.Model):
     toleransi_bb = fields.Float(string="Toleransi Berat Buku")
     warna_rulling = fields.Char(string="Warna Rulling")
     packing = fields.Text(string="Packing")
-    ttd_pihak_percetakan = fields.Char(string="TTD Pihak Percetakan")
-    ttd_pihak_customer = fields.Char(string="TTD Pihak Customer")
 
     # Fields yang diambil dari BoM (sekarang integer)
     gramasi_kertas_isi = fields.Integer(related="bom_id.gramasi_kertas_isi", readonly=True)

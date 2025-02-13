@@ -55,7 +55,7 @@
                         </group>
                         <group string="Bahan Cover">
                             <field name="jenis_kertas_cover" readonly="1"/>
-                            <field name="ukuran_bahan_kertas"/>
+                            <field name="ukuran_bahan_kertas_cover"/>
                             <field name="ukuran_cetak"/>
                             <field name="jumlah_up_per_lembar"/>
                             <field name="kebutuhan_kertas_cover"/>
@@ -74,10 +74,6 @@
                             <field name="toleransi_bb"/>
                             <field name="warna_rulling"/>
                             <field name="packing"/>
-                        </group>
-                        <group string="Tanda Tangan">
-                            <field name="ttd_pihak_percetakan"/>
-                            <field name="ttd_pihak_customer"/>
                         </group>
                     </page>
                 </xpath>
