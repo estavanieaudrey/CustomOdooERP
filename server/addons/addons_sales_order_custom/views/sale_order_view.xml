@@ -43,7 +43,6 @@
                     <!-- PASAL 2 -->
                     <page string="Pasal 2">
                         <group>
-                            <field name="ukuran_buku"/>
                             <field name="detail_isi"/>
                             <field name="jenis_cetakan_isi"/>
                             <field name="detail_cover"/>
@@ -52,7 +51,6 @@
                             <field name="jenis_uv"/>
                             <field name="detail_design"/>
                             <field name="detail_packing"/>
-                            <field name="detail_quantity"/>
                         </group>
                     </page>
 
@@ -100,21 +98,13 @@
                 <attribute name="readonly">0</attribute>
             </xpath>
 
-            <!-- Add fixed amount input field -->
-            <!-- <xpath expr="//field[@name='amount']" position="after">
-                <field name="input_fixed_nominal" 
-                       invisible="advance_payment_method != 'fixed'"
-                       required="advance_payment_method == 'fixed'"/>
-                <field name="max_nominal" 
-                       invisible="advance_payment_method != 'fixed'"
-                       readonly="1"/>
-            </xpath> -->
-
             <!-- Add nominal field -->
             <xpath expr="//field[@name='advance_payment_method']" position="after">
                 <div class="o_row" style="margin-top: 10px;">
+                    <span style="font-weight: bold;">Total Amount:</span>
+                    <field name="price_subtotal" readonly="1" options="{'widget': 'monetary'}"/>
                     <span style="font-weight: bold;">Nominal:</span>
-                    <field name="nominal" readonly="1" options="{'widget': 'float'}"/>
+                    <field name="nominal" readonly="1" options="{'widget': 'monetary'}"/>
                 </div>
             </xpath>
         </field>

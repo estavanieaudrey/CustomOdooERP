@@ -494,7 +494,12 @@ class SaleAdvancePaymentInv(models.TransientModel):
     """
     _inherit = 'sale.advance.payment.inv'
     
-    # Field buat nyimpen nominal DP yang udah dihitung (readonly karena dihitung otomatis)
+    # Ganti hpp_total menjadi price_subtotal
+    price_subtotal = fields.Float(
+        string="Total Amount", 
+        readonly=True,
+        help="Total amount from sales order line"
+    )
     nominal = fields.Float(
         string="Nominal", 
         readonly=True, 
@@ -519,7 +524,7 @@ class SaleAdvancePaymentInv(models.TransientModel):
         - Fixed amount (nominal tetap)
         """
         selection = [
-            ('all', 'Regular invoice'),      # Bayar full
+            # ('all', 'Regular invoice'),      # Bayar full
             ('percentage', 'Percentage'),     # DP pake persentase
             ('fixed', 'Fixed amount')         # DP pake nominal tetap
         ]
@@ -529,59 +534,69 @@ class SaleAdvancePaymentInv(models.TransientModel):
     advance_payment_method = fields.Selection(
         selection=_compute_advance_payment_method_selection,
         string='Create Invoice',
-        default='all',    # Default ke regular invoice
+        default='percentage',    # Default ke regular invoice
         required=True,    # Harus diisi
     )
     
-    # Function yang dipanggil waktu amount (persentase) berubah
-    @api.onchange('amount')
+    @api.onchange('amount', 'advance_payment_method')
     def _onchange_amount(self):
         """
-        Update down_payment_percentage di sale order dan hitung ulang nominal
-        ketika amount (percentage) berubah
-        """
-        sale_order_id = self.env.context.get('active_id')
-        if sale_order_id and self.advance_payment_method == 'percentage':
-            sale_order = self.env['sale.order'].browse(sale_order_id)
-            # Update down_payment_percentage di sale order
-            sale_order.write({'down_payment_percentage': self.amount})
-            
-            # Hitung ulang nominal
-            self.nominal = sale_order.amount_to_invoice - sale_order.amount_invoiced
-
-    # Function yang dipanggil waktu metode pembayaran berubah
-    @api.onchange('advance_payment_method') 
-    def _onchange_advance_payment_method(self):
-        """
-        Function untuk menghitung nominal berdasarkan metode pembayaran:
-        - all: amount_to_invoice - amount_invoiced (bayar full sisa)
-        - percentage: (amount_to_invoice * down_payment_percentage / 100) - amount_invoiced
-        - fixed: menggunakan fixed_amount yang diinput user
+        Update nominal saat amount (percentage) berubah
         """
         sale_order_id = self.env.context.get('active_id')
         if sale_order_id:
             sale_order = self.env['sale.order'].browse(sale_order_id)
             
             # Hitung total yang udah dibayar
-            amount_invoiced = sale_order.amount_invoiced
-            amount_to_invoice = sale_order.amount_to_invoice
+            amount_invoiced = sum(sale_order.invoice_ids.mapped('amount_total'))
+            # Hitung total yang harus dibayar (amount to invoice)
+            amount_to_invoice = sale_order.hpp_total - amount_invoiced
+
+            if self.advance_payment_method == 'percentage':
+                # Hitung nominal berdasarkan persentase yang baru
+                self.nominal = (amount_to_invoice * self.amount) / 100
+                self.amount_to_invoice = amount_to_invoice
+
+    # Function yang dipanggil waktu metode pembayaran berubah
+    @api.onchange('advance_payment_method') 
+    def _onchange_advance_payment_method(self):
+        """
+        Function untuk menghitung nominal berdasarkan metode pembayaran:
+        - all: hpp_total - amount_invoiced (bayar full sisa)
+        - percentage: (amount_to_invoice * amount / 100)
+        - fixed: menggunakan fixed_amount yang diinput user
+        """
+        sale_order_id = self.env.context.get('active_id')
+        if sale_order_id:
+            sale_order = self.env['sale.order'].browse(sale_order_id)
+            
+            # Ambil price_subtotal dari sale order line
+            self.price_subtotal = sum(sale_order.order_line.mapped('price_subtotal'))
+            
+            # Hitung total yang udah dibayar
+            amount_invoiced = sum(sale_order.invoice_ids.mapped('amount_total'))
+            # Hitung total yang harus dibayar
+            amount_to_invoice = self.price_subtotal - amount_invoiced
             
             if self.advance_payment_method == 'all':
-                # Regular invoice: bayar sisa yang belum dibayar
-                self.nominal = amount_to_invoice - amount_invoiced
-                self.amount = amount_to_invoice - amount_invoiced
+                # Ambil total dari sale order line
+                self.amount = amount_invoiced
+                self.nominal = amount_to_invoice
+                self.amount_to_invoice = amount_to_invoice
                 
-            # saat ini hitung %nya dari total amount_to_invoice (total harga deal awal)
+            
             elif self.advance_payment_method == 'percentage':
                 # Down payment dengan persentase
                 self.amount = sale_order.down_payment_percentage
-                self.nominal = (amount_to_invoice * self.amount) / 100 - amount_invoiced
+                # Hitung nominal dari price_subtotal
+                self.nominal = (self.price_subtotal * self.amount) / 100
+                self.amount_to_invoice = amount_to_invoice
             
             elif self.advance_payment_method == 'fixed':
                 # Fixed amount: pake nominal yang diinput user
                 self.amount = 0.0  # Reset percentage amount
-                self.max_nominal = amount_to_invoice - amount_invoiced
-                self.fixed_amount = self.nominal
+                self.max_nominal = amount_to_invoice
+                self.amount_to_invoice = amount_to_invoice
                 
                 # Validasi nominal yang diinput gak boleh lebih dari max
                 if self.input_fixed_nominal:
@@ -607,6 +622,18 @@ class SaleAdvancePaymentInv(models.TransientModel):
                 for line in draft_invoice.invoice_line_ids:
                     line.price_subtotal = self.nominal  # Update price_subtotal di invoice line
 
+    @api.onchange('amount')
+    def _onchange_amount(self):
+        """
+        Update nominal saat amount (percentage) berubah
+        """
+        sale_order_id = self.env.context.get('active_id')
+        if sale_order_id and self.advance_payment_method == 'percentage':
+            sale_order = self.env['sale.order'].browse(sale_order_id)
+            price_subtotal = sum(sale_order.order_line.mapped('price_subtotal'))
+            
+            # Hitung nominal berdasarkan persentase dari price_subtotal
+            self.nominal = (price_subtotal * self.amount) / 100
             
     # Function buat generate PDF dari template
     def action_generate_pdf(self):
@@ -645,3 +672,31 @@ class SaleAdvancePaymentInv(models.TransientModel):
                 'mimetype': 'application/pdf', # Tipe file
             })]
         return action
+
+    @api.model
+    def default_get(self, fields):
+        """
+        Set nilai default saat wizard pertama kali dibuka
+        """
+        res = super(SaleAdvancePaymentInv, self).default_get(fields)
+        
+        if self._context.get('active_id'):
+            sale_order = self.env['sale.order'].browse(self._context.get('active_id'))
+            
+            # Ambil price_subtotal dari sale order line
+            price_subtotal = sum(sale_order.order_line.mapped('price_subtotal'))
+            
+            # Hitung total yang udah dibayar
+            amount_invoiced = sum(sale_order.invoice_ids.mapped('amount_total'))
+            # Hitung total yang harus dibayar
+            amount_to_invoice = price_subtotal - amount_invoiced
+            
+            # Set nilai default
+            res.update({
+                'price_subtotal': price_subtotal,
+                'amount_invoiced': amount_invoiced,
+                'amount_to_invoice': amount_to_invoice,
+                'nominal': amount_to_invoice if res.get('advance_payment_method') == 'all' else 0.0
+            })
+            
+        return res
