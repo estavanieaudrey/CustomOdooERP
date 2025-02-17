@@ -72,7 +72,6 @@
                                 <field name="hrg_plate_isi"/>
                                 <field name="hrg_plate_cover"/>
                                 <field name="hrg_box"/>
-                                <field name="hrg_uv"/>
                             </group>
                         </group>
                     </page>
@@ -85,6 +84,7 @@
                                 <field name="jasa_cetak_isi"/>
                                 <field name="jasa_cetak_cover"/>
                                 <field name="jasa_jilid"/>
+                                <field name="hrg_uv"/>
                             </group>
                         </group>
                     </page>

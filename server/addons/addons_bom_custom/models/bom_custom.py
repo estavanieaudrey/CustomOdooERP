@@ -124,14 +124,14 @@ class MrpBomCustom(models.Model):
         store=True
     )
     total_biaya_kertas_cover = fields.Float(string="Total Biaya Kertas Cover", compute="_compute_biaya_bahan_baku",
-                                            store=True)
+                                    store=True)
     total_biaya_plate_isi = fields.Float(string="Total Biaya Plate Isi", compute="_compute_biaya_bahan_baku",
-                                         store=True)
+                                    store=True)
     total_biaya_plate_cover = fields.Float(string="Total Biaya Plate Cover", compute="_compute_biaya_bahan_baku",
-                                           store=True)
+                                    store=True)
     total_biaya_box = fields.Float(string="Total Biaya Box", compute="_compute_biaya_bahan_baku", store=True)
     total_biaya_bahan_baku = fields.Float(string="Total Biaya Bahan Baku", compute="_compute_total_bahan_baku",
-                                          store=True)
+                                    store=True)
 
     total_biaya_cetak_isi = fields.Float(string="Total Biaya Cetak Isi", compute="_compute_biaya_jasa", store=True)
     total_biaya_cetak_cover = fields.Float(string="Total Biaya Cetak Cover", compute="_compute_biaya_jasa", store=True)
@@ -496,75 +496,60 @@ class MrpBomCustom(models.Model):
             record.qty_buku = record.product_qty
 
     # Function buat ngambil harga material dari Purchase Agreement
-    # Note: ini belum jalan, masih WIP
+    @api.onchange('purchase_requisition_ids')
+    def _onchange_purchase_requisition_ids(self):
+        """
+        Update harga material saat Purchase Agreement ditambah/dihapus dari BOM.
+        - Jika PA ditambah: Update harga dari PA
+        - Jika PA dihapus: Reset harga jadi 0
+        """
+        if self.purchase_requisition_ids:  # Hanya jalankan jika ada Purchase Agreement yang dipilih
+            self._compute_material_prices()
+        else:  # Semua PA dihapus
+            # Reset semua harga jadi 0
+            self.hrg_kertas_isi = 0.0
+            self.hrg_kertas_cover = 0.0
+            self.hrg_plate_isi = 0.0
+            self.hrg_plate_cover = 0.0
+            self.hrg_box = 0.0
+            self.hrg_uv = 0.0
+
     @api.depends('purchase_requisition_ids')
     def _compute_material_prices(self):
         """
-        Ngambil harga material dari Purchase Agreement yang dipilih.
-        
-        Cara kerjanya:
-        1. Reset semua harga dulu
-        2. Cek setiap Purchase Agreement yang dipilih
-        3. Cocokin nama produk dengan kategorinya
-        4. Update harga sesuai kategori
-        
-        Note: Ini masih WIP (Work in Progress), belum jalan sempurna
+        Mengambil harga material dari Purchase Agreement berdasarkan default_code product.
+        Harga diambil dari Purchase Agreement yang terakhir ditambahkan untuk setiap material.
         """
         for bom in self:
-            # Reset semua harga ke 0
-            bom.hrg_kertas_isi = 0.0
-            bom.hrg_kertas_cover = 0.0
-            bom.hrg_plate_isi = 0.0
-            bom.hrg_plate_cover = 0.0
-            bom.hrg_box = 0.0
-            bom.hrg_uv = 0.0
+            # Reset harga hanya jika tidak ada Purchase Agreement yang dipilih
+            if not bom.purchase_requisition_ids:
+                bom.hrg_kertas_isi = 0.0
+                bom.hrg_kertas_cover = 0.0
+                bom.hrg_plate_isi = 0.0
+                bom.hrg_plate_cover = 0.0
+                bom.hrg_box = 0.0
+                bom.hrg_uv = 0.0
+                return
 
-            # Bikin mapping nama produk ke field harga
-            material_map = {
-                'KERTAS_ISI': ['Kertas Isi (Virgin/HS)', 'Kertas Isi (Tabloid)'],
-                'KERTAS_COVER': ['Kertas Cover (Art Carton)', 'Kertas Cover (Art Paper)',
-                                'Kertas Cover (Ivory)', 'Kertas Cover (Boxboard)',
-                                'Kertas Cover (Duplex)'],
-                'PLATE_ISI': ['Plate Isi'],
-                'PLATE_COVER': ['Plate Cover'],
-                'BOX': ['Box Buku'],
-                'UV': ['UV']
-            }
-
-            # Cek setiap Purchase Agreement
+            # Cek setiap Purchase Agreement yang dipilih
             for requisition in bom.purchase_requisition_ids:
                 for line in requisition.line_ids:
-                    product_name = line.product_id.name
+                    if not line.product_id or not line.product_id.default_code:
+                        continue
 
-                    # Cek tiap material dan update harganya
-                    if any(name in product_name for name in material_map['KERTAS_ISI']):
+                    default_code = line.product_id.default_code.lower()
+                    
+                    # Update harga berdasarkan default_code
+                    if default_code == 'KERTAS_ISI':  # Sesuaikan dengan default_code di product_custom.py
                         bom.hrg_kertas_isi = line.price_unit
-                        continue
-
-                    # Check for Kertas Cover
-                    if any(name in product_name for name in material_map['KERTAS_COVER']):
+                    elif default_code == 'KERTAS_COVER':
                         bom.hrg_kertas_cover = line.price_unit
-                        continue
-
-                    # Check for Plate Isi
-                    if any(name in product_name for name in material_map['PLATE_ISI']):
+                    elif default_code == 'plate_isi':
                         bom.hrg_plate_isi = line.price_unit
-                        continue
-
-                    # Check for Plate Cover
-                    if any(name in product_name for name in material_map['PLATE_COVER']):
+                    elif default_code == 'plate_cover':
                         bom.hrg_plate_cover = line.price_unit
-                        continue
-
-                    # Check for Box
-                    if any(name in product_name for name in material_map['BOX']):
+                    elif default_code == 'box':
                         bom.hrg_box = line.price_unit
-                        continue
-
-                    # Check for UV
-                    if any(name in product_name for name in material_map['UV']):
-                        bom.hrg_uv = line.price_unit
-                        continue
 
 
 class MrpBomLineCustom(models.Model):
