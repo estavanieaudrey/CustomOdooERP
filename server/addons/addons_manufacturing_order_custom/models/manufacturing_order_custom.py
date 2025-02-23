@@ -465,10 +465,32 @@ class MrpProductionCustom(models.Model):
         Override button_mark_done bawaan Odoo.
         
         Yang dikerjain:
-        1. Jalanin function bawaan dulu
-        2. Update qty di SO sesuai hasil produksi + surplus
-        3. Update harga per unit (jaga biar gak berubah)
+        1. Cek status work orders
+        2. Jalanin function bawaan dulu
+        3. Update qty di SO sesuai hasil produksi + surplus
+        4. Update harga per unit (jaga biar gak berubah)
         """
+        # Validasi status work orders
+        for production in self:
+            # Cek apakah ada work orders yang belum selesai
+            unfinished_workorders = production.workorder_ids.filtered(lambda wo: wo.state != 'done')
+            
+            if unfinished_workorders:
+                # Buat pesan error yang detail
+                unfinished_details = []
+                for wo in unfinished_workorders:
+                    status = dict(wo._fields['state'].selection).get(wo.state, wo.state)
+                    unfinished_details.append(
+                        f"- {wo.name} (Status: {status})"
+                    )
+                
+                raise UserError(_(
+                    "Tidak dapat menyelesaikan Manufacturing Order!\n\n"
+                    "Beberapa Work Order masih belum selesai:\n"
+                    f"{chr(10).join(unfinished_details)}\n\n"
+                    "Mohon selesaikan semua Work Order terlebih dahulu."
+                ))
+
         # Jalanin function bawaan dulu
         res = super(MrpProductionCustom, self).button_mark_done()
 
@@ -497,9 +519,33 @@ class MrpProductionCustom(models.Model):
                 # move_line.product_uom_qty = self.qty_plus_surplus  # Update qty yang diharapkan
 
         return res
-
     
-    
+    # Override action_confirm to validate work orders
+    def action_confirm(self):
+        """
+        Override action_confirm to validate required work order fields before confirming.
+        """
+        for production in self:
+            # Check if work orders exist
+            if not production.workorder_ids:
+                raise ValidationError("Anda harus membuat minimal satu Work Order sebelum konfirmasi!")
+            
+            # Validate each work order
+            for workorder in production.workorder_ids:
+                missing_fields = []
+                
+                if not workorder.name:
+                    missing_fields.append('Operation')
+                if not workorder.workcenter_id:
+                    missing_fields.append('Work Center')
+                
+                if missing_fields:
+                    raise ValidationError(
+                        f"Work Order '{workorder.name or 'New'}' membutuhkan field berikut:\n"
+                        f"{', '.join(missing_fields)}"
+                    )
+        
+        return super(MrpProductionCustom, self).action_confirm()
 
     # Field to store the sum of qty_realita_buku
     qty_plus_surplus = fields.Float(
