@@ -1,4 +1,5 @@
 from odoo import models, fields, api
+from odoo.exceptions import ValidationError
 
 # Class untuk nambahin fitur custom di purchase.requisition.line (detail perjanjian pembelian)
 class PurchaseRequisitionLine(models.Model):
@@ -76,3 +77,30 @@ class PurchaseRequisition(models.Model):
                 # Kalo ketemu, update quantity
                 if bom_line:
                     line.product_qty = bom_line.product_qty
+
+    def action_confirm(self):
+        """
+        Override action_confirm untuk validasi field mandatory sebelum konfirmasi.
+        """
+        for requisition in self:
+            missing_fields = []
+
+            # Validasi date_start
+            if not requisition.date_start:
+                missing_fields.append('Agreement Validity Date')
+
+            # Validasi product_id di setiap line
+            if not requisition.line_ids:
+                raise ValidationError("Anda harus menambahkan minimal satu produk sebelum konfirmasi!")
+
+            for line in requisition.line_ids:
+                if not line.product_id:
+                    missing_fields.append('Product di Purchase Agreement Lines')
+                    break  # Cukup sekali saja warning untuk product yang kosong
+
+            if missing_fields:
+                raise ValidationError(
+                    f"Silakan isi field berikut sebelum konfirmasi: {', '.join(missing_fields)}"
+                )
+
+        return super(PurchaseRequisition, self).action_confirm()
