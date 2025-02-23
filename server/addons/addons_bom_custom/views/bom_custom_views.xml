@@ -60,31 +60,40 @@
                     </page>
 
                     <!-- Tab Harga Bahan Baku -->
-                    <page string="Harga Bahan Baku">
+                    <page string="Harga Bahan Baku" name="harga_bahan_baku">
                         <group>
                             <group string="Purchase Agreements">
                                 <field name="purchase_requisition_ids"
                                     options="{'no_create': True}"/>
                             </group>
                             <group string="Material Prices">
-                                <field name="hrg_kertas_isi"/>
-                                <field name="hrg_kertas_cover"/>
-                                <field name="hrg_plate_isi"/>
-                                <field name="hrg_plate_cover"/>
-                                <field name="hrg_box"/>
+                                <field name="hrg_kertas_isi" 
+                                    decoration-danger="not hrg_kertas_isi"/>
+                                <field name="hrg_kertas_cover" 
+                                    decoration-danger="not hrg_kertas_cover"/>
+                                <field name="hrg_plate_isi" 
+                                    decoration-danger="not hrg_plate_isi"/>
+                                <field name="hrg_plate_cover" 
+                                    decoration-danger="not hrg_plate_cover"/>
+                                <field name="hrg_box" 
+                                    decoration-danger="not hrg_box"/>
+                                <field name="hrg_uv" 
+                                    decoration-danger="not hrg_uv"/>
                             </group>
                         </group>
                     </page>
 
 
                     <!-- Tab Biaya Jasa Produksi -->
-                    <page string="Biaya Jasa Produksi">
+                    <page string="Biaya Jasa Produksi" name="biaya_jasa_produksi">
                         <group>
                             <group>
-                                <field name="jasa_cetak_isi"/>
-                                <field name="jasa_cetak_cover"/>
-                                <field name="jasa_jilid"/>
-                                <field name="hrg_uv"/>
+                                <field name="jasa_cetak_isi" 
+                                    decoration-danger="not jasa_cetak_isi"/>
+                                <field name="jasa_cetak_cover" 
+                                    decoration-danger="not jasa_cetak_cover"/>
+                                <field name="jasa_jilid" 
+                                    decoration-danger="not jasa_jilid"/>
                             </group>
                         </group>
                     </page>

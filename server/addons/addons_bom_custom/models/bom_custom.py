@@ -1,4 +1,5 @@
 from odoo import models, fields, api
+from odoo.exceptions import ValidationError
 
 
 class MrpBomCustom(models.Model):
@@ -104,17 +105,17 @@ class MrpBomCustom(models.Model):
 
     # === SECTION: Fields untuk harga material ===
     # Nanti bakal diisi otomatis dari Purchase Agreement, tapi untuk sementara manual input
-    hrg_kertas_isi = fields.Integer(string="Harga Kertas Isi (Rp)")
-    hrg_kertas_cover = fields.Integer(string="Harga Kertas Cover (Rp)")
-    hrg_plate_isi = fields.Integer(string="Harga Plate Isi (Rp)")
-    hrg_plate_cover = fields.Integer(string="Harga Plate Cover (Rp)")
-    hrg_box = fields.Integer(string="Harga Box (Rp)")
-    hrg_uv = fields.Float(string="Harga UV (Rp)")
+    hrg_kertas_isi = fields.Integer(string="Harga Kertas Isi (Rp)", required=True)
+    hrg_kertas_cover = fields.Integer(string="Harga Kertas Cover (Rp)", required=True)
+    hrg_plate_isi = fields.Integer(string="Harga Plate Isi (Rp)", required=True)
+    hrg_plate_cover = fields.Integer(string="Harga Plate Cover (Rp)", required=True)
+    hrg_box = fields.Integer(string="Harga Box (Rp)", required=True)
+    hrg_uv = fields.Float(string="Harga UV (Rp)", required=True)
 
     # === SECTION: Fields untuk biaya jasa ===
-    jasa_cetak_isi = fields.Integer(string="Biaya Cetak Isi (Rp)")
-    jasa_cetak_cover = fields.Integer(string="Biaya Cetak Cover (Rp)")
-    jasa_jilid = fields.Float(string="Biaya Jilid (Rp)")
+    jasa_cetak_isi = fields.Integer(string="Biaya Cetak Isi (Rp)", required=True)
+    jasa_cetak_cover = fields.Integer(string="Biaya Cetak Cover (Rp)", required=True)
+    jasa_jilid = fields.Float(string="Biaya Jilid (Rp)", required=True)
 
     # === SECTION: Fields hasil perhitungan biaya bahan ===
     # Semua field ini dihitung otomatis (compute)
@@ -550,6 +551,79 @@ class MrpBomCustom(models.Model):
                         bom.hrg_plate_cover = line.price_unit
                     elif default_code == 'box':
                         bom.hrg_box = line.price_unit
+
+
+    @api.constrains('hrg_kertas_isi', 'hrg_kertas_cover', 'hrg_plate_isi', 'hrg_plate_cover', 
+                    'hrg_box', 'hrg_uv', 'jasa_cetak_isi', 'jasa_cetak_cover', 'jasa_jilid')
+    def _check_required_prices(self):
+        """
+        Memvalidasi bahwa semua field harga dan biaya jasa telah diisi
+        """
+        for record in self:
+            # Cek harga material
+            if not record.hrg_kertas_isi:
+                raise ValidationError('Harga Kertas Isi harus diisi!')
+            if not record.hrg_kertas_cover:
+                raise ValidationError('Harga Kertas Cover harus diisi!')
+            if not record.hrg_plate_isi:
+                raise ValidationError('Harga Plate Isi harus diisi!')
+            if not record.hrg_plate_cover:
+                raise ValidationError('Harga Plate Cover harus diisi!')
+            if not record.hrg_box:
+                raise ValidationError('Harga Box harus diisi!')
+            if not record.hrg_uv:
+                raise ValidationError('Harga UV harus diisi!')
+            
+            # Cek biaya jasa
+            if not record.jasa_cetak_isi:
+                raise ValidationError('Biaya Cetak Isi harus diisi!')
+            if not record.jasa_cetak_cover:
+                raise ValidationError('Biaya Cetak Cover harus diisi!')
+            if not record.jasa_jilid:
+                raise ValidationError('Biaya Jilid harus diisi!')
+
+    # # Add warning messages for required fields
+    # @api.onchange('hrg_kertas_isi', 'hrg_kertas_cover', 'hrg_plate_isi', 'hrg_plate_cover', 
+    #             'hrg_box', 'hrg_uv', 'jasa_cetak_isi', 'jasa_cetak_cover', 'jasa_jilid')
+    # def _onchange_required_fields(self):
+    #     """Show warning for empty required fields"""
+    #     warning_fields = []
+        
+    #     if not self.hrg_kertas_isi:
+    #         warning_fields.append('Harga Kertas Isi')
+    #     if not self.hrg_kertas_cover:
+    #         warning_fields.append('Harga Kertas Cover')
+    #     if not self.hrg_plate_isi:
+    #         warning_fields.append('Harga Plate Isi')
+    #     if not self.hrg_plate_cover:
+    #         warning_fields.append('Harga Plate Cover')
+    #     if not self.hrg_box:
+    #         warning_fields.append('Harga Box')
+    #     if not self.hrg_uv:
+    #         warning_fields.append('Harga UV')
+    #     if not self.jasa_cetak_isi:
+    #         warning_fields.append('Biaya Cetak Isi')
+    #     if not self.jasa_cetak_cover:
+    #         warning_fields.append('Biaya Cetak Cover')
+    #     if not self.jasa_jilid:
+    #         warning_fields.append('Biaya Jilid')
+
+    #     if warning_fields:
+    #         return {
+    #             'warning': {
+    #                 'title': 'Field Wajib Diisi',
+    #                 'message': 'Silakan isi field berikut:\n' + '\n'.join(warning_fields)
+    #             }
+    #         }
+
+    @api.constrains('bom_line_ids')
+    def _check_bom_lines(self):
+        """
+        Memvalidasi bahwa BOM memiliki minimal satu komponen sebelum disimpan
+        """
+        for bom in self:
+            if not bom.bom_line_ids:
+                raise ValidationError('BOM harus memiliki minimal satu komponen! Silakan tambahkan material yang digunakan.')
 
 
 class MrpBomLineCustom(models.Model):
