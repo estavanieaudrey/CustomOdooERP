@@ -1159,6 +1159,34 @@ class MrpWorkorderCustom(models.Model):
             'addons_manufacturing_order_custom.action_report_laporan_hasil_produksi'
         ).report_action(self)
 
+    def button_finish(self):
+        """
+        Override button_finish untuk validasi work_center_step sebelum selesai.
+        Hanya dijalankan jika work order belum selesai (state != 'done').
+        """
+        for workorder in self:
+            # Skip validasi jika work order sudah selesai
+            if workorder.state == 'done':
+                return True
+            
+            # Validasi work_center_step harus diisi terlebih dahulu
+            # agar function button_finish tidak terpanggil oleh button_mark_done meskipun work order sudah selesai. 
+            if not workorder.work_center_step:
+                raise UserError(_(
+                    "Anda perlu mengisi Work Center Step terlebih dahulu sebelum menyelesaikan Work Order.\n\n"
+                    "Pilihan Work Center Step yang tersedia:\n"
+                    "- Produksi Cetak Cover\n"
+                    "- Mengirimkan ke UV Varnish\n"
+                    "- Menerima Cetak Cover dari UV Varnish\n"
+                    "- Produksi Cetak Isi\n"
+                    "- Join Cetak Cover dan Isi\n"
+                    "- Pemotongan Akhir\n"
+                    "- Packing Buku kedalam Box"
+                ))
+
+        # Jika validasi lolos, jalankan method asli
+        return super(MrpWorkorderCustom, self).button_finish()
+
 
 # Class untuk extend BoM Line (buat logging)
 class MrpBomLine(models.Model):
