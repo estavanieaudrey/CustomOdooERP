@@ -459,56 +459,6 @@ class MrpProductionCustom(models.Model):
                 
         return res
 
-    # # Override button_mark_done buat update qty sesuai surplus
-    # def button_mark_done(self):
-    #     """
-    #     Override button_mark_done bawaan Odoo.
-        
-    #     Yang dikerjain:
-    #     1. Jalanin function bawaan dulu
-    #     2. Update qty di SO sesuai hasil produksi + surplus
-    #     3. Update harga per unit (jaga biar gak berubah)
-    #     4. Update state SO jadi 'sale'
-    #     """
-    #     # Jalanin function bawaan dulu
-    #     res = super(MrpProductionCustom, self).button_mark_done()
-        
-        
-    #     # Update SO hanya jika ada sale_id dan order_line
-    #     if self.sale_id and self.sale_id.order_line:
-    #         for line in self.sale_id.order_line:
-    #             # Skip non-stockable products
-    #             if line.product_id.type not in ['product', 'consu']:
-    #                 continue
-                    
-    #             # Simpan nilai original
-    #             original_price = line.price_unit
-                
-    #             # Update qty dan price dengan write
-    #             line.write({
-    #                 'product_uom_qty': self.qty_plus_surplus,
-    #                 'price_unit': original_price
-    #             })
-        
-    #         # Update state SO jadi 'sale' jika belum
-    #         if self.sale_id.state not in ['sale', 'done']:
-    #             self.sale_id.write({'state': 'sale'})
-                
-    #     # CODE LAMA ERROR :
-    #     # # Simpen harga per unit yang lama
-    #     # unit_price = self.sale_id.order_line.price_unit
-        
-    #     # # Update qty di SO pake qty_plus_surplus
-    #     # self.sale_id.order_line.product_uom_qty = self.qty_plus_surplus
-        
-    #     # # Pasang lagi harga per unit yang lama
-    #     # self.sale_id.order_line.price_unit = unit_price
-        
-    #     # # Update state SO jadi 'sale'
-    #     # self.sale_id.write({'state': 'sale'})
-    #     return res
-    
-    
     # Override button_mark_done buat update qty sesuai surplus
     def button_mark_done(self):
         """
@@ -1073,6 +1023,30 @@ class MrpWorkorderCustom(models.Model):
         # Update quantity setelah work order dimulai
         self._update_qty_producing(self.qty_production - self.qty_produced)
         return res
+    
+    
+    # def button_start(self):
+    #     """
+    #     Override button_start to auto-finish middle work orders.
+    #     Only first and last work orders will remain in 'started' state.
+    #     """
+    #     res = super(MrpWorkorderCustom, self).button_start()
+        
+    #     # Get all work orders for this MO, ordered by sequence
+    #     all_work_orders = self.production_id.workorder_ids.sorted(lambda w: w.sequence)
+        
+    #     # If there are at least 3 work orders (to have middle ones)
+    #     if len(all_work_orders) >= 3:
+    #         # Get index of current work order
+    #         current_index = list(all_work_orders).index(self)
+            
+    #         # If this is a middle work order (not first or last)
+    #         if 0 < current_index < len(all_work_orders) - 1:
+    #             # Auto finish the work order
+    #             self.button_finish()
+            
+    #     return res
+
 
     # Fields buat nyimpen total hasil produksi dari semua work orders
     hasil_produksi_cover_total = fields.Float(
