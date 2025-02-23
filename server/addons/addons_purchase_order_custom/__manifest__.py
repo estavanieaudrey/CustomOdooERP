@@ -9,14 +9,16 @@
         'stock',  # For inventory management
         'mrp',  # For Bill of Materials (BOM)
         'sale',  # For sales integration
+        'web',
     ],
     'data': [
         # XML files for views
         'views/purchase_agreement_views.xml',
         'views/purchase_order_custom_views.xml',
-
+        'reports/report_rfq_template.xml',
         # Security and access control
         'security/ir.model.access.csv',
+        'actions/request_for_quotation.xml',
     ],
     'installable': True,
     'application': False,

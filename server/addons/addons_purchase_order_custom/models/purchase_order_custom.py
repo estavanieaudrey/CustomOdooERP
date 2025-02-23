@@ -7,7 +7,7 @@ class PurchaseOrderCustom(models.Model):
     Nambahin fitur link ke SO dan MO, plus alamat vendor.
     """
     _inherit = 'purchase.order'
-
+    
     # === SECTION: Link ke dokumen lain ===
     
     # Link ke Sales Order

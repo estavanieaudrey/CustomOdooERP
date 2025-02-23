@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <!-- Override existing purchase quotation template -->
+        <template id="report_purchasequotation_document" inherit_id="purchase.report_purchasequotation_document">
+            <xpath expr="//t[@t-call='web.external_layout']" position="replace">
+                <t t-call="web.basic_layout">
+                    <div class="page" style="margin-left: 40px; margin-right: 40px; text-align: justify;">
+                        <!-- Company Letterhead -->
+                        <div style="width:1000px; padding-bottom:30px; ">
+                            <!-- Logo -->
+                            <div style="width:300px; float:left; margin-left: 20px;">
+                                <img src="/addons_sales_order_custom/static/img/logo_company_1.png" alt="Company Logo"
+                                    style="height: 150px;"/>
+                            </div>
+                            <!-- Address Details -->
+                            <div style="width: 300px; float: right; text-align: left; line-height: 1.2; margin: 0; padding-top: 30px;">
+                                <p style="margin: 0;">
+                                    <strong>
+                                        <span t-field="docs.company_id.name"/>
+                                    </strong>
+                                </p>
+                                <p style="margin: 0;">
+                                    <span t-field="docs.company_id.street"/>
+                                </p>
+                                <p style="margin: 0;">
+                                    <span t-field="docs.company_id.city"/>,
+                                    <span t-field="docs.company_id.state_id.name"/>
+                                </p>
+                                <p style="margin: 0;">
+                                    <span t-field="docs.company_id.country_id.name"/>
+                                </p>
+                                <p style="margin: 0;">
+                                    <span t-field="docs.company_id.mobile"/>
+                                </p>
+                                <p style="margin: 0;">
+                                    <span t-field="docs.company_id.phone"/>
+                                </p>
+                            </div>
+                        </div>
+
+                        <!--                <hr style="border: 1px solid #000; margin: 10px 0;"/>-->
+                        <p style="text-align: center;">
+                            ________________________________________________________________________________________________________________________________________________
+                        </p>
+
+                        <!-- Rest of your custom template content -->
+                        <div class="page" style="margin-left: 20px; margin-right: 20px; text-align: justify;">
+                            <h2 style="padding-top: 20px; padding-bottom: 10px; text-align: center;">
+                                <strong>Order Reference:</strong> <span t-field="docs.name"/>
+                            </h2>
+                            <p style="padding-top: 20px; padding-bottom: 10px; text-align: center;">
+                                <strong>Order Date:</strong> <span t-field="docs.date_order"/>
+                            </p>
+                            <p style="text-align: center;">Pada hari ini, tanggal:
+                                <t t-esc="datetime.date.today().strftime('%d-%m-%Y')"/>
+                            </p>
+                            <table class="table table-bordered mt-4">
+                                <thead>
+                                    <tr>
+                                        <th>Product</th>
+                                        <th>Quantity</th>
+                                        <th>Unit Price</th>
+                                        <th>Subtotal</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr t-foreach="docs.order_line" t-as="line">
+                                        <td><span t-field="line.product_id.name"/></td>
+                                        <td><span t-field="line.product_qty"/></td>
+                                        <td><span t-field="line.price_unit"/></td>
+                                        <td><span t-field="line.price_subtotal"/></td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>  
+                        
+                    </div>
+                </t>
+            </xpath>
+        </template>
+    </data>
+</odoo>

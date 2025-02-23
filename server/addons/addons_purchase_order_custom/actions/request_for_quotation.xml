@@ -1,0 +1,33 @@
+<odoo>
+    <data>
+        <!-- Override existing report action -->
+        <record id="action_report_purchase_quotations_custom" model="ir.actions.report">
+            <field name="name">Request for Quotation</field>
+            <field name="model">purchase.order</field>
+            <field name="report_type">qweb-pdf</field>
+            <field name="report_name">addons_purchase_order_custom.report_purchasequotation_document</field>
+            <field name="report_file">addons_purchase_order_custom.report_purchasequotation_document</field>
+            <field name="print_report_name">'Request for Quotation - %s' % (object.name)</field>
+            <field name="binding_model_id" ref="purchase.model_purchase_order"/>
+            <field name="binding_type">report</field>
+        </record>
+
+        <!-- Inherit and modify the purchase order form view -->
+        <record id="view_purchase_order_form_inherit" model="ir.ui.view">
+            <field name="name">purchase.order.form.inherit.custom</field>
+            <field name="model">purchase.order</field>
+            <field name="inherit_id" ref="purchase.purchase_order_form"/>
+            <field name="arch" type="xml">
+                <button name="print_quotation" position="replace">
+                    <button name="%(addons_purchase_order_custom.action_report_purchase_quotations_custom)d"
+                            string="Print RFQ"
+                            type="action"
+                            invisible="state != 'draft'"
+                            class="oe_highlight"
+                            groups="base.group_user"
+                            data-hotkey="k"/>
+                </button>
+            </field>
+        </record>
+    </data>
+</odoo>
