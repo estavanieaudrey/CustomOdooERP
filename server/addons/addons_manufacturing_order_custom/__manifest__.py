@@ -10,8 +10,8 @@
     'depends': ['mrp', 'sale', 'product', 'base', 'sale_stock', 'addons_inventory_custom'],
     'data': [
         'views/manufacturing_order_view.xml',
-        'views/nota_permintaan_barang_view.xml',
-        'views/surat_perintah_kerja.xml',
+        'actions/nota_permintaan_barang_view.xml',
+        'actions/surat_perintah_kerja.xml',
         'reports/report_npb_template.xml',
         'reports/report_spk_template.xml',
         'reports/report_hasil_produksi_template.xml',
