@@ -78,8 +78,6 @@
                     <page string="Pasal 4">
                         <group>
                             <field name="expired_date"/>
-<!--                            <field name="customer_signature" widget="image"-->
-<!--                                   options="{'preview_image': 'customer_signature'}"/>-->
                         </group>
                     </page>
                 </notebook>

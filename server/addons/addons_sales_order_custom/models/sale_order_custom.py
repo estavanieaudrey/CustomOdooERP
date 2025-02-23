@@ -303,38 +303,6 @@ class SaleOrderCustom(models.Model):
             else:
                 record.detail_packing = "Tidak Ada"
 
-    # Ngitung nominal DP dari persentase
-    @api.depends('down_payment_percentage', 'hpp_total')
-    def _compute_down_payment_nominal(self):
-        """
-        Hitung nominal Down Payment berdasarkan persentase.
-        Rumus: total harga * persentase / 100
-        """
-        for record in self:
-            # Cek dulu DP aktif gak & ada persentasenya gak
-            if record.down_payment_yes_no and record.down_payment_percentage:
-                # Rumus: total harga * persentase / 100
-                record.down_payment_nominal = (record.hpp_total * record.down_payment_percentage) / 100
-            else:
-                record.down_payment_nominal = 0.0
-                
-    @api.onchange('down_payment_yes_no')
-    def _onchange_down_payment_yes_no(self):
-        """
-        Handle pas checkbox DP di-toggle:
-        - Kalo dicentang: hitung nominal DP
-        - Kalo dimatiin: reset nilai DP jadi 0
-        """
-        for record in self:
-            if record.down_payment_yes_no:
-                # If percentage is already filled, calculate the nominal
-                if record.down_payment_percentage:
-                    record.down_payment_nominal = (record.hpp_total * record.down_payment_percentage) / 100
-            else:
-                # Reset values when down payment is disabled
-                record.down_payment_percentage = 0.0
-                record.down_payment_nominal = 0.0
-
     # Update data ke order lines waktu BoM dipilih
     @api.onchange('bom_id')
     def _onchange_bom_id(self):
@@ -352,7 +320,7 @@ class SaleOrderCustom(models.Model):
                     'name': product.name,               # Nama produk
                     'tax_id': [(6, 0, [])],            # Kosongkan pajak (udah include di hpp)
                 })]
-
+    
     # Field untuk draft perjanjian
     draft_perjanjian = fields.Binary(
         string="Draft Perjanjian PDF",  # File PDF-nya
@@ -371,17 +339,6 @@ class SaleOrderCustom(models.Model):
         string="Tanggal Tanda Tangan",      # Tanggal ttd
         help="Tanggal perjanjian ditandatangani"
     )
-
-    # is_confirmed = fields.Boolean(string="Confirmed", default=False)
-
-    # def action_convert_to_sales_order(self):
-    #     """
-    #     Convert draft quotation to confirmed sales order after validating the signature.
-    #     """
-    #     if not self.is_signed:
-    #         raise ValidationError("Draft perjanjian belum ditandatangani!")
-    #     self.action_confirm()  # Confirm the sales order using Odoo's built-in method
-    #     self.is_confirmed = True  # Mark the sales order as confirmed
 
     # Function buat bikin PDF dari template report yang udah dibuat
     def action_generate_pdf(self):
@@ -462,6 +419,38 @@ class SaleOrderCustom(models.Model):
             # Reset tanggal kalo status signed dimatiin
             self.signature_date = False
 
+    # Ngitung nominal DP dari persentase
+    @api.depends('down_payment_percentage', 'hpp_total')
+    def _compute_down_payment_nominal(self):
+        """
+        Hitung nominal Down Payment berdasarkan persentase.
+        Rumus: total harga * persentase / 100
+        """
+        for record in self:
+            # Cek dulu DP aktif gak & ada persentasenya gak
+            if record.down_payment_yes_no and record.down_payment_percentage:
+                # Rumus: total harga * persentase / 100
+                record.down_payment_nominal = (record.hpp_total * record.down_payment_percentage) / 100
+            else:
+                record.down_payment_nominal = 0.0
+                
+    @api.onchange('down_payment_yes_no')
+    def _onchange_down_payment_yes_no(self):
+        """
+        Handle pas checkbox DP di-toggle:
+        - Kalo dicentang: hitung nominal DP
+        - Kalo dimatiin: reset nilai DP jadi 0
+        """
+        for record in self:
+            if record.down_payment_yes_no:
+                # If percentage is already filled, calculate the nominal
+                if record.down_payment_percentage:
+                    record.down_payment_nominal = (record.hpp_total * record.down_payment_percentage) / 100
+            else:
+                # Reset values when down payment is disabled
+                record.down_payment_percentage = 0.0
+                record.down_payment_nominal = 0.0
+
     # Validasi persentase DP tidak boleh lebih dari 100%
     @api.constrains('down_payment_percentage')
     def _check_down_payment_percentage(self):
@@ -483,6 +472,51 @@ class SaleOrderCustom(models.Model):
                     'message': 'Persentase down payment tidak bisa lebih dari 100%'
                 }
             }
+
+    # Validasi: Pastiin ada BoM sebelum bisa disimpan
+    @api.constrains('bom_id')
+    def _check_bom_id(self):
+        """
+        Validasi sebelum simpan:
+        - Harus ada BoM yang dipilih
+        - Kalo belum ada, lempar error
+        """
+        for record in self:
+            if not record.bom_id:
+                raise ValidationError("Bill of Materials (BoM) harus dipilih terlebih dahulu!")
+
+    # # Warning waktu save kalo belum pilih BoM
+    # @api.onchange('bom_id')
+    # def _onchange_bom_id_warning(self):
+    #     """
+    #     Kasih warning kalo BoM belum dipilih
+    #     """
+    #     if not self.bom_id:
+    #         return {
+    #             'warning': {
+    #                 'title': 'BoM Wajib Dipilih',
+    #                 'message': 'Silakan pilih Bill of Materials (BoM) terlebih dahulu sebelum menyimpan.'
+    #             }
+    #         }
+
+    # # Override write method untuk validasi BoM
+    # def write(self, vals):
+    #     """
+    #     Override write method untuk validasi BoM sebelum save
+    #     """
+    #     if not vals.get('bom_id') and not self.bom_id:
+    #         raise ValidationError("Bill of Materials (BoM) harus dipilih terlebih dahulu!")
+    #     return super(SaleOrderCustom, self).write(vals)
+
+    # # Override create method untuk validasi BoM
+    # @api.model
+    # def create(self, vals):
+    #     """
+    #     Override create method untuk validasi BoM sebelum create
+    #     """
+    #     if not vals.get('bom_id'):
+    #         raise ValidationError("Bill of Materials (BoM) harus dipilih terlebih dahulu!")
+    #     return super(SaleOrderCustom, self).create(vals)
 
 # Class khusus buat handle Down Payment
 class SaleAdvancePaymentInv(models.TransientModel):
@@ -622,7 +656,8 @@ class SaleAdvancePaymentInv(models.TransientModel):
                 for line in draft_invoice.invoice_line_ids:
                     line.price_subtotal = self.nominal  # Update price_subtotal di invoice line
 
-    @api.onchange('amount')
+    @api.onchange('amount') #Menghitung ulang nominal DP saat jumlah persentase berubah untuk memastikan nilai DP selalu sesuai dengan total harga produksi.
+
     def _onchange_amount(self):
         """
         Update nominal saat amount (percentage) berubah
@@ -635,12 +670,34 @@ class SaleAdvancePaymentInv(models.TransientModel):
             # Hitung nominal berdasarkan persentase dari price_subtotal
             self.nominal = (price_subtotal * self.amount) / 100
             
-    # Function buat generate PDF dari template
-    def action_generate_pdf(self):
+
+    @api.model #Menetapkan nilai awal untuk wizard pembuatan invoice DP dengan mengambil data dari Sales Order, termasuk subtotal harga dan jumlah yang telah difakturkan.
+    def default_get(self, fields):
         """
-        Buat generate PDF dari template yang udah kita bikin
+        Set nilai default saat wizard pertama kali dibuka
         """
-        return self.env.ref('addons_sales_order_custom.action_report_draft_perjanjian').report_action(self)
+        res = super(SaleAdvancePaymentInv, self).default_get(fields)
+        
+        if self._context.get('active_id'):
+            sale_order = self.env['sale.order'].browse(self._context.get('active_id'))
+            
+            # Ambil price_subtotal dari sale order line
+            price_subtotal = sum(sale_order.order_line.mapped('price_subtotal'))
+            
+            # Hitung total yang udah dibayar
+            amount_invoiced = sum(sale_order.invoice_ids.mapped('amount_total'))
+            # Hitung total yang harus dibayar
+            amount_to_invoice = price_subtotal - amount_invoiced
+            
+            # Set nilai default
+            res.update({
+                'price_subtotal': price_subtotal,
+                'amount_invoiced': amount_invoiced,
+                'amount_to_invoice': amount_to_invoice,
+                'nominal': amount_to_invoice if res.get('advance_payment_method') == 'all' else 0.0
+            })
+            
+        return res
 
     # Function buat kirim quotation + PDF ke email
     def action_quotation_send(self):
@@ -672,31 +729,3 @@ class SaleAdvancePaymentInv(models.TransientModel):
                 'mimetype': 'application/pdf', # Tipe file
             })]
         return action
-
-    @api.model
-    def default_get(self, fields):
-        """
-        Set nilai default saat wizard pertama kali dibuka
-        """
-        res = super(SaleAdvancePaymentInv, self).default_get(fields)
-        
-        if self._context.get('active_id'):
-            sale_order = self.env['sale.order'].browse(self._context.get('active_id'))
-            
-            # Ambil price_subtotal dari sale order line
-            price_subtotal = sum(sale_order.order_line.mapped('price_subtotal'))
-            
-            # Hitung total yang udah dibayar
-            amount_invoiced = sum(sale_order.invoice_ids.mapped('amount_total'))
-            # Hitung total yang harus dibayar
-            amount_to_invoice = price_subtotal - amount_invoiced
-            
-            # Set nilai default
-            res.update({
-                'price_subtotal': price_subtotal,
-                'amount_invoiced': amount_invoiced,
-                'amount_to_invoice': amount_to_invoice,
-                'nominal': amount_to_invoice if res.get('advance_payment_method') == 'all' else 0.0
-            })
-            
-        return res
