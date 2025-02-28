@@ -540,6 +540,26 @@ class SaleAdvancePaymentInv(models.TransientModel):
     """
     _inherit = 'sale.advance.payment.inv'
     
+    # Tambahkan field untuk menyimpan sale_order_id
+    sale_order_id = fields.Many2one(
+        'sale.order',
+        string='Sale Order',
+        default=lambda self: self._context.get('active_id', False)
+    )
+    
+    delivery_order_id = fields.Many2one(
+        'stock.picking',
+        string="Delivery Order",
+        help="Select the delivery order related to this sale order.",
+        domain="[('sale_id', '=', sale_order_id)]"  # Gunakan sale_order_id sebagai domain
+    )
+    
+    delivery_quantity = fields.Float(
+        string="Delivery Quantity",
+        compute="_compute_delivery_quantity",
+        help="Total quantity from selected delivery order"
+    )
+
     # Ganti hpp_total menjadi price_subtotal
     price_subtotal = fields.Float(
         string="Total Amount", 
@@ -561,21 +581,24 @@ class SaleAdvancePaymentInv(models.TransientModel):
         help="Maximum allowed amount"
     )
 
-    # Function buat ngatur pilihan metode pembayaran
+
     def _compute_advance_payment_method_selection(self):
         """
         Function ini buat ngatur pilihan metode pembayaran:
         - Regular invoice (bayar full)
         - Down payment pake persentase
         - Fixed amount (nominal tetap)
+        - Based on delivery (berdasarkan pengiriman)
         """
         selection = [
             # ('all', 'Regular invoice'),      # Bayar full
             ('percentage', 'Percentage'),     # DP pake persentase
-            ('fixed', 'Fixed amount')         # DP pake nominal tetap
+            ('fixed', 'Fixed amount'),        # DP pake nominal tetap
+            ('delivery', 'Based on Delivery') # Berdasarkan pengiriman
         ]
         return selection
 
+    
     # Field untuk pilihan metode pembayaran
     advance_payment_method = fields.Selection(
         selection=_compute_advance_payment_method_selection,
@@ -611,6 +634,7 @@ class SaleAdvancePaymentInv(models.TransientModel):
         - all: hpp_total - amount_invoiced (bayar full sisa)
         - percentage: (amount_to_invoice * amount / 100)
         - fixed: menggunakan fixed_amount yang diinput user
+        - delivery: berdasarkan pengiriman
         """
         sale_order_id = self.env.context.get('active_id')
         if sale_order_id:
@@ -654,7 +678,27 @@ class SaleAdvancePaymentInv(models.TransientModel):
                             }
                         }
                     self.nominal = self.input_fixed_nominal
-            
+                    
+            elif self.advance_payment_method == 'delivery':
+                # Fetch delivery orders related to the sale order
+                delivery_orders = self.env['stock.picking'].search([
+                    ('sale_id', '=', sale_order.id),
+                    ('state', '!=', 'cancel')  # Exclude cancelled deliveries
+                ])
+                # Set default delivery order if exists
+                self.delivery_order_id = delivery_orders and delivery_orders[0].id or False
+                
+                # Calculate amount based on selected delivery order
+                if self.delivery_order_id:
+                    delivered_amount = sum(
+                        move.sale_line_id.price_unit * move.quantity 
+                        for move in self.delivery_order_id.move_ids_without_package
+                    )
+                    self.amount = 100  # Set to 100% for full invoice of delivery
+                    self.nominal = delivered_amount
+                    # Penting: amount_to_invoice harus tetap total yang belum dibayar
+                    self.amount_to_invoice = amount_to_invoice
+
             # Pastikan nominal gak minus
             self.nominal = max(0.0, self.nominal)
             
@@ -669,7 +713,6 @@ class SaleAdvancePaymentInv(models.TransientModel):
                     line.price_subtotal = self.nominal  # Update price_subtotal di invoice line
 
     @api.onchange('amount') #Menghitung ulang nominal DP saat jumlah persentase berubah untuk memastikan nilai DP selalu sesuai dengan total harga produksi.
-
     def _onchange_amount(self):
         """
         Update nominal saat amount (percentage) berubah
@@ -681,7 +724,18 @@ class SaleAdvancePaymentInv(models.TransientModel):
             
             # Hitung nominal berdasarkan persentase dari price_subtotal
             self.nominal = (price_subtotal * self.amount) / 100
-            
+    
+    @api.onchange('delivery_order_id')
+    def _onchange_delivery_order(self):
+        """
+        Update nominal when delivery order is selected
+        """
+        if self.advance_payment_method == 'delivery' and self.delivery_order_id:
+            delivered_amount = sum(
+                move.sale_line_id.price_unit * move.quantity 
+                for move in self.delivery_order_id.move_ids_without_package
+            )
+            self.nominal = delivered_amount
 
     @api.model #Menetapkan nilai awal untuk wizard pembuatan invoice DP dengan mengambil data dari Sales Order, termasuk subtotal harga dan jumlah yang telah difakturkan.
     def default_get(self, fields):
@@ -741,3 +795,72 @@ class SaleAdvancePaymentInv(models.TransientModel):
                 'mimetype': 'application/pdf', # Tipe file
             })]
         return action
+
+    @api.depends('delivery_order_id')
+    def _compute_delivery_quantity(self):
+        """
+        Compute total quantity from selected delivery order
+        """
+        for record in self:
+            if record.delivery_order_id:
+                record.delivery_quantity = sum(
+                    move.quantity 
+                    for move in record.delivery_order_id.move_ids_without_package
+                )
+            else:
+                record.delivery_quantity = 0.0
+            # Bikin nama file yang keren
+            attachment_name = f"Quotation - {self.name or 'Draft'}.pdf"
+
+            # Masukin attachment ke context email
+            # Format (0, 0, values) itu command Odoo buat create record baru
+            action['context']['default_attachment_ids'] = [(0, 0, {
+                'name': attachment_name,  # Nama filenya mandatory)
+                'datas': pdf_base64,      # Isi PDF-nya dalam base64
+                'res_model': 'sale.order', # Model yang punya file ini
+                'res_id': self.id,         # ID record yang punya
+                'mimetype': 'application/pdf', # Tipe file
+            })]
+        return action
+
+    @api.depends('delivery_order_id')
+    def _compute_delivery_quantity(self):
+        """
+        Compute total quantity from selected delivery order
+        """
+        for record in self:
+            if record.delivery_order_id:
+                record.delivery_quantity = sum(
+                    move.quantity 
+                    for move in record.delivery_order_id.move_ids_without_package
+                )
+            else:
+                record.delivery_quantity = 0.0
+                
+
+    def _create_invoices(self, sale_orders):
+        """
+        Override method _create_invoices untuk custom invoice berdasarkan delivery
+        """
+        # Panggil method asli dulu untuk membuat invoice
+        invoices = super()._create_invoices(sale_orders)
+        
+        # Jika metode pembayaran berdasarkan delivery, update invoice
+        if self.advance_payment_method == 'delivery' and self.delivery_order_id:
+            delivered_amount = sum(
+                move.sale_line_id.price_unit * move.quantity 
+                for move in self.delivery_order_id.move_ids_without_package
+            )
+            
+            # Update setiap invoice yang baru dibuat
+            for invoice in invoices:
+                for line in invoice.invoice_line_ids:
+                    line.write({
+                        'price_unit': delivered_amount,
+                        'quantity': 1.0,
+                    })
+                # Trigger recompute amount
+                invoice._compute_amount()
+        
+        return invoices
+
