@@ -77,8 +77,6 @@
                                     decoration-danger="not hrg_plate_cover"/>
                                 <field name="hrg_box" 
                                     decoration-danger="not hrg_box"/>
-                                <field name="hrg_uv" 
-                                    decoration-danger="not hrg_uv"/>
                             </group>
                         </group>
                     </page>
@@ -94,6 +92,8 @@
                                     decoration-danger="not jasa_cetak_cover"/>
                                 <field name="jasa_jilid" 
                                     decoration-danger="not jasa_jilid"/>
+                                <field name="hrg_uv" 
+                                    decoration-danger="not hrg_uv"/>
                             </group>
                         </group>
                     </page>
