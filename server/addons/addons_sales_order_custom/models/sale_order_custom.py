@@ -393,7 +393,19 @@ class SaleOrderCustom(models.Model):
         for record in self:
             if record.is_signed and not record.draft_perjanjian:
                 raise ValidationError("Tidak dapat menandatangani perjanjian! Harap upload draft perjanjian terlebih dahulu.")
-
+    
+    # Validasi format file PDF
+    @api.constrains('draft_perjanjian', 'draft_perjanjian_name')
+    def _check_draft_perjanjian_format(self):
+        """
+        Validasi untuk memastikan file yang diupload adalah PDF.
+        """
+        for record in self:
+            if record.draft_perjanjian and record.draft_perjanjian_name:
+                if not record.draft_perjanjian_name.endswith('.pdf'):
+                    raise ValidationError("File yang diupload harus dalam format PDF.")
+                
+    
     # Update tanggal tanda tangan otomatis waktu status signed berubah
     @api.onchange('is_signed')
     def _onchange_is_signed(self):
