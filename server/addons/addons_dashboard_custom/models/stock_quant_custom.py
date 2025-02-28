@@ -65,57 +65,51 @@ class StockQuantCustom(models.Model):
 
     def action_create_delivery(self):
         for record in self:
-            picking_type = self.env['stock.picking.type'].search([('code', '=', 'outgoing')], limit=1)
-            if not picking_type:
-                raise ValueError("Picking type not found for outgoing shipments")
+            if not record.sale_order_id:
+                raise ValueError("No Sales Order found for this record")
 
-            # Cek apakah sudah ada pengiriman sebelumnya
-            existing_picking = self.env['stock.picking'].search([
+            # Cari semua pengiriman yang terkait dengan SO
+            pickings = self.env['stock.picking'].search([
                 ('origin', '=', record.sale_order_id.name),
-                ('state', 'not in', ['done', 'cancel'])
-            ], limit=1)
+                ('state', 'not in', ['cancel'])
+            ])
 
-            if existing_picking:
-                # Jika ada pengiriman yang belum selesai, tampilkan itu
+            if not pickings:
+                raise ValueError("No delivery orders found for this Sales Order")
+
+            if len(pickings) == 1:
+                # Jika hanya ada 1 pengiriman, tampilkan form view
                 return {
                     'type': 'ir.actions.act_window',
                     'name': 'Delivery Order',
                     'view_mode': 'form',
                     'res_model': 'stock.picking',
-                    'res_id': existing_picking.id,
+                    'res_id': pickings[0].id,
+                    'target': 'current',
+                }
+            else:
+                # Jika ada lebih dari 1 pengiriman, tampilkan list view
+                return {
+                    'type': 'ir.actions.act_window',
+                    'name': 'Delivery Orders',
+                    'view_mode': 'list,form',
+                    'res_model': 'stock.picking',
+                    'domain': [('id', 'in', pickings.ids)],
                     'target': 'current',
                 }
 
-            # Jika belum ada atau semua pengiriman sudah selesai, buat pengiriman baru
-            picking = self.env['stock.picking'].create({
-                'partner_id': record.customer_id.id,
-                'picking_type_id': picking_type.id,
-                'location_id': record.location_id.id,
-                'location_dest_id': picking_type.default_location_dest_id.id,
-                'origin': record.sale_order_id.name,
-                'move_ids': [(0, 0, {
-                    'name': record.product_id.name,
-                    'product_id': record.product_id.id,
-                    'product_uom_qty': record.quantity,
-                    'product_uom': record.product_uom_id.id,
-                    'location_id': record.location_id.id,
-                    'location_dest_id': picking_type.default_location_dest_id.id,
-                    'lot_ids': [(4, record.lot_id.id)] if record.lot_id else False,
-                })],
-            })
-            return {
-                'type': 'ir.actions.act_window',
-                'name': 'Delivery Order',
-                'view_mode': 'form',
-                'res_model': 'stock.picking',
-                'res_id': picking.id,
-                'target': 'current',
-            }
-            
-    @api.model
-    def get_dashboard_data(self):
-        return self.search([
-            ('location_id.usage', '=', 'internal'),
-            ('location_id.name', 'not ilike', 'Production'),  # Exclude Production locations
-            ('quantity', '>', 0)  # Only show positive quantities
-        ])
+    # @api.model
+    # def get_dashboard_data(self):
+    #     # Flush any pending computations and clear caches
+    #     self.env.cr.flush()
+    #     self.invalidate_cache()
+        
+    #     # Get only internal locations first
+    #     internal_locations = self.env['stock.location'].search([
+    #         ('usage', '=', 'internal')
+    #     ])
+        
+    #     return self.search([
+    #         ('location_id', 'in', internal_locations.ids),
+    #         ('quantity', '>', 0)  # Only show positive quantities
+    #     ])
