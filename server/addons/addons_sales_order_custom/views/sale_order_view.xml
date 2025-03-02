@@ -49,7 +49,7 @@
                             <field name="jenis_cetakan_cover"/>
                             <field name="jenis_jilid"/>
                             <field name="jenis_uv"/>
-                            <field name="detail_design"/>
+                            <field name="detail_design" required="1"/>
                             <field name="detail_packing"/>
                         </group>
                     </page>
@@ -77,7 +77,7 @@
                     <!-- PASAL 4 -->
                     <page string="Pasal 4">
                         <group>
-                            <field name="expired_date"/>
+                            <field name="expired_date" required="1"/>
                         </group>
                     </page>
                 </notebook>
