@@ -591,7 +591,6 @@ class SaleAdvancePaymentInv(models.TransientModel):
         - Based on delivery (berdasarkan pengiriman)
         """
         selection = [
-            # ('all', 'Regular invoice'),      # Bayar full
             ('percentage', 'Percentage'),     # DP pake persentase
             ('fixed', 'Fixed amount'),        # DP pake nominal tetap
             ('delivery', 'Based on Delivery') # Berdasarkan pengiriman
@@ -631,7 +630,6 @@ class SaleAdvancePaymentInv(models.TransientModel):
     def _onchange_advance_payment_method(self):
         """
         Function untuk menghitung nominal berdasarkan metode pembayaran:
-        - all: hpp_total - amount_invoiced (bayar full sisa)
         - percentage: (amount_to_invoice * amount / 100)
         - fixed: menggunakan fixed_amount yang diinput user
         - delivery: berdasarkan pengiriman
@@ -648,14 +646,7 @@ class SaleAdvancePaymentInv(models.TransientModel):
             # Hitung total yang harus dibayar
             amount_to_invoice = self.price_subtotal - amount_invoiced
             
-            if self.advance_payment_method == 'all':
-                # Ambil total dari sale order line
-                self.amount = amount_invoiced
-                self.nominal = amount_to_invoice
-                self.amount_to_invoice = amount_to_invoice
-                
-            
-            elif self.advance_payment_method == 'percentage':
+            if self.advance_payment_method == 'percentage':
                 # Down payment dengan persentase
                 self.amount = sale_order.down_payment_percentage
                 # Hitung nominal dari price_subtotal
