@@ -1,4 +1,5 @@
 from odoo import models, fields, api
+from odoo.exceptions import ValidationError
 import logging
 
 _logger = logging.getLogger(__name__)
@@ -159,6 +160,33 @@ class StockPickingCustom(models.Model):
                     _logger.info(f"Updated lot {picking.lot_id_stock} for product {move.product_id.name} during save")
         
         return result
+
+    def button_validate(self):
+        """
+        Override button_validate untuk validasi field mandatory sebelum konfirmasi.
+        """
+        for picking in self:
+            missing_fields = []
+
+            # Validasi resi_number
+            # if not picking.resi_number:
+            #     missing_fields.append('Nomor Resi')
+
+            # Validasi manufacturing_order_id
+            if not picking.manufacturing_order_id:
+                missing_fields.append('Manufacturing Order')
+
+            # Validasi lot_id_stock
+            # if not picking.lot_id_stock:
+            #     missing_fields.append('Lot/Serial Number Stock')
+
+            if missing_fields:
+                raise ValidationError(
+                    # isi manufacturing_order_id dan lot_id_stock
+                    f"Silakan isi field berikut sebelum konfirmasi: {', '.join(missing_fields)}"
+                )
+
+        return super(StockPickingCustom, self).button_validate()
 
 class StockMoveCustom(models.Model):
     """
