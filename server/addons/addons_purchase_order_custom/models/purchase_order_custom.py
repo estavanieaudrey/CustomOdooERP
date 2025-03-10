@@ -1,4 +1,6 @@
 from odoo import models, fields, api
+from odoo.exceptions import ValidationError
+
 
 # Class untuk nambahin fitur custom di purchase.order (pesanan pembelian)
 class PurchaseOrderCustom(models.Model):
@@ -130,6 +132,29 @@ class PurchaseOrderCustom(models.Model):
     #     if self.manufacturing_order_id:
     #         res['manufacturing_order_id'] = self.manufacturing_order_id.id
     #     return res
+    
+    def button_confirm(self):
+        """
+        Override action_confirm untuk validasi field mandatory sebelum konfirmasi.
+        """
+        for purchase in self:
+            missing_fields = []
+
+            # Validasi sales order
+            if not purchase.sale_order_id:
+                missing_fields.append('Sales Order')
+
+            # Validasi manufacturing order
+            if not purchase.manufacturing_order_id:
+                missing_fields.append('Manufacturing Order')
+
+
+            if missing_fields:
+                raise ValidationError(
+                    f"Silakan isi field berikut sebelum konfirmasi: {', '.join(missing_fields)}"
+                )
+
+        return super(PurchaseOrderCustom, self).button_confirm()
 
 
 class PurchaseOrderLineCustom(models.Model):
