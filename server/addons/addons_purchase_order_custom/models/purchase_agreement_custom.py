@@ -97,6 +97,10 @@ class PurchaseRequisition(models.Model):
                 if not line.product_id:
                     missing_fields.append('Product di Purchase Agreement Lines')
                     break  # Cukup sekali saja warning untuk product yang kosong
+                
+            # Validasi bom_id
+            if not requisition.bom_id:
+                missing_fields.append('Bill of Materials')
 
             if missing_fields:
                 raise ValidationError(
