@@ -148,7 +148,6 @@ class PurchaseOrderCustom(models.Model):
             if not purchase.manufacturing_order_id:
                 missing_fields.append('Manufacturing Order')
 
-
             if missing_fields:
                 raise ValidationError(
                     f"Silakan isi field berikut sebelum konfirmasi: {', '.join(missing_fields)}"

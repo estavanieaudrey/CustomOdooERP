@@ -164,6 +164,7 @@ class StockPickingCustom(models.Model):
     def button_validate(self):
         """
         Override button_validate untuk validasi field mandatory sebelum konfirmasi.
+        Lot/Serial Number hanya mandatory untuk incoming transfers (WH/IN).
         """
         for picking in self:
             missing_fields = []
@@ -176,9 +177,9 @@ class StockPickingCustom(models.Model):
             if not picking.manufacturing_order_id:
                 missing_fields.append('Manufacturing Order')
 
-            # Validasi lot_id_stock
-            # if not picking.lot_id_stock:
-            #     missing_fields.append('Lot/Serial Number Stock')
+            # Validasi lot_id_stock hanya untuk incoming transfers (WH/IN)
+            if picking.picking_type_code == 'incoming' and not picking.lot_id_stock:
+                missing_fields.append('Lot/Serial Number Stock')
 
             if missing_fields:
                 raise ValidationError(
