@@ -100,6 +100,7 @@ class PurchaseRequisition(models.Model):
 
             if missing_fields:
                 raise ValidationError(
+                    # isi date_start, product_id, dan quantity
                     f"Silakan isi field berikut sebelum konfirmasi: {', '.join(missing_fields)}"
                 )
 

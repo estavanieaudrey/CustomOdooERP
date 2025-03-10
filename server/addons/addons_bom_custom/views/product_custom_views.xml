@@ -12,4 +12,18 @@
             </xpath>
         </field>
     </record>
+
+    <!-- Menambahkan field tipe_kertas ke form view product variant -->
+    <record id="product_variant_form_custom" model="ir.ui.view">
+        <field name="name">product.product.form.custom</field>
+        <field name="model">product.product</field>
+        <field name="inherit_id" ref="product.product_normal_form_view"/>
+        <field name="arch" type="xml">
+            <xpath expr="//group" position="inside">
+                <group>
+                    <field name="tipe_kertas"/>
+                </group>
+            </xpath>
+        </field>
+    </record>
 </odoo>

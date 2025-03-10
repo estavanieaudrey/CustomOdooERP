@@ -541,9 +541,9 @@ class MrpBomCustom(models.Model):
                     default_code = line.product_id.default_code.lower()
                     
                     # Update harga berdasarkan default_code
-                    if default_code == 'KERTAS_ISI':  # Sesuaikan dengan default_code di product_custom.py
+                    if default_code == 'kertas_isi':  # Sesuaikan dengan default_code di product_custom.py
                         bom.hrg_kertas_isi = line.price_unit
-                    elif default_code == 'KERTAS_COVER':
+                    elif default_code == 'kertas_cover':
                         bom.hrg_kertas_cover = line.price_unit
                     elif default_code == 'plate_isi':
                         bom.hrg_plate_isi = line.price_unit
@@ -742,15 +742,15 @@ class MrpBomLineCustom(models.Model):
             if not line.product_id:
                 raise ValidationError('Komponen (Components) harus diisi! Silakan pilih material yang digunakan.')
 
-    @api.onchange('product_id')
-    def _onchange_product_id_warning(self):
-        """
-        Menampilkan warning jika product_id belum diisi
-        """
-        if not self.product_id:
-            return {
-                'warning': {
-                    'title': 'Komponen Wajib Diisi',
-                    'message': 'Silakan pilih material yang digunakan dalam BoM ini.'
-                }
-            }
+    # @api.onchange('product_id')
+    # def _onchange_product_id_warning(self):
+    #     """
+    #     Menampilkan warning jika product_id belum diisi
+    #     """
+    #     if not self.product_id:
+    #         return {
+    #             'warning': {
+    #                 'title': 'Komponen Wajib Diisi',
+    #                 'message': 'Silakan pilih material yang digunakan dalam BoM ini.'
+    #             }
+    #         }

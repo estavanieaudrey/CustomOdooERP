@@ -27,8 +27,8 @@ class ProductCustom(models.Model):
         Contoh:
         - Pilih tipe 'A4' -> kodenya jadi 'A4'
         - Pilih tipe 'B5' -> kodenya jadi 'B5'
-        - Pilih tipe 'Kertas Isi' -> kodenya jadi 'KERTAS_ISI'
-        - Pilih tipe 'Box' -> kodenya jadi 'BOX'
+        - Pilih tipe 'Kertas Isi' -> kodenya jadi 'kertas_isi'
+        - Pilih tipe 'Box' -> kodenya jadi 'box'
         
         Ini berguna buat:
         1. Gampang nyari produk
@@ -42,14 +42,42 @@ class ProductCustom(models.Model):
             elif self.tipe_kertas == 'b5':
                 self.default_code = 'B5'
             elif self.tipe_kertas == 'isi':
-                self.default_code = 'KERTAS_ISI'
+                self.default_code = 'kertas_isi'
             elif self.tipe_kertas == 'cover':
-                self.default_code = 'KERTAS_COVER'
+                self.default_code = 'kertas_cover'
             elif self.tipe_kertas == 'plate_isi':
-                self.default_code = 'PLATE_ISI'
+                self.default_code = 'plate_isi'
             elif self.tipe_kertas == 'plate_cover':
-                self.default_code = 'PLATE_COVER'
+                self.default_code = 'plate_cover'
             elif self.tipe_kertas == 'box':
-                self.default_code = 'BOX'
+                self.default_code = 'box'
 
+class ProductProduct(models.Model):
+    _inherit = 'product.product'
+
+    tipe_kertas = fields.Selection([
+        ('isi', 'Kertas Isi'),      # Kertas untuk isi buku
+        ('cover', 'Kertas Cover'),   # Kertas untuk cover buku
+        ('plate_isi', 'Plate Isi'),  # Plate cetak untuk isi
+        ('plate_cover', 'Plate Cover'), # Plate cetak untuk cover
+    ], string='Tipe Kertas', default='isi')
+
+    @api.onchange('tipe_kertas')
+    def _onchange_tipe_kertas(self):
+        """
+        Update kode produk otomatis pas milih tipe kertas.
+        
+        Contoh:
+        - Pilih tipe 'Kertas Isi' -> kodenya jadi 'kertas_isi'
+        - Pilih tipe 'Kertas Cover' -> kodenya jadi 'kertas_cover'
+        """
+        if self.tipe_kertas:
+            if self.tipe_kertas == 'isi':
+                self.default_code = 'kertas_isi'
+            elif self.tipe_kertas == 'cover':
+                self.default_code = 'kertas_cover'
+            elif self.tipe_kertas == 'plate_isi':
+                self.default_code = 'plate_isi'
+            elif self.tipe_kertas == 'plate_cover':
+                self.default_code = 'plate_cover'
 

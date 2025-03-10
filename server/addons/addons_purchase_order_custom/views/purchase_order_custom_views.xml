@@ -8,7 +8,7 @@
             <xpath expr="//field[@name='partner_id']" position="after">
                 <field name="sale_order_id" options="{'no_create': True}" placeholder="Link Sales Order"/>
                 <field name="manufacturing_order_id" options="{'no_create': True}"
-                       placeholder="Link Manufacturing Order"/>
+                    placeholder="Link Manufacturing Order"/>
             </xpath>
             <!-- Add Vendor Address -->
             <xpath expr="//field[@name='partner_id']" position="after">
@@ -17,7 +17,6 @@
             <xpath expr="//field[@name='order_line']/form" position="inside">
                 <field name="price_unit" readonly="0"/>
             </xpath>
-
         </field>
     </record>
 </odoo>
