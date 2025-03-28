@@ -1,0 +1,537 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Template for the project dashboard -->
+<templates id="template" xml:space="preserve">
+    <t t-name="ProjectDashboard">
+        <div class="oh_dashboards"
+             style="margin-top: 20px; overflow-y: scroll;vertical-align: middle;overflow-x: clip;max-height: -webkit-fill-available;">
+            <div class="container-fluid o_pj_dashboard">
+                <t t-call="DashboardProject"/>
+                <t t-call="DashboardChart"/>
+            </div>
+        </div>
+    </t>
+    <t t-name="DashboardProject">
+        <!-- Template for filter items and cards -->
+        <div class="row main-section" style="margin: 0 2%;">
+            <div class="inner_select" style="display: flex;">
+                <p style="margin-left: 20px;">Start Date :</p>
+                <p>
+                    <input type="date" class="inner_select" id="start_date"
+                           name="start_date" t-ref="start_date"
+                           t-on-change="(ev) => this._onchangeFilter(ev)"/>
+                </p>
+                <p>End Date :</p>
+                <p>
+                    <input type="date" class="inner_select" id="end_date"
+                           name="end_date" t-ref="end_date"
+                           t-on-change="(ev) => this._onchangeFilter(ev)"/>
+                </p>
+                <button class="btn btn-danger g-col-6 p-2"
+                        onclick="location.reload()"
+                        style="margin-left:18px; height: 37px;">
+                        Reset
+                </button>
+                </div>
+            <div class="col-md-4 col-sm-6 oh-payslip" style="padding: 0 10px;">
+                <div class="oh-card" style="margin-bottom: 30px; border-radius: 4px; padding: 5px; transition: background-color 0.3s ease; cursor: pointer;">
+                    <div class="oh-card-body tot_projects"
+                         t-on-click="(e) => this.tot_projects(e)"
+                         style="padding: 20px; border-radius: 4px; transition: background-color 0.3s ease;">
+                        <div class="stat-widget-one" style="display:flex; align-items: center;">
+                            <div class="stat-icon" style="flex: 0 0 40px; text-align: center;"><i class="fa fa-puzzle-piece" style="font-size: 22px;"/></div>
+                            <div class="stat-head"
+                                 style="flex: 1; font-size: 24px; padding-left: 10px;">Bill of Materials</div>
+                            <div class="stat_count"
+                                 style="flex: 0 0 60px; font-size: 12px; text-align: right;"
+                                 id="tot_project" t-ref="tot_project">
+                                <t t-esc="total_bom"/>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <t t-if="flag_user == 1">
+                <div class="col-md-4 col-sm-6 oh-payslip" style="padding: 0 10px;">
+                    <div class="oh-card" style="margin-bottom: 30px; border-radius: 4px; padding: 5px; transition: background-color 0.3s ease; cursor: pointer;">
+                        <div class="oh-card-body tot_emp"
+                             t-on-click="(e) => this.tot_emp(e)"
+                             style="padding: 20px; border-radius: 4px; transition: background-color 0.3s ease;">
+                            <div class="stat-widget-one" style="display:flex; align-items: center;">
+                                <div class="stat-icon" style="flex: 0 0 40px; text-align: center;"><i class="fa fa-user" style="font-size: 22px;"/></div>
+                                <div class="stat-head"
+                                     style="flex: 1; font-size: 24px; padding-left: 10px;">Total Employees</div>
+                                <div class="stat_count"
+                                     style="flex: 0 0 60px; font-size: 12px; text-align: right;"
+                                     id="tot_employee" t-ref="tot_employee">
+                                    <t t-esc="total_employees"/>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </t>
+            <div class="col-md-4 col-sm-6 oh-payslip" style="padding: 0 10px;">
+                <div class="oh-card" style="margin-bottom: 30px; border-radius: 4px; padding: 5px; transition: background-color 0.3s ease; cursor: pointer;">
+                    <div class="oh-card-body tot_tasks"
+                         t-on-click="(e) => this.tot_tasks(e)"
+                         style="padding: 20px; border-radius: 4px; transition: background-color 0.3s ease;">
+                        <div class="stat-widget-one" style="display:flex; align-items: center;">
+                            <div class="stat-icon" style="flex: 0 0 40px; text-align: center;"><i class="fa fa-tasks" style="font-size: 22px;"/></div>
+                            <div class="stat-head"
+                                 style="flex: 1; font-size: 24px; padding-left: 10px;">Manufacturing Orders</div>
+                            <div class="stat_count"
+                                 style="flex: 0 0 60px; font-size: 12px; text-align: right;" 
+                                 id="tot_task" t-ref="tot_task">
+                                <t t-esc="total_tasks"/>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <t t-if="flag_user == 1">
+                <div class="col-md-4 col-sm-6 oh-payslip" style="padding: 0 10px;">
+                    <div class="oh-card" style="margin-bottom: 30px; border-radius: 4px; padding: 5px; transition: background-color 0.3s ease; cursor: pointer;">
+                        <div class="oh-card-body hr_recorded"
+                             t-on-click="(e) => this.tot_vendorbill(e)"
+                             style="padding: 20px; border-radius: 4px; transition: background-color 0.3s ease;">
+                            <div class="stat-widget-one" style="display:flex; align-items: center;">
+                                <div class="stat-icon" style="flex: 0 0 40px; text-align: center;"><i class="fa fa-clock-o" style="font-size: 22px;"/></div>
+                                <div class="stat-head"
+                                     style="flex: 1; font-size: 24px; padding-left: 10px;">Total Bill</div>
+                                <div class="stat_count"
+                                     style="flex: 0 0 140px; font-size: 12px; text-align: right; white-space: nowrap;"
+                                     id="tot_hrs" t-ref="tot_hrs">
+                                    Rp <t t-esc="formatToRupiah(total_hours)"/>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </t>
+            <t t-if="flag_user == 1">
+                <div class="col-md-4 col-sm-6 oh-payslip" style="padding: 0 10px;">
+                    <div class="oh-card" style="margin-bottom: 30px; border-radius: 4px; padding: 5px; transition: background-color 0.3s ease; cursor: pointer;">
+                        <div class="oh-card-body tot_profitability"
+                             t-on-click="(e) => this.tot_invoice(e)"
+                             style="padding: 20px; border-radius: 4px; transition: background-color 0.3s ease;">
+                            <div class="stat-widget-one" style="display:flex; align-items: center;">
+                                <div class="stat-icon" style="flex: 0 0 40px; text-align: center;">
+                                    <i class="fa fa-dollar" style="font-size: 22px;"/>
+                                </div>
+                                <div class="stat-head"
+                                     style="flex: 1; font-size: 24px; padding-left: 10px;">
+                                    Total Margin
+                                </div>
+                                <div class="stat_count"
+                                    style="flex: 0 0 140px; font-size: 12px; text-align: right; white-space: nowrap;"
+                                     id="tot_margin" t-ref="tot_margin">
+                                    Rp <t t-esc="total_profitability"/>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </t>
+            <div class="col-md-4 col-sm-6 oh-payslip" style="padding: 0 10px;">
+                <div class="oh-card" style="margin-bottom: 30px; border-radius: 4px; padding: 5px; transition: background-color 0.3s ease; cursor: pointer;">
+                    <div class="oh-card-body tot_sale"
+                         t-on-click="(e) => this.tot_sale(e)"
+                         style="padding: 20px; border-radius: 4px; transition: background-color 0.3s ease;">
+                        <div class="stat-widget-one" style="display:flex; align-items: center;">
+                            <div class="stat-icon" style="flex: 0 0 40px; text-align: center;">
+                                <i class="fa fa-ticket" style="font-size: 22px;"/>
+                            </div>
+                            <div class="stat-head"
+                                 style="flex: 1; font-size: 24px; padding-left: 10px;">
+                                Total Sale Orders
+                            </div>
+                            <div class="stat_count"
+                                 style="flex: 0 0 60px; font-size: 12px; text-align: right;" 
+                                 id="tot_so" t-ref="tot_so">
+                                <t t-esc="total_sale_orders"/>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </t>
+    <t t-name="DashboardChart">
+        <!-- Template for charts -->
+        <div class="row main-section">
+            <div class="col-sm-4">
+                <div class="graph_view">
+                    <div class="text-color hr-chart-1">
+                        <div class="oh-card-body pb-0"
+                             style="text-align:center;">
+                            <h2 style="padding-top:2%; font-size: 15px;">
+                                Perbandingan Waste Produksi (A4 dan B5)
+                            </h2>
+                        </div>
+                        <canvas id="project_doughnut"
+                                t-ref="project_doughnut"
+                                style="background:#fff;" width="120"
+                                height="115"/>  
+                    </div>
+                </div>
+                <div class="selling_product_graph_view">
+                    <div class="oh-card text-color">
+                        <canvas class="top_selling_employees"
+                                t-ref="top_selling_employees"
+                                style="background:#fff;" width="120"
+                                height="108"/>
+                    </div>
+                </div>
+            </div>
+            <div class="col-sm-8">
+                <div class="mb-4">
+                    <div class="section-title">
+                        Expired Sale Orders
+                    </div>
+                    <div class="col-12" style="padding:0;">
+                        <div class="text-color">
+                            <div class="media" style="overflow-y: auto;max-height: 300px;">
+                                <div class="media-body">
+                                    <table class="table table-sm">
+                                        <thead>
+                                            <tr>
+                                                <th>Order Reference</th>
+                                                <th>Customer</th>
+                                                <th>Product</th>
+                                                <th>Quantity</th>
+                                                <th>Expired Date</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <t t-foreach="expired_sale_orders"
+                                               t-as="order"
+                                               t-key="order.id">
+                                                <tr>
+                                                    <td>
+                                                        <a t-att-href="'/web#id=' + order.order_id + '&amp;model=sale.order&amp;view_type=form'" target="_blank">
+                                                            <t t-esc="order.name"/>
+                                                        </a>
+                                                    </td>
+                                                    <td><t t-esc="order.partner_name"/></td>
+                                                    <td><t t-esc="order.product_name"/></td>
+                                                    <td><t t-esc="order.product_qty"/></td>
+                                                    <td><t t-esc="order.expired_date"/></td>
+                                                </tr>
+                                            </t>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="mb-4">
+                    <div class="section-title">
+                        Manufacturing Orders To Do
+                    </div>
+                    <div class="col-12" style="padding:0;">
+                        <div class="text-color">
+                            <div class="media" style="overflow-y: auto;max-height: 300px;">
+                                <div class="media-body">
+                                    <table class="table table-sm">
+                                        <thead>
+                                            <tr>
+                                                <th>Name</th>
+                                                <th>Product</th>
+                                                <th>User</th>
+                                                <th>Tanggal SPK</th>
+                                                <th>Quantity</th>
+                                                <th>Customer</th>
+                                                <th>Source</th>
+                                                <th>Status</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <t t-if="draft_manufacturing_orders and draft_manufacturing_orders.length > 0">
+                                                <t t-foreach="draft_manufacturing_orders" t-as="mo" t-key="mo.mo_id">
+                                                    <tr>
+                                                        <td>
+                                                            <a t-att-href="'/web#id=' + mo.mo_id + '&amp;model=mrp.production&amp;view_type=form'" target="_blank">
+                                                                <t t-esc="mo.name"/>
+                                                            </a>
+                                                        </td>
+                                                        <td><t t-esc="mo.product_name || ''"/></td>
+                                                        <td><t t-esc="mo.user_name || ''"/></td>
+                                                        <td><t t-esc="mo.tanggal_spk || ''"/></td>
+                                                        <td><t t-esc="mo.product_qty || ''"/></td>
+                                                        <td><t t-esc="mo.nama_customer || ''"/></td>
+                                                        <td><t t-esc="mo.source_doc || ''"/></td>
+                                                        <td>
+                                                            <span t-attf-class="badge badge-pill badge-#{mo.state == 'progress' ? 'info' : mo.state == 'confirmed' ? 'success' : 'secondary'}">
+                                                                <t t-esc="mo.state == 'progress' ? 'In Progress' : mo.state == 'confirmed' ? 'Confirmed' : 'Draft'"/>
+                                                            </span>
+                                                        </td>
+                                                    </tr>
+                                                </t>
+                                            </t>
+                                            <t t-else="">
+                                                <tr>
+                                                    <td colspan="8" class="text-center">No manufacturing orders found</td>
+                                                </tr>
+                                            </t>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="mb-4">
+                    <div class="section-title">
+                        Otw Due Date Delivery Order
+                    </div>
+                    <div class="col-12" style="padding:0;">
+                        <div class="text-color">
+                            <div class="media" style="overflow-y: auto;max-height: 300px;">
+                                <div class="media-body">
+                                    <table class="table table-sm">
+                                        <thead>
+                                            <tr>
+                                                <th>Reference</th>
+                                                <th>Customer</th>
+                                                <th>Product</th>
+                                                <th>Quantity</th>
+                                                <th>Deadline</th>
+                                                <th>Status</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <t t-if="upcoming_deliveries and upcoming_deliveries.length > 0">
+                                                <t t-foreach="upcoming_deliveries" t-as="delivery" t-key="delivery.picking_id">
+                                                    <tr>
+                                                        <td>
+                                                            <a t-att-href="'/web#id=' + delivery.picking_id + '&amp;model=stock.picking&amp;view_type=form'" target="_blank">
+                                                                <t t-esc="delivery.reference || ''"/>
+                                                            </a>
+                                                        </td>
+                                                        <td><t t-esc="delivery.partner_name || ''"/></td>
+                                                        <td><t t-esc="delivery.product_names || ''"/></td>
+                                                        <td><t t-esc="delivery.total_quantity || ''"/></td>
+                                                        <td><t t-esc="delivery.date_deadline || ''"/></td>
+                                                        <td class="text-capitalize">
+                                                            <span t-attf-class="badge badge-pill badge-#{delivery.state == 'draft' ? 'secondary' : delivery.state == 'waiting' ? 'warning' : delivery.state == 'confirmed' ? 'info' : delivery.state == 'assigned' ? 'success' : 'danger'}">
+                                                                <t t-esc="delivery.state == 'draft' ? 'Draft' : delivery.state == 'waiting' ? 'Waiting Another Operation' : delivery.state == 'confirmed' ? 'Waiting' : delivery.state == 'assigned' ? 'Ready' : 'Cancelled'"/>
+                                                            </span>
+                                                        </td>
+                                                    </tr>
+                                                </t>
+                                            </t>
+                                            <t t-else="">
+                                                <tr>
+                                                    <td colspan="6" class="text-center">No upcoming delivery orders</td>
+                                                </tr>
+                                            </t>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="mb-4">
+                    <div class="section-title">
+                        Expired Invoices
+                    </div>
+                    <div class="col-12"
+                         style="padding:0;">
+                        <div class="text-color">
+                            <div class="media"
+                                 style="overflow-y: auto;max-height: 300px;">
+                                <div class="media-body">
+                                    <table class="table table-sm">
+                                        <thead>
+                                            <tr>
+                                                <th>Invoice Number</th>
+                                                <th>Due Date</th>
+                                                <th>Total Amount</th>
+                                                <th>Payment Status</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <t t-foreach="expired_invoices"
+                                               t-as="invoice"
+                                               t-key="invoice.id">
+                                                <tr>
+                                                    <td>
+                                                        <a t-att-href="'/web#id=' + invoice.invoice_id + '&amp;model=account.move&amp;view_type=form'" target="_blank">
+                                                            <t t-esc="invoice.name"/>
+                                                        </a>
+                                                    </td>
+                                                    <td><t t-esc="invoice.invoice_date_due"/></td>
+                                                    <td><t t-esc="invoice.amount_total_in_currency_signed"/></td>
+                                                    <td><t t-esc="invoice.payment_state"/></td>
+                                                </tr>
+                                            </t>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="hr_notification_head">
+                Hours Recorded
+            </div>
+            <!-- Updated code with right-aligned values for all tables -->
+            <div class="col-12" style="padding: 0;">
+                <div class="text-color">
+                    <div class="">
+                        <div class="media">
+                            <div class="media-body">
+                                <!-- Table 1: Billed on Timesheet -->
+                                <table class="table table-sm">
+                                    <thead>
+                                        <tr>
+                                            <th rowspan="14">Billed on Timesheet</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <t t-foreach="hour_recorde"
+                                           t-as="hour_recorde"
+                                           t-key="hour_recorde">
+                                            <tr>
+                                                <td>
+                                                    <!-- Right-align the value -->
+                                                    <h2 class="text-color display-6"
+                                                        style="font-size: 15px; text-align: right; margin-left: 400px; margin-top: -30px;">
+                                                        <t t-esc="hour_recorde"/>
+                                                    </h2>
+                                                </td>
+                                            </tr>
+                                        </t>
+                                    </tbody>
+                                </table>
+                                <!-- Table 2: Billed at a Fixed Price -->
+                                <table class="table table-sm">
+                                    <thead>
+                                        <tr>
+                                            <th rowspan="14">Billed at a Fixed Price</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <t t-foreach="billable_fix"
+                                           t-as="billable_fix"
+                                           t-key="billable_fix">
+                                            <tr>
+                                                <td>
+                                                    <!-- Right-align the value -->
+                                                    <h2 class="text-color display-6"
+                                                        style="font-size: 15px; text-align: right; margin-left: 400px; margin-top: -30px;">
+                                                        <t t-esc="billable_fix"/>
+                                                    </h2>
+                                                </td>
+                                            </tr>
+                                        </t>
+                                    </tbody>
+                                </table>
+                                <!-- Table 3: No Task Found -->
+                                <table class="table table-sm">
+                                    <thead>
+                                        <tr>
+                                            <th rowspan="14">No Task Found</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <t t-foreach="hour_recorded"
+                                           t-as="hour_recorded"
+                                           t-key="hour_recorded">
+                                            <tr>
+                                                <td>
+                                                    <!-- Right-align the value -->
+                                                    <h2 class="text-color display-6"
+                                                        style="font-size: 15px; text-align: right; margin-left: 400px; margin-top: -30px;">
+                                                        <t t-esc="hour_recorded"/>
+                                                    </h2>
+                                                </td>
+                                            </tr>
+                                        </t>
+                                    </tbody>
+                                </table>
+                                <!-- Table 4: Non Billable Tasks -->
+                                <table class="table table-sm">
+                                    <thead>
+                                        <tr>
+                                            <th rowspan="14">Non Billable Tasks</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <t t-foreach="non_billable"
+                                           t-as="non_billable"
+                                           t-key="non_billable">
+                                            <tr>
+                                                <td>
+                                                    <!-- Right-align the value -->
+                                                    <h2 class="text-color display-6"
+                                                        style="font-size: 15px; text-align: right; margin-left: 400px; margin-top: -30px;">
+                                                        <t t-esc="non_billable"/>
+                                                    </h2>
+                                                </td>
+                                            </tr>
+                                        </t>
+                                    </tbody>
+                                </table>
+                                <!-- Table 5: Total -->
+                                <table class="table table-sm">
+                                    <thead>
+                                        <tr>
+                                            <th rowspan="14">Total:</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <t t-foreach="total_hr"
+                                           t-as="total_hr"
+                                           t-key="total_hr">
+                                            <tr>
+                                                <td>
+                                                    <!-- Right-align the value -->
+                                                    <h2 class="text-color display-6"
+                                                        style="font-size: 15px; text-align: right; margin-left: 400px; margin-top: -30px;">
+                                                        <t t-esc="total_hr"/>
+                                                    </h2>
+                                                </td>
+                                            </tr>
+                                        </t>
+                                    </tbody>
+                                </table>
+                                <div class="stage_wise_total">
+                                    <div class="hr_notification" style="background: #fff;transition: transform 0.2s ease, box-shadow 0.2s ease;will-change: transform, box-shadow;box-shadow: 0 10px 40px 0 rgba(62,57,107,0.07), 0 2px 9px 0 rgba(62,57,107,0.06);
+                                        height: auto;padding-bottom: 15px;box-shadow:5px 11px 30px;">
+                                        <div class="hr_notification_head"
+                                            style="font-size: 17px;text-align: center;padding: 12px 0;color: #fff;font-weight: 300;background: #000080;margin-bottom: 9px;">
+                                            Stage Wise Total Projects
+                                        </div>
+                                        <table id="table_status" style="width">
+                                            <tr>
+                                                <th/>
+                                                <th/>
+                                            </tr>
+                                            <t t-foreach="project_stage_list"
+                                                t-as="data" t-key="data['name']">
+                                                <tr>
+                                                    <td style="text-align:center;">
+                                                        <h4 t-esc="data['name']"/>
+                                                    </td>
+                                                    <td style="text-align:center;">
+                                                        <h4 class="fleet-pill"
+                                                            t-esc="data['projects']"/>
+                                                    </td>
+                                                </tr>
+                                            </t>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </t>
+</templates>

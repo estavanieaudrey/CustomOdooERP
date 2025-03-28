@@ -1,0 +1,535 @@
+.oh-card h4 {
+    font-size: 1.1rem;
+}
+
+.stat-icon {
+    display: inline-block;
+}
+
+.stat-widget-one .stat-icon {
+    vertical-align: top;
+    margin: auto;
+    width: 100%;
+}
+
+.stat-widget-one .stat-icon i {
+    font-size: 30px;
+    font-weight: 900;
+    display: inline-block;
+    color: #01c490;
+}
+
+.stat-widget-one .stat-text {
+    font-size: 14px;
+    color: #868e96;
+    font-weight: bold;
+
+}
+
+.stat-widget-one .stat-digit {
+    font-size: 24px;
+    color: #02448b;
+}
+
+.stat_count {
+    font-size: 28px !important;
+}
+
+body .text-color {
+    color: #00438b;
+}
+/* Leave graph */
+path {
+    stroke: #fff;
+}
+
+path:hover {
+    opacity: 0.9;
+}
+
+rect:hover {
+    fill: #934da5;
+}
+
+.axis {
+    font: 10px sans-serif;
+}
+
+.legend tr {
+    border-bottom: 1px solid grey;
+}
+
+.legend tr:first-child {
+    border-top: 1px solid grey;
+}
+
+.axis path,
+.axis line {
+    fill: none;
+    stroke: #000;
+    shape-rendering: crispEdges;
+}
+
+.x.axis path {
+    display: none;
+}
+
+.legend {
+    border-collapse: collapse;
+    border-spacing: 0px;
+    display: inline-block;
+}
+
+.legend td,
+.legend .legend_col {
+    padding: 4px 5px;
+    vertical-align: bottom;
+}
+
+.legendFreq,
+.legendPerc {
+    align: right;
+    width: 50px;
+}
+
+/* Leave broadfactor graph */
+
+.broad_factor_graph .axis path,
+.broad_factor_graph .axis line {
+    fill: none;
+    stroke: black;
+    shape-rendering: crispEdges;
+}
+
+.broad_factor_graph .axis text {
+    font-family: sans-serif;
+    font-size: 11px;
+}
+
+.broad_factor_graph rect {
+    -moz-transition: all 0.3s;
+    -webkit-transition: all 0.3s;
+    -o-transition: all 0.3s;
+    transition: all 0.3s;
+}
+
+.broad_factor_graph rect:hover {
+    fill: #ff618a;
+}
+
+#broad_factor_pdf {
+    background-color: #ffffff;
+    border: 0;
+    color: #000000;
+    float: right;
+}
+
+#broad_factor_pdf i {
+    color: red;
+}
+
+
+/*=====================New Dashboard===========================*/
+
+.oh_dashboards {
+    background-color: #f8faff !important;
+    padding: 0 !important;
+    margin-top: 20px !important;
+    overflow-y: scroll !important;
+    vertical-align: middle !important;
+    overflow-x: clip !important;
+    max-height: -webkit-fill-available !important;
+}
+
+.container-fluid.o_hr_dashboard {
+    padding: 0px !important;
+}
+
+.employee-prof {
+
+    padding: 0px;
+    height: 100%;
+    background-color: #3e6282;
+    /*background-image: linear-gradient(180deg, #3e6282, #41666f);*/
+    position: fixed;
+    /*z-index: 999;*/
+}
+
+.employee-prof .oh-card:hover {
+
+    transform: none !important;
+    box-shadow: none !important;
+
+}
+
+.oh-card {
+    width: 100% !important;
+    margin-bottom: 15px !important;
+    background-color: #FFFFFF;
+    border-radius: 4px;
+    padding: 5px;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    will-change: transform, box-shadow;
+    box-shadow: 0 10px 40px 0 rgba(62, 57, 107, 0.07), 0 2px 9px 0 rgba(62, 57, 107, 0.06);
+}
+
+.oh-card:hover {
+    transform: translateY(-2px) translateZ(0) !important;
+    box-shadow: 0 10px 10px 0 rgba(62, 57, 107, 0.12), 0 0 0 transparent !important;
+}
+
+.media-body.employee-name {
+
+    background: #466b8d;
+    float: left;
+    margin: 0;
+    width: 100%
+}
+
+.oh-payslip {
+    padding: 0;
+    margin-top: 0.5% !important;
+    margin-bottom: 0.5% !important;
+}
+
+.oh-payslip .oh-card {
+    margin-bottom: 15px !important;
+    background-color: #FFFFFF !important;
+    /* transition: transform 0.2s ease, box-shadow 0.2s ease !important; */
+    border: none !important;
+    box-shadow: 0 10px 40px 0 rgba(62, 57, 107, 0.07), 0 2px 9px 0 rgba(62, 57, 107, 0.06) !important;
+    will-change: transform, box-shadow !important;
+}
+
+.oh-payslip .oh-card:hover {
+    transform: translateY(-2px) translateZ(0) !important;
+    box-shadow: 0 10px 10px 0 rgba(62, 57, 107, 0.12), 0 0 0 transparent !important;
+    background-color: #f0f0f0 !important;
+}
+
+.oh-payslip .oh-card:hover .oh-card-body {
+    background-color: #f0f0f0 !important;
+}
+
+.oh-payslip .oh-card:hover .stat-widget-one,
+.oh-payslip .oh-card:hover .oh-card-body .stat-widget-one {
+    background-color: #f0f0f0 !important;
+}
+
+.oh-card-body {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background-color: #FFFFFF !important;
+    padding: 20px;
+    border-radius: 4px;
+    transition: background-color 0.3s ease, transform 0.2s ease !important;
+}
+
+.stat-widget-one {
+    width: 100%;
+    background-color: transparent !important;
+    transition: all 0.3s ease !important;
+}
+
+.oh-card:hover .oh-card-body {
+    background-color: #f0f0f0 !important;
+}
+
+.oh-payslip .stat-icon {
+
+    width: 30%;
+    height: 85px;
+    text-align: center;
+    padding-top: 2%;
+
+}
+
+h4 .stat-count {
+    font-size: 17px;
+    text-align: center;
+    color: #000 !important;
+    margin-top: 0px;
+    width: 100%;
+    float: left;
+    margin: 0;
+}
+
+.hr-chart-1 {
+    margin: 15px 0px;
+    background: #fff;
+    padding: 0px !important;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    will-change: transform, box-shadow;
+    box-shadow: 0 10px 40px 0 rgba(62, 57, 107, 0.07), 0 2px 9px 0 rgba(62, 57, 107, 0.06);
+}
+
+.hr-chart-1:hover {
+    transform: translateY(-2px) translateZ(0) !important;
+    box-shadow: 0 10px 10px 0 rgba(62, 57, 107, 0.12), 0 0 0 transparent !important;
+}
+
+.stat-head {
+    text-align: center !important;
+    font-weight: 300;
+    font-size: 21px;
+    margin-bottom: 12px;
+    margin-left: 2px;
+}
+
+
+.hr_birthday {
+    font-size: 17px;
+    text-align: center;
+    padding: 20px 0;
+    color: #00438b;
+    font-weight: 300;
+}
+
+.hr_notification img {
+    width: 40px;
+    height: 40px;
+    border-radius: 100%;
+}
+
+.hr_notification {
+    background: #fff !important;
+    transition: transform 0.2s ease, box-shadow 0.2s ease !important;
+    will-change: transform, box-shadow !important;
+    box-shadow: 0 10px 40px 0 rgba(62, 57, 107, 0.07), 0 2px 9px 0 rgba(62, 57, 107, 0.06) !important;
+    border-radius: 4px !important;
+    overflow: hidden !important;
+    height: 757px;
+    margin-bottom: 15px;
+}
+
+.hr_notification:hover {
+    transform: translateY(-2px) translateZ(0) !important;
+    box-shadow: 0 10px 10px 0 rgba(62, 57, 107, 0.12), 0 0 0 transparent !important;
+}
+
+.hr_notification .media {
+    border-bottom: 1px solid #e6e6e6;
+    padding-bottom: 6px;
+    margin-bottom: 10px;
+}
+
+.hr_notification .text-color.display-6 {
+    margin: 0px 0 3px;
+    color: #2d2d2d;
+}
+
+.hr_notification p {
+    margin: 0 0 1px;
+    color: #666;
+    font-size: 10px;
+}
+
+.hr_notification_head {
+    font-size: 17px !important;
+    text-align: center !important;
+    padding: 12px 0 !important;
+    color: #fff !important;
+    font-weight: 300 !important;
+    background: #000080 !important;
+    margin-bottom: 9px !important;
+}
+
+.hr-chart-1 {
+    margin: 15px 0px;
+    background: #fff;
+    padding: 0px !important;
+    padding-top: 0px;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    will-change: transform, box-shadow;
+    box-shadow: 0 10px 40px 0 rgba(62, 57, 107, 0.07), 0 2px 9px 0 rgba(62, 57, 107, 0.06);
+    padding-top: 3px !important;
+}
+
+/* width */
+.hr_notification::-webkit-scrollbar {
+    width: 4px;
+}
+
+/* Track */
+.hr_notification::-webkit-scrollbar-track {
+    background: #f1f1f1;
+}
+
+/* Handle */
+.hr_notification::-webkit-scrollbar-thumb {
+    background: #495057;
+    ;
+}
+
+/* Handle on hover */
+.hr_notification::-webkit-scrollbar-thumb:hover {
+    background: #598da1;
+}
+
+
+.text-align {
+    margin-left: 17px;
+}
+
+.inner_select {
+    min-width: 150px
+}
+
+#table_status {
+    width: 90%;
+    margin-left: 5%;
+    margin-right: 5%;
+    font-family: Arial, Helvetica, sans-serif;
+}
+
+#table_status tr:nth-child(even) {
+    background-color: #f2f2f2;
+}
+
+#table_status tr:hover {
+    background-color: #ddd;
+}
+
+.fleet-pill {
+    align-items: center;
+    font-family: "Open Sans", Arial, Verdana, sans-serif;
+    font-weight: bold;
+    font-size: 11px;
+    display: inline-block;
+    height: 100%;
+    white-space: nowrap;
+    width: auto;
+    position: relative;
+    border-radius: 100px;
+    line-height: 1;
+    overflow: hidden;
+    padding: 0px 8px 0px 7px;
+    text-overflow: ellipsis;
+    line-height: 1.25rem;
+    color: #fff;
+    word-break: break-word;
+    background: #0253e8;
+}
+
+.inner_select p {
+    margin-left: 20px
+}
+
+.stat-widget-one .stat-icon i.fa-shopping-cart {
+    color: #28a745;  /* Green color for sales */
+    font-size: 32px;
+}
+
+.stat-widget-one:hover {
+    cursor: pointer;
+    background-color: transparent;
+    transition: all 0.3s ease;
+}
+
+/* Menyesuaikan layout dashboard chart */
+.row.main-section {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+    width: 100% !important;
+    justify-content: space-between !important;
+}
+
+/* Mengatur ulang ukuran dan margin untuk cards */
+.col-md-4.col-sm-6.oh-payslip {
+    width: 32% !important;
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+    margin: 0.5% !important;
+}
+
+.oh-card {
+    width: 100% !important;
+    margin-bottom: 15px !important;
+}
+
+/* Container utama */
+.container-fluid.o_pj_dashboard {
+    width: 96% !important;
+    margin-left: 2% !important;
+    margin-right: 2% !important;
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+}
+
+/* Styling untuk kolom chart dan details */
+.col-sm-7 {
+    padding-right: 15px !important;
+    padding-left: 0 !important;
+}
+
+.col-sm-5 {
+    padding-right: 0 !important;
+    padding-left: 15px !important;
+}
+
+/* Perbaikan box shadow dan styling */
+.graph_view, .selling_product_graph_view {
+    margin-top: 15px !important;
+    margin-bottom: 15px !important;
+    box-shadow: 0 10px 40px 0 rgba(62, 57, 107, 0.07), 0 2px 9px 0 rgba(62, 57, 107, 0.06) !important;
+    border-radius: 4px !important;
+    overflow: hidden !important;
+    transition: transform 0.2s ease, box-shadow 0.2s ease !important;
+    will-change: transform, box-shadow !important;
+}
+
+.graph_view:hover, .selling_product_graph_view:hover {
+    transform: translateY(-2px) translateZ(0) !important;
+    box-shadow: 0 10px 10px 0 rgba(62, 57, 107, 0.12), 0 0 0 transparent !important;
+}
+
+.hr_notification {
+    background: #fff !important;
+    transition: transform 0.2s ease, box-shadow 0.2s ease !important;
+    will-change: transform, box-shadow !important;
+    box-shadow: 0 10px 40px 0 rgba(62, 57, 107, 0.07), 0 2px 9px 0 rgba(62, 57, 107, 0.06) !important;
+    border-radius: 4px !important;
+    overflow: hidden !important;
+    height: 757px;
+    margin-bottom: 15px;
+}
+
+.hr_notification_head {
+    font-size: 17px !important;
+    text-align: center !important;
+    padding: 12px 0 !important;
+    color: #fff !important;
+    font-weight: 300 !important;
+    background: #000080 !important;
+    margin-bottom: 9px !important;
+}
+
+/* Menghilangkan padding berlebih */
+.oh_dashboards {
+    padding: 0 !important;
+    margin-top: 20px !important;
+    overflow-y: scroll !important;
+    vertical-align: middle !important;
+    overflow-x: clip !important;
+    max-height: -webkit-fill-available !important;
+}
+
+/* Perbaikan untuk chart title posisi */
+.oh-card-body.pb-0 h2 {
+    margin-left: 0 !important;
+    text-align: center !important;
+    width: 100% !important;
+}
+
+/* Memperbaiki linter error dengan menambahkan kurung kurawal yang hilang */
+.stat-widget-one .stat-icon i {
+    font-size: 32px;
+    display: inline-block;
+    color: #000;
+    top: 16px;
+    position: relative;
+}

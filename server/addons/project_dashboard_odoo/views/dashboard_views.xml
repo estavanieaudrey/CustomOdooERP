@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Action for Project Dashboard-->
+    <record id="project_dashboard_action" model="ir.actions.client">
+        <field name="name">Dashboard</field>
+        <field name="tag">project_dashboard</field>
+    </record>
+
+    <!-- Dashboard menu item -->
+    <menuitem id="project_menu_open_Dashboard"
+              name="Dashboard"
+              action="project_dashboard_action"
+              parent="project.menu_main_pm"
+              sequence="1"/>
+
+    <!-- Dashboard Template -->
+    <template id="project_dashboard_template" name="Project Dashboard">
+        <div class="container-fluid o_hr_dashboard">
+            <div class="row">
+                <!-- Bill of Materials Card -->
+                <div class="col-lg-4 col-sm-6">
+                    <div class="oh-card cursor-pointer" t-on-click="tot_projects">
+                        <div class="oh-card-body">
+                            <div class="stat-widget-one">
+                                <div class="stat-icon">
+                                    <i class="fa fa-list text-warning"/>
+                                </div>
+                                <div class="stat-content">
+                                    <div class="stat-text">List of Bill of Materials</div>
+                                    <div class="stat-digit" t-esc="total_bom">0</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Total Tasks Card -->
+                <div class="col-lg-4 col-sm-6">
+                    <div class="oh-card cursor-pointer" t-on-click="tot_tasks">
+                        <div class="oh-card-body">
+                            <div class="stat-widget-one">
+                                <div class="stat-icon">
+                                    <i class="fa fa-tasks text-primary"/>
+                                </div>
+                                <div class="stat-content">
+                                    <div class="stat-text">Total Tasks</div>
+                                    <div class="stat-digit" t-esc="total_tasks">0</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Sales Order Card -->
+                <div class="col-lg-4 col-sm-6">
+                    <div class="oh-card cursor-pointer" t-on-click="tot_sale">
+                        <div class="oh-card-body">
+                            <div class="stat-widget-one">
+                                <div class="stat-icon">
+                                    <i class="fa fa-shopping-cart text-success"/>
+                                </div>
+                                <div class="stat-content">
+                                    <div class="stat-text">Total Sales Orders</div>
+                                    <div class="stat-digit" t-esc="total_sale_orders">0</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </template>
+</odoo>
