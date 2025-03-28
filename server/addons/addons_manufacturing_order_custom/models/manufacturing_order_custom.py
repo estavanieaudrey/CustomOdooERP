@@ -579,99 +579,99 @@ class MrpProductionCustom(models.Model):
 
     isi_box = fields.Integer(related='bom_id.isi_box', string="Isi Box", store=True)
 
-    @api.onchange('lot_id_mrp')
-    def _onchange_lot_id_mrp(self):
-        """
-        Auto-fill lot numbers when lot_id_mrp is selected
-        """
-        if self.lot_id_mrp:
-            for line in self.move_raw_ids:
-                # Find existing lot/serial number
-                lot = self.env['stock.lot'].search([
-                    ('name', '=', self.lot_id_mrp),
-                    ('product_id', '=', line.product_id.id),
-                    ('company_id', '=', self.company_id.id)
-                ], limit=1)
-                
-                # If lot doesn't exist, create it
-                if not lot:
-                    lot = self.env['stock.lot'].create({
-                        'name': self.lot_id_mrp,
-                        'product_id': line.product_id.id,
-                        'company_id': self.company_id.id,
-                    })
+    # @api.onchange('lot_id_mrp')
+    # def _onchange_lot_id_mrp(self):
+    #     """
+    #     Auto-fill lot numbers when lot_id_mrp is selected
+    #     """
+    #     if self.lot_id_mrp:
+    #         for line in self.move_raw_ids:
+    #             # Find existing lot/serial number
+    #             lot = self.env['stock.lot'].search([
+    #                 ('name', '=', self.lot_id_mrp),
+    #                 ('product_id', '=', line.product_id.id),
+    #                 ('company_id', '=', self.company_id.id)
+    #             ], limit=1)
+    #
+    #             # If lot doesn't exist, create it
+    #             if not lot:
+    #                 lot = self.env['stock.lot'].create({
+    #                     'name': self.lot_id_mrp,
+    #                     'product_id': line.product_id.id,
+    #                     'company_id': self.company_id.id,
+    #                 })
+    #
+    #             # Update lot_ids in move
+    #             line.lot_ids = [(4, lot.id)]
+    #
+    #             # Create or update move lines
+    #             if line.move_line_ids:
+    #                 for move_line in line.move_line_ids:
+    #                     move_line.lot_id = lot.id
+    #                     move_line.lot_name = self.lot_id_mrp
+    #             else:
+    #                 self.env['stock.move.line'].create({
+    #                     'move_id': line.id,
+    #                     'product_id': line.product_id.id,
+    #                     'product_uom_id': line.product_uom.id,
+    #                     'location_id': line.location_id.id,
+    #                     'location_dest_id': line.location_dest_id.id,
+    #                     'production_id': self.id,
+    #                     'lot_id': lot.id,
+    #                     'lot_name': self.lot_id_mrp,
+    #                     'product_uom_qty': line.product_uom_qty,
+    #                     'company_id': self.company_id.id,
+    #                 })
+    #             _logger.info(f"Created/Updated lot {self.lot_id_mrp} for product {line.product_id.name}")
 
-                # Update lot_ids in move
-                line.lot_ids = [(4, lot.id)]
-                
-                # Create or update move lines
-                if line.move_line_ids:
-                    for move_line in line.move_line_ids:
-                        move_line.lot_id = lot.id
-                        move_line.lot_name = self.lot_id_mrp
-                else:
-                    self.env['stock.move.line'].create({
-                        'move_id': line.id,
-                        'product_id': line.product_id.id,
-                        'product_uom_id': line.product_uom.id,
-                        'location_id': line.location_id.id,
-                        'location_dest_id': line.location_dest_id.id,
-                        'production_id': self.id,
-                        'lot_id': lot.id,
-                        'lot_name': self.lot_id_mrp,
-                        'product_uom_qty': line.product_uom_qty,
-                        'company_id': self.company_id.id,
-                    })
-                _logger.info(f"Created/Updated lot {self.lot_id_mrp} for product {line.product_id.name}")
-
-    def write(self, vals):
-        """Override write method to handle lot_id_mrp updates"""
-        result = super().write(vals)
-        
-        # If lot_id_mrp was updated, ensure lot_ids are updated
-        if 'lot_id_mrp' in vals and vals['lot_id_mrp']:
-            for production in self:
-                for line in production.move_raw_ids:
-                    lot = self.env['stock.lot'].search([
-                        ('name', '=', production.lot_id_mrp),
-                        ('product_id', '=', line.product_id.id),
-                        ('company_id', '=', production.company_id.id)
-                    ], limit=1)
-                    
-                    if not lot:
-                        lot = self.env['stock.lot'].create({
-                            'name': production.lot_id_mrp,
-                            'product_id': line.product_id.id,
-                            'company_id': production.company_id.id,
-                        })
-
-                    # Update lot_ids in move
-                    line.lot_ids = [(4, lot.id)]
-                    
-                    # Update or create move lines
-                    if line.move_line_ids:
-                        for move_line in line.move_line_ids:
-                            move_line.write({
-                                'lot_id': lot.id,
-                                'lot_name': production.lot_id_mrp
-                            })
-                    else:
-                        self.env['stock.move.line'].create({
-                            'move_id': line.id,
-                            'product_id': line.product_id.id,
-                            'product_uom_id': line.product_uom.id,
-                            'location_id': line.location_id.id,
-                            'location_dest_id': line.location_dest_id.id,
-                            'production_id': production.id,
-                            'lot_id': lot.id,
-                            'lot_name': production.lot_id_mrp,
-                            'product_uom_qty': line.product_uom_qty,
-                            'company_id': production.company_id.id,
-                        })
-                    
-                    _logger.info(f"Updated lot {production.lot_id_mrp} for product {line.product_id.name} during save")
-        
-        return result
+    # def write(self, vals):
+    #     """Override write method to handle lot_id_mrp updates"""
+    #     result = super().write(vals)
+    #
+    #     # If lot_id_mrp was updated, ensure lot_ids are updated
+    #     if 'lot_id_mrp' in vals and vals['lot_id_mrp']:
+    #         for production in self:
+    #             for line in production.move_raw_ids:
+    #                 lot = self.env['stock.lot'].search([
+    #                     ('name', '=', production.lot_id_mrp),
+    #                     ('product_id', '=', line.product_id.id),
+    #                     ('company_id', '=', production.company_id.id)
+    #                 ], limit=1)
+    #
+    #                 if not lot:
+    #                     lot = self.env['stock.lot'].create({
+    #                         'name': production.lot_id_mrp,
+    #                         'product_id': line.product_id.id,
+    #                         'company_id': production.company_id.id,
+    #                     })
+    #
+    #                 # Update lot_ids in move
+    #                 line.lot_ids = [(4, lot.id)]
+    #
+    #                 # Update or create move lines
+    #                 if line.move_line_ids:
+    #                     for move_line in line.move_line_ids:
+    #                         move_line.write({
+    #                             'lot_id': lot.id,
+    #                             'lot_name': production.lot_id_mrp
+    #                         })
+    #                 else:
+    #                     self.env['stock.move.line'].create({
+    #                         'move_id': line.id,
+    #                         'product_id': line.product_id.id,
+    #                         'product_uom_id': line.product_uom.id,
+    #                         'location_id': line.location_id.id,
+    #                         'location_dest_id': line.location_dest_id.id,
+    #                         'production_id': production.id,
+    #                         'lot_id': lot.id,
+    #                         'lot_name': production.lot_id_mrp,
+    #                         'product_uom_qty': line.product_uom_qty,
+    #                         'company_id': production.company_id.id,
+    #                     })
+    #
+    #                 _logger.info(f"Updated lot {production.lot_id_mrp} for product {line.product_id.name} during save")
+    #
+    #     return result
 
     
 
