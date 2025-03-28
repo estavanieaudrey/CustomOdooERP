@@ -186,7 +186,7 @@
                     <tr>
                         <td style="border: 1px solid black; padding: 5px;">Ukuran Bahan Kertas</td>
                         <td style="border: 1px solid black; padding: 5px;">
-                            <t t-esc="docs.ukuran_bahan_kertas"/>
+                            <t t-esc="docs.ukuran_bahan_kertas_cover"/>
                         </td>
                     </tr>
                     <tr>
