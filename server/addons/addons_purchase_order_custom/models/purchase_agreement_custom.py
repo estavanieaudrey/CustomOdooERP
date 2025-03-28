@@ -98,14 +98,14 @@ class PurchaseRequisition(models.Model):
                     missing_fields.append('Product di Purchase Agreement Lines')
                     break  # Cukup sekali saja warning untuk product yang kosong
                 
-            # Validasi bom_id
-            if not requisition.bom_id:
-                missing_fields.append('Bill of Materials')
-
-            if missing_fields:
-                raise ValidationError(
-                    # isi date_start, product_id, dan quantity
-                    f"Silakan isi field berikut sebelum konfirmasi: {', '.join(missing_fields)}"
-                )
+            # Validasi bom_id : gabutuh sih krn sudah ada warning dari sisi quantity
+            # if not requisition.bom_id:
+            #     missing_fields.append('Bill of Materials')
+            #
+            # if missing_fields:
+            #     raise ValidationError(
+            #         # isi date_start, product_id, dan quantity
+            #         f"Silakan isi field berikut sebelum konfirmasi: {', '.join(missing_fields)}"
+            #     )
 
         return super(PurchaseRequisition, self).action_confirm()
