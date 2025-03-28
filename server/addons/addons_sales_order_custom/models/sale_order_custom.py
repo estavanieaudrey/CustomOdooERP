@@ -3,6 +3,7 @@ from odoo import models, fields, api
 from odoo.exceptions import ValidationError
 from io import BytesIO
 import base64
+from datetime import date
 
 # Class utama buat custom Sales Order - nambahin fitur2 untuk perjanjian jual beli
 class SaleOrderCustom(models.Model):
@@ -530,6 +531,16 @@ class SaleOrderCustom(models.Model):
     #         raise ValidationError("Bill of Materials (BoM) harus dipilih terlebih dahulu!")
     #     return super(SaleOrderCustom, self).create(vals)
 
+    @api.onchange('expired_date')
+    def _onchange_expired_date(self):
+        if self.expired_date == date.today():
+            return {
+                'warning': {
+                    'title': "Warning",
+                    'message': f"Apakah anda yakin jatuh tempo sales order adalah {date.today()}?",
+                }
+            }
+
 # Class khusus buat handle Down Payment
 class SaleAdvancePaymentInv(models.TransientModel):
     """
@@ -854,4 +865,3 @@ class SaleAdvancePaymentInv(models.TransientModel):
                 invoice._compute_amount()
         
         return invoices
-
