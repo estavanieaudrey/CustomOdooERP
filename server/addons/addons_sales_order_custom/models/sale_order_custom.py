@@ -349,6 +349,14 @@ class SaleOrderCustom(models.Model):
         """
         # Manggil template report yang udah didaftarin di XML, terus langsung dirender
         return self.env.ref('addons_sales_order_custom.action_report_draft_perjanjian').report_action(self)
+    
+    def action_generate_all_invoice(self):
+        """
+        Function buat bikin PDF dari template report yang udah dibuat.
+        Simpel sih, cuma manggil template reportnya terus dirender jadi PDF.
+        """
+        # Manggil template report yang udah didaftarin di XML, terus langsung dirender
+        return self.env.ref('addons_sales_order_custom.action_all_invoices').report_action(self)
 
     # Override Method action_confirm di sale.order
     def action_confirm(self):
@@ -405,8 +413,7 @@ class SaleOrderCustom(models.Model):
             if record.draft_perjanjian and record.draft_perjanjian_name:
                 if not record.draft_perjanjian_name.endswith('.pdf'):
                     raise ValidationError("File yang diupload harus dalam format PDF.")
-                
-    
+
     # Update tanggal tanda tangan otomatis waktu status signed berubah
     @api.onchange('is_signed')
     def _onchange_is_signed(self):
@@ -417,7 +424,7 @@ class SaleOrderCustom(models.Model):
         - Validasi harus ada draft dulu
         """
         if self.is_signed:
-            # Cek dulu ada draft perjanjiannya gak
+            # Cek dulu ada draft perjanjian gak
             if not self.draft_perjanjian:
                 self.is_signed = False
                 return {
@@ -540,6 +547,27 @@ class SaleOrderCustom(models.Model):
                     'message': f"Apakah anda yakin jatuh tempo sales order adalah {date.today()}?",
                 }
             }
+            
+    # Field untuk menampilkan total remaining amount dari semua order lines
+    remaining_amount = fields.Monetary(
+        string="Remaining Amount",
+        compute="_compute_remaining_amount",
+        store=True,
+        help="Total remaining amount to be paid after considering all invoices."
+    )
+    
+    @api.depends('amount_total', 'invoice_ids', 'invoice_ids.state', 'invoice_ids.amount_total', 'invoice_ids.payment_state')
+    def _compute_remaining_amount(self):
+        for order in self:
+            # Calculate the total amount from confirmed invoices
+            paid_amount = sum(
+                invoice.amount_total 
+                for invoice in order.invoice_ids 
+                if invoice.state == 'posted' and invoice.payment_state in ['paid', 'partial']
+            )
+            
+            # Remaining amount is the total order amount minus what's been paid
+            order.remaining_amount = order.amount_total - paid_amount
 
 # Class khusus buat handle Down Payment
 class SaleAdvancePaymentInv(models.TransientModel):
@@ -696,8 +724,20 @@ class SaleAdvancePaymentInv(models.TransientModel):
                         move.sale_line_id.price_unit * move.quantity 
                         for move in self.delivery_order_id.move_ids_without_package
                     )
+                    
+                    # Check if there are previous payments and compare amounts
+                    if amount_invoiced > 0:
+                        if amount_to_invoice >= delivered_amount:
+                            # Case 1: If there's enough remaining to invoice, use delivery amount
+                            self.nominal = delivered_amount
+                        else:
+                            # Case 2: If delivery amount exceeds remaining, adjust by subtracting invoiced amount
+                            self.nominal = max(0.0, delivered_amount - amount_invoiced)
+                    else:
+                        # No previous payments, use full delivered amount
+                        self.nominal = delivered_amount
+                    
                     self.amount = 100  # Set to 100% for full invoice of delivery
-                    self.nominal = delivered_amount
                     # Penting: amount_to_invoice harus tetap total yang belum dibayar
                     self.amount_to_invoice = amount_to_invoice
 
@@ -733,11 +773,29 @@ class SaleAdvancePaymentInv(models.TransientModel):
         Update nominal when delivery order is selected
         """
         if self.advance_payment_method == 'delivery' and self.delivery_order_id:
-            delivered_amount = sum(
-                move.sale_line_id.price_unit * move.quantity 
-                for move in self.delivery_order_id.move_ids_without_package
-            )
-            self.nominal = delivered_amount
+            # Get the active sale order
+            sale_order_id = self.env.context.get('active_id')
+            if sale_order_id:
+                sale_order = self.env['sale.order'].browse(sale_order_id)
+                
+                # Calculate invoiced amount
+                amount_invoiced = sum(sale_order.invoice_ids.mapped('amount_total'))
+                amount_to_invoice = self.price_subtotal - amount_invoiced
+                
+                # Calculate delivered amount
+                delivered_amount = sum(
+                    move.sale_line_id.price_unit * move.quantity 
+                    for move in self.delivery_order_id.move_ids_without_package
+                )
+                
+                # Apply the same logic as in _onchange_advance_payment_method
+                if amount_invoiced > 0:
+                    if amount_to_invoice >= delivered_amount:
+                        self.nominal = delivered_amount
+                    else:
+                        self.nominal = max(0.0, delivered_amount - amount_invoiced)
+                else:
+                    self.nominal = delivered_amount
 
     @api.model #Menetapkan nilai awal untuk wizard pembuatan invoice DP dengan mengambil data dari Sales Order, termasuk subtotal harga dan jumlah yang telah difakturkan.
     def default_get(self, fields):
@@ -840,6 +898,21 @@ class SaleAdvancePaymentInv(models.TransientModel):
                 record.delivery_quantity = 0.0
                 
 
+    def create_invoices(self):
+        """
+        Override create_invoices to store nominal value in context before creating invoice
+        """
+        # Store the nominal in the context before invoice creation
+        if self.advance_payment_method == 'delivery' and self.delivery_order_id:
+            # Convert to context that will persist through the action
+            ctx = dict(self.env.context)
+            ctx.update({
+                'default_invoice_amount': self.nominal
+            })
+            self = self.with_context(ctx)
+        
+        return super(SaleAdvancePaymentInv, self).create_invoices()
+
     def _create_invoices(self, sale_orders):
         """
         Override method _create_invoices untuk custom invoice berdasarkan delivery
@@ -849,19 +922,67 @@ class SaleAdvancePaymentInv(models.TransientModel):
         
         # Jika metode pembayaran berdasarkan delivery, update invoice
         if self.advance_payment_method == 'delivery' and self.delivery_order_id:
-            delivered_amount = sum(
-                move.sale_line_id.price_unit * move.quantity 
-                for move in self.delivery_order_id.move_ids_without_package
-            )
+            # Get the saved value from context or fall back to self.nominal
+            invoice_amount = self.env.context.get('default_invoice_amount', self.nominal)
+            
+            # Check if invoice_amount is valid (prevent zero invoices)
+            if not invoice_amount or invoice_amount == 0:
+                # If somehow still zero, recalculate it based on delivery order
+                sale_order_id = self.env.context.get('active_id')
+                if sale_order_id and self.delivery_order_id:
+                    sale_order = self.env['sale.order'].browse(sale_order_id)
+                    amount_invoiced = sum(sale_order.invoice_ids.mapped('amount_total'))
+                    price_subtotal = sum(sale_order.order_line.mapped('price_subtotal'))
+                    amount_to_invoice = price_subtotal - amount_invoiced
+                    
+                    # Recalculate the delivery amount
+                    delivered_amount = sum(
+                        move.sale_line_id.price_unit * move.quantity 
+                        for move in self.delivery_order_id.move_ids_without_package
+                    )
+                    
+                    if amount_invoiced > 0:
+                        if amount_to_invoice >= delivered_amount:
+                            invoice_amount = delivered_amount
+                        else:
+                            invoice_amount = max(0.0, delivered_amount - amount_invoiced)
+                    else:
+                        invoice_amount = delivered_amount
             
             # Update setiap invoice yang baru dibuat
             for invoice in invoices:
                 for line in invoice.invoice_line_ids:
                     line.write({
-                        'price_unit': delivered_amount,
+                        'price_unit': invoice_amount,
                         'quantity': 1.0,
                     })
-                # Trigger recompute amount
+                    
+                    # Explicitly set price_subtotal
+                    line.price_subtotal = invoice_amount
+                    
+                # Trigger recompute amount untuk update total invoice
                 invoice._compute_amount()
         
         return invoices
+    
+    
+class AccountMove(models.Model):
+    _inherit = 'account.move'
+
+    remaining_amount = fields.Monetary(
+        string="Remaining Amount",
+        compute="_compute_remaining_amount",
+        store=True,
+        help="Amount to be paid after deducting the down payment."
+    )
+
+    @api.depends('amount_total', 'invoice_line_ids')
+    def _compute_remaining_amount(self):
+        for record in self:
+            down_payment = sum(
+                line.price_subtotal for line in record.invoice_line_ids 
+                if line.name and isinstance(line.name, str) and 'down payment' in line.name.lower()
+            )
+            record.remaining_amount = record.amount_total - down_payment
+
+

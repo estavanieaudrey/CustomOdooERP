@@ -12,6 +12,11 @@
                             string="Generate Draft Perjanjian"
                             class="btn-primary"
                             icon="fa-pencil-square-o"/>
+                <button name="action_generate_all_invoice"
+                            type="object"
+                            string="Generate All Invoice"
+                            class="btn-primary"
+                            icon="fa-pencil-square-o"/>
                 <!-- <button name="action_convert_to_sales_order"
                         string="Confirm as Sales Order"
                         type="object"
@@ -82,6 +87,15 @@
                     </page>
                 </notebook>
             </xpath>
+
+            <!-- Add a new group for remaining amount display -->
+            <xpath expr="//group[@name='sale_total']" position="after">
+                <div class="oe_subtotal_footer_separator">
+                <span class="o_subtotal_label">Remaining Amount:</span>
+                    <field name="remaining_amount" widget="monetary" options="{'currency_field': 'currency_id'}" class="o_subtotal_amount"/>
+                </div>
+            </xpath>
+
         </field>
     </record>
 
@@ -116,6 +130,15 @@
         </field>
     </record>
 
-
+    <record id="view_move_form_custom" model="ir.ui.view">
+        <field name="name">account.move.form.custom</field>
+        <field name="model">account.move</field>
+        <field name="inherit_id" ref="account.view_move_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='amount_residual']" position="after">
+                <field name="remaining_amount" readonly="1"/>
+            </xpath>
+        </field>
+    </record>
 </odoo>
 
