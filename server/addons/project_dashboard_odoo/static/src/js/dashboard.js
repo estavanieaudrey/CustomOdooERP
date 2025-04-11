@@ -23,14 +23,12 @@ export class ProjectDashboard extends Component {
 		this.total_mo = useRef("total_mo");
 		this.total_so = useRef("tot_so");
 		this.tot_task = useRef("tot_task");
-		this.top_selling_employees = useRef("top_selling_employees");
 		this.upcoming_deliveries = useRef("upcoming_deliveries");
 
 		// Initialize all required variables
 		this.total_bom = 0;
 		this.total_tasks = 0;
 		this.total_sale_orders = 0;
-		this.project_stage_list = [];
 		this.bom_ids = [];
 		this.total_projects = 0;
 		this.total_projects_ids = [];
@@ -134,74 +132,6 @@ export class ProjectDashboard extends Component {
 		} catch (error) {
 			console.error('Error rendering chart:', error);
 		}
-	}
-	/**
-	function for getting values to employee graph
-	*/
-	async render_top_employees_graph() {
-		var ctx = this.top_selling_employees
-		var arrays = await rpc('/employee/timesheet')
-        var data = {
-            labels: arrays[1],
-            datasets: [{
-                label: "Hours Spent",
-                data: arrays[0],
-                backgroundColor: [
-                    "rgba(190, 27, 75,1)",
-                    "rgba(31, 241, 91,1)",
-                    "rgba(103, 23, 252,1)",
-                    "rgba(158, 106, 198,1)",
-                    "rgba(250, 217, 105,1)",
-                    "rgba(255, 98, 31,1)",
-                    "rgba(255, 31, 188,1)",
-                    "rgba(75, 192, 192,1)",
-                    "rgba(153, 102, 255,1)",
-                    "rgba(10,20,30,1)"
-                ],
-                borderColor: [
-                    "rgba(190, 27, 75, 0.2)",
-                    "rgba(190, 223, 122, 0.2)",
-                    "rgba(103, 23, 252, 0.2)",
-                    "rgba(158, 106, 198, 0.2)",
-                    "rgba(250, 217, 105, 0.2)",
-                    "rgba(255, 98, 31, 0.2)",
-                    "rgba(255, 31, 188, 0.2)",
-                    "rgba(75, 192, 192, 0.2)",
-                    "rgba(153, 102, 255, 0.2)",
-                    "rgba(10,20,30,0.3)"
-                ],
-                borderWidth: 1
-                },
-            ]
-        };
-        //options
-        var options = {
-            responsive: true,
-            title: {
-                display: true,
-                position: "top",
-                text: " Time by Employees",
-                fontSize: 18,
-                fontColor: "#111"
-            },
-            legend: {
-                display: false,
-            },
-            scales: {
-                yAxes: [{
-                    ticks: {
-                        min: 0
-                    }
-                }]
-            }
-        };
-        //create Chart class object
-        var chart = new Chart(ctx.el, {
-            type: 'bar',
-            data: data,
-            options: options
-        });
-
 	}
 	/**
      * Event handler to apply filters based on user selections and update the dashboard data accordingly.
@@ -413,16 +343,7 @@ export class ProjectDashboard extends Component {
 					self.upcoming_deliveries = [];
 				});
 
-			const def6 = await rpc('/get/hours')
-			.then(function(res) {
-				self.hour_recorded = res['hour_recorded'] || [];
-				self.hour_recorde = res['hour_recorde'] || [];
-				self.billable_fix = res['billable_fix'] || [];
-				self.non_billable = res['non_billable'] || [];
-				self.total_hr = res['total_hr'] || [];
-			});
-
-			return Promise.all([def1, def2, def3, def4, def5, def6]);
+			return Promise.all([def1, def2, def3, def4, def5]);
 		} catch (error) {
 			console.error('Error fetching data:', error);
 			// Set default values if error occurs

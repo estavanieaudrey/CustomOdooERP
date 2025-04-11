@@ -202,17 +202,17 @@
         </record>
 
         <!-- Inherit Stock Picking Form View -->
-        <record id="view_picking_form_inherit_custom" model="ir.ui.view">
-            <field name="name">stock.picking.form.inherit.custom</field>
-            <field name="model">stock.picking</field>
-            <field name="inherit_id" ref="stock.view_picking_form"/>
-            <field name="arch" type="xml">
-                <xpath expr="//group" position="inside">
-                    <group>
-                        <field name="qty_plus_surplus"/>
-                    </group>
-                </xpath>
-            </field>
-        </record>
+<!--        <record id="view_picking_form_inherit_custom" model="ir.ui.view">-->
+<!--            <field name="name">stock.picking.form.inherit.custom</field>-->
+<!--            <field name="model">stock.picking</field>-->
+<!--            <field name="inherit_id" ref="stock.view_picking_form"/>-->
+<!--            <field name="arch" type="xml">-->
+<!--                <xpath expr="//group" position="inside">-->
+<!--                    <group>-->
+<!--                        <field name="qty_plus_surplus"/>-->
+<!--                    </group>-->
+<!--                </xpath>-->
+<!--            </field>-->
+<!--        </record>-->
     </data>
 </odoo>

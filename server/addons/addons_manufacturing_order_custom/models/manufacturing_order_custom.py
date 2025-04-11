@@ -1219,43 +1219,43 @@ class StockMove(models.Model):
     )
     
     # Field to fetch qty_plus_surplus from mrp.production
-    qty_plus_surplus = fields.Float(
-        string="Total Hasil Produksi",
-        compute="_compute_qty_plus_surplus",
-        store=True,
-        readonly=True,
-        help="Surplus quantity fetched from the related Manufacturing Order."
-    )
+    # qty_plus_surplus = fields.Float(
+    #     string="Total Hasil Produksi",
+    #     compute="_compute_qty_plus_surplus",
+    #     store=True,
+    #     readonly=True,
+    #     help="Surplus quantity fetched from the related Manufacturing Order."
+    # )
     
-    @api.depends('production_id.qty_plus_surplus')
-    def _compute_qty_plus_surplus(self):
-        """
-        Compute qty_plus_surplus for stock.move based on the related mrp.production.
-        """
-        for move in self:
-            if move.production_id:
-                move.qty_plus_surplus = move.production_id.qty_plus_surplus #ambil dari MO
-            else:
-                move.qty_plus_surplus = 145.0 #default value
+    # @api.depends('production_id.qty_plus_surplus')
+    # def _compute_qty_plus_surplus(self):
+    #     """
+    #     Compute qty_plus_surplus for stock.move based on the related mrp.production.
+    #     """
+    #     for move in self:
+    #         if move.production_id:
+    #             move.qty_plus_surplus = move.production_id.qty_plus_surplus #ambil dari MO
+    #         else:
+    #             move.qty_plus_surplus = 145.0 #default value
 
 
 class StockPicking(models.Model):
     _inherit = 'stock.picking'
 
     # Aggregate qty_plus_surplus from all stock.moves in this picking
-    qty_plus_surplus = fields.Float(
-        string="Total Hasil Produksi",
-        compute="_compute_qty_plus_surplus",
-        store=True,
-        readonly=True,
-        help="Sum of surplus quantities from all moves related to this picking."
-    )
+    # qty_plus_surplus = fields.Float(
+    #     string="Total Hasil Produksi",
+    #     compute="_compute_qty_plus_surplus",
+    #     store=True,
+    #     readonly=True,
+    #     help="Sum of surplus quantities from all moves related to this picking."
+    # )
 
-    @api.depends('manufacturing_order_id.qty_plus_surplus', 'manufacturing_order_id')
-    def _compute_qty_plus_surplus(self):
-        """
-        Compute the total qty_plus_surplus for stock.picking by summing up related stock.moves.
-        """
-        for picking in self:
-            picking.qty_plus_surplus = picking.manufacturing_order_id.qty_plus_surplus #ambil dari MO
-            
+    # @api.depends('manufacturing_order_id.qty_plus_surplus', 'manufacturing_order_id')
+    # def _compute_qty_plus_surplus(self):
+    #     """
+    #     Compute the total qty_plus_surplus for stock.picking by summing up related stock.moves.
+    #     """
+    #     for picking in self:
+    #         picking.qty_plus_surplus = picking.manufacturing_order_id.qty_plus_surplus #ambil dari MO
+    #
