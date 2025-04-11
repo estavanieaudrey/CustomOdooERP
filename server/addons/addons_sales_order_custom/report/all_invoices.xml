@@ -1,0 +1,75 @@
+<odoo>
+    <template id="all_invoices_report">
+        <t t-call="web.basic_layout">
+            <div class="page" style="margin-left: 40px; margin-right: 40px; text-align: justify;">
+
+                <!-- Company Letterhead -->
+                <div style="width:1000px; padding-bottom:30px; margin-top: 0;">
+                    <!-- Logo -->
+                    <div style="width:300px; float:left; margin-left: 20px;">
+                        <img src="/addons_sales_order_custom/static/img/logo_company_1.png" alt="Company Logo"
+                            style="height: 150px;"/>
+                    </div>
+                    <!-- Address Details -->
+                    <div style="width: 300px; float: right; text-align: left; line-height: 1.2; margin: 0; padding-top: 30px;">
+                        <p style="margin: 0;">
+                            <strong>
+                                <span t-field="docs.company_id.name"/>
+                            </strong>
+                        </p>
+                        <p style="margin: 0;">
+                            <span t-field="docs.company_id.street"/>
+                        </p>
+                        <p style="margin: 0;">
+                            <span t-field="docs.company_id.city"/>,
+                            <span t-field="docs.company_id.state_id.name"/>
+                        </p>
+                        <p style="margin: 0;">
+                            <span t-field="docs.company_id.country_id.name"/>
+                        </p>
+                        <p style="margin: 0;">
+                            <span t-field="docs.company_id.mobile"/>
+                        </p>
+                        <p style="margin: 0;">
+                            <span t-field="docs.company_id.phone"/>
+                        </p>
+                    </div>
+
+                </div>
+
+                <p style="text-align: center;">
+                    ________________________________________________________________________________________________________________________________________________
+                </p>
+
+                <div style="padding-top: 10px;">
+                    <h1 style="text-align: center;">Detail Pembayaran [Invoice]</h1>
+
+                </div>
+
+                <p style="text-align: center; font-size: 25px;"><strong>Sales Order:</strong> <t t-esc="docs.name"/></p>
+                <p style="text-align: center; font-size: 25px;"><strong>Customer:</strong> <t t-esc="docs.partner_id.name"/></p>
+                <table class="table table-sm table-bordered">
+                    <thead>
+                        <tr>
+                            <th>Invoice</th>
+                            <th>Date</th>
+                            <th>Amount</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <t t-foreach="docs.invoice_ids" t-as="invoice">
+                            <tr>
+                                <td><t t-esc="invoice.name"/></td>
+                                <td><t t-esc="invoice.invoice_date"/></td>
+                                <td><t t-esc="invoice.amount_total" t-options="{'widget': 'monetary', 'display_currency': invoice.currency_id}"/></td>
+                                <td><t t-esc="invoice.state"/></td>
+                            </tr>
+                        </t>
+                    </tbody>
+                </table>
+                <p style="text-align: right; font-size: 21px;"><b>Remaining amount:</b> <t t-esc="docs.remaining_amount" t-options="{'widget': 'monetary', 'display_currency': docs.currency_id}"/></p>
+            </div>
+        </t>
+    </template>
+</odoo>

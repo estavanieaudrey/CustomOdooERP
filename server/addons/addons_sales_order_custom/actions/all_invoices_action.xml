@@ -1,0 +1,10 @@
+<odoo>
+    <data>
+        <record id="action_all_invoices" model="ir.actions.report">
+            <field name="name">All Invoices</field>
+            <field name="model">sale.order</field>
+            <field name="report_type">qweb-pdf</field>
+            <field name="report_name">addons_sales_order_custom.all_invoices_report</field>
+        </record>
+    </data>
+</odoo>
