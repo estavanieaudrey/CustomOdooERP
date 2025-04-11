@@ -568,7 +568,22 @@ class SaleOrderCustom(models.Model):
             
             # Remaining amount is the total order amount minus what's been paid
             order.remaining_amount = order.amount_total - paid_amount
+            
+    # Add total remaining quantity field
+    total_remaining_qty = fields.Float(
+        string="Total Remaining Qty",
+        compute="_compute_total_remaining_qty",
+        store=True,
+        help="Total quantity that still needs to be delivered across all order lines"
+    )
+    
+    @api.depends('order_line.remaining_qty')
+    def _compute_total_remaining_qty(self):
+        for order in self:
+            order.total_remaining_qty = sum(line.remaining_qty for line in order.order_line)
 
+
+            
 # Class khusus buat handle Down Payment
 class SaleAdvancePaymentInv(models.TransientModel):
     """
@@ -986,3 +1001,17 @@ class AccountMove(models.Model):
             record.remaining_amount = record.amount_total - down_payment
 
 
+class SaleOrderLine(models.Model):
+    _inherit = 'sale.order.line'
+    
+    remaining_qty = fields.Float(
+        string="Remaining Qty",
+        compute="_compute_remaining_qty",
+        store=True,
+        help="Quantity that still needs to be delivered"
+    )
+    
+    @api.depends('product_uom_qty', 'qty_delivered')
+    def _compute_remaining_qty(self):
+        for line in self:
+            line.remaining_qty = line.product_uom_qty - line.qty_delivered
