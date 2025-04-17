@@ -77,8 +77,8 @@ class MrpBomCustom(models.Model):
     # === SECTION: Fields untuk spesifikasi teknis ===
     
     # Gramasi: berat kertas per meter persegi
-    gramasi_kertas_isi = fields.Integer(string="Gramasi Kertas Isi (gram)", default=70)
-    gramasi_kertas_cover = fields.Integer(string="Gramasi Kertas Cover (gram)", default=210)
+    gramasi_kertas_isi = fields.Integer(string="Gramatur Kertas Isi (GSM)", default=70)
+    gramasi_kertas_cover = fields.Integer(string="Gramatur Kertas Cover (GSM)", default=210)
     
     # Jumlah halaman & quantity
     jmlh_halaman_buku = fields.Integer(string="Jumlah Halaman Buku", default=160)

@@ -99,7 +99,7 @@ class SaleOrderCustom(models.Model):
     ) 
     # Default persentase DP 10% dan aktif
     down_payment_percentage = fields.Float(
-        string="Down Payment Percentage", # Persentase DP
+        string="Down Payment Percentage (%)", # Persentase DP
         default=10.0,  # Default 10%
         help="Persentase DP untuk pesanan ini."
     ) 
