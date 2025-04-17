@@ -89,31 +89,28 @@
             </xpath>
 
             <!-- Add a new group for remaining amount display -->
-            <xpath expr="//group[@name='sale_total']" position="after">
-                <div class="o_form_sheet">
-                    <div class="o_group">
-                        <!-- Remaining Amount -->
-                        <div style="margin-bottom: 10px;">
-                            <span class="o_subtotal_label">Remaining Amount:</span>
-                            <field name="remaining_amount" widget="monetary" options="{'currency_field': 'currency_id'}" class="o_subtotal_amount"/>
-                        </div>
-                        <!-- Remaining Quantity -->
-                        <div>
-                            <span class="o_subtotal_label">Remaining Quantity:</span>
-                            <field name="total_remaining_qty" class="o_subtotal_amount"/>
-                        </div>
+            <!-- <xpath expr="//group[@name='sale_total']" position="after">
+                <div class="o_group"> -->
+                    <!-- Remaining Amount -->
+                    <!-- <div style="margin-bottom: 10px;">
+                        <span class="o_subtotal_label">Remaining Amount:</span>
+                        <field name="remaining_amount" widget="monetary" options="{'currency_field': 'currency_id'}" class="o_subtotal_amount"/>
+                    </div> -->
+                    <!-- Remaining Quantity -->
+                    <!-- <div style="margin-bottom: 10px;">
+                        <span class="o_subtotal_label">Remaining Quantity:</span>
+                        <field name="total_remaining_qty" class="o_subtotal_amount"/>
                     </div>
                 </div>
-            </xpath>
-            <!-- <xpath expr="//group[@name='sale_total']" position="after">
-                <div class="oe_subtotal_footer_separator">
-                <span class="o_subtotal_label">Remaining Amount:</span>
-                    <field name="remaining_amount" widget="monetary" options="{'currency_field': 'currency_id'}" class="o_subtotal_amount"/>
-                
-                <span class="o_subtotal_label">Remaining Quantity:</span>
-                    <field name="total_remaining_qty" class="o_subtotal_amount"/>
-                </div>
             </xpath> -->
+            <xpath expr="//group[@name='sale_total']" position="after">
+                <group class="oe_subtotal_footer" colspan="2" name="remaining_totals">
+                    <!-- Remaining Amount -->
+                    <field name="remaining_amount" widget="monetary" options="{'currency_field': 'currency_id'}" class="o_subtotal_amount"/>
+                    <!-- Remaining Quantity -->
+                    <field name="total_remaining_qty" class="o_subtotal_amount"/>
+                </group>
+            </xpath>
 
         </field>
     </record>
