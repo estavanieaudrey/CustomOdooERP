@@ -51,14 +51,14 @@ export class ProjectDashboard extends Component {
 	async willStart() {
 		await this.fetch_data();
 	}
-	 /**
+	/**
      * Event handler for the 'onMounted' event.
      * Renders various components and charts after fetching data.
      */
 	async mounted() {
-		// Render other components after fetching data
-		this.render_project_task();
-		this.render_top_employees_graph();
+		// Pastikan elemen DOM tersedia sebelum memanggil fungsi
+		await this.render_project_task();
+		// await this.render_top_employees_graph();
 	}
 	/**
      * Render the project task chart.
@@ -71,28 +71,31 @@ export class ProjectDashboard extends Component {
 				console.error('Canvas element not found');
 				return;
 			}
-
+	
 			const result = await rpc('/manufacturing/waste/comparison');
 			console.log('Data received:', result);
-
+	
 			if (!result || !result.labels || !result.waste || !result.color) {
 				console.error('Invalid data format:', result);
 				return;
 			}
-
+	
 			const ctx = this.project_doughnut.el.getContext('2d');
-
+	
 			// Destroy existing chart
 			if (this.projectDoughnut) {
 				this.projectDoughnut.destroy();
 			}
-
+	
 			// Create new chart
 			this.projectDoughnut = new Chart(ctx, {
 				type: 'doughnut',
 				data: {
-					labels: result.labels.map((label, index) => 
-						`${label} (${result.counts[index]} MO)`),
+					labels: result.labels.map((label, index) => {
+						const totalWaste = result.waste.reduce((acc, value) => acc + value, 0); // Hitung total waste
+						const percentage = ((result.waste[index] / totalWaste) * 100).toFixed(2); // Hitung persentase
+						return `${label} (${result.counts[index]} MO, ${percentage}%)`; // Tambahkan total MO dan persentase
+					}),
 					datasets: [{
 						data: result.waste,
 						backgroundColor: result.color,
@@ -120,7 +123,9 @@ export class ProjectDashboard extends Component {
 								label: function(context) {
 									const label = context.label || '';
 									const value = context.raw || 0;
-									return `${label}: ${value.toFixed(2)} unit surplus`;
+									const totalWaste = context.chart.data.datasets[0].data.reduce((acc, val) => acc + val, 0); // Hitung total waste
+									const percentage = ((value / totalWaste) * 100).toFixed(2); // Hitung persentase
+									return `${label}: ${value.toFixed(2)} unit surplus (${percentage}%)`; // Tampilkan total MO dan persentase
 								}
 							}
 						}
