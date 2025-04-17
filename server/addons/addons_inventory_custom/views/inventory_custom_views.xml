@@ -41,4 +41,15 @@
             </xpath>
         </field>
     </record>
+    <record id="view_picking_tree_custom" model="ir.ui.view">
+        <field name="name">stock.picking.list.custom</field>
+        <field name="model">stock.picking</field>
+        <field name="inherit_id" ref="stock.vpicktree"/>
+        <field name="arch" type="xml">
+            <!-- Tambahkan kolom baru setelah kolom "To" -->
+            <xpath expr="//field[@name='location_dest_id']" position="after">
+                <field name="total_quantity_sent" string="Quantity Sent"/>
+            </xpath>
+        </field>
+    </record>
 </odoo>

@@ -188,6 +188,19 @@ class StockPickingCustom(models.Model):
                 )
 
         return super(StockPickingCustom, self).button_validate()
+    
+    total_quantity_sent = fields.Float(
+        string="Quantity Sent",
+        compute="_compute_total_quantity_sent",
+        store=True,
+        help="Total quantity sent in this picking"
+    )
+
+    @api.depends('move_ids_without_package.quantity')
+    def _compute_total_quantity_sent(self):
+        for picking in self:
+            # Hitung total quantity dari semua stock.move terkait
+            picking.total_quantity_sent = sum(move.quantity for move in picking.move_ids_without_package)
 
 class StockMoveCustom(models.Model):
     """
