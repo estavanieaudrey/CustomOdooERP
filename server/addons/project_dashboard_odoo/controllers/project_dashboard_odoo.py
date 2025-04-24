@@ -103,80 +103,257 @@ class ProjectFilter(http.Controller):
 
     @http.route('/project/filter-apply', auth='public', type='json')
     def project_filter_apply(self, **kw):
-        """Summary:
-            transferring data after filter 9th applied
-        Args:
-            kw(dict):This parameter contains the value of selection field
-        Returns:
-            type:dict, it contains the data for the corresponding
-            filtrated transferring data to ui after filtration."""
+        """Filter data based on start_date and end_date."""
         data = kw['data']
-        # checking the employee selected or not
-        if data['employee'] == 'null':
-            emp_selected = [employee.id for employee in
-                            request.env['hr.employee'].search([])]
-        else:
-            emp_selected = [int(data['employee'])]
         start_date = data['start_date']
         end_date = data['end_date']
-        # checking the dates are selected or not
-        if start_date != 'null' and end_date != 'null':
-            start_date = datetime.datetime.strptime(start_date,
-                                                    "%Y-%m-%d").date()
-            end_date = datetime.datetime.strptime(end_date, "%Y-%m-%d").date()
-            if data['project'] == 'null':
-                pro_selected = [project.id for project in
-                                request.env['project.project'].search(
-                                    [('date_start', '>', start_date),
-                                     ('date_start', '<', end_date)])]
-            else:
-                pro_selected = [int(data['project'])]
-        elif start_date == 'null' and end_date != 'null':
-            end_date = datetime.datetime.strptime(end_date, "%Y-%m-%d").date()
-            if data['project'] == 'null':
-                pro_selected = [project.id for project in
-                                request.env['project.project'].search(
-                                    [('date_start', '<', end_date)])]
-            else:
-                pro_selected = [int(data['project'])]
-        elif start_date != 'null' and end_date == 'null':
-            start_date = datetime.datetime.strptime(start_date,
-                                                    "%Y-%m-%d").date()
-            if data['project'] == 'null':
-                pro_selected = [project.id for project in
-                                request.env['project.project'].search(
-                                    [('date_start', '>', start_date)])]
-            else:
-                pro_selected = [int(data['project'])]
-        else:
-            if data['project'] == 'null':
-                pro_selected = [project.id for project in
-                                request.env['project.project'].search([])]
-            else:
-                pro_selected = [int(data['project'])]
-        report_project = request.env['timesheets.analysis.report'].search(
-            [('project_id', 'in', pro_selected),
-             ('employee_id', 'in', emp_selected)])
-        analytic_project = request.env['account.analytic.line'].search(
-            [('project_id', 'in', pro_selected),
-             ('employee_id', 'in', emp_selected)])
-        margin = round(sum(report_project.mapped('margin')), 2)
-        sale_orders = []
-        for rec in analytic_project:
-            if rec.order_id.id and rec.order_id.id not in sale_orders:
-                sale_orders.append(rec.order_id.id)
-        total_time = sum(analytic_project.mapped('unit_amount'))
-        return {
-            'total_project': pro_selected,
-            'total_emp': emp_selected,
-            'total_task': [rec.id for rec in request.env['project.task'].search(
-                [('project_id', 'in', pro_selected)])],
-            'hours_recorded': total_time,
-            'list_hours_recorded': [rec.id for rec in analytic_project],
-            'total_margin': margin,
-            'total_so': sale_orders
-        }
+        
+        _logger.info("Filter applied with start_date: %s, end_date: %s", start_date, end_date)
 
+        # Konversi tanggal dari string ke format date
+        if start_date != 'null' and start_date:
+            start_date = datetime.datetime.strptime(start_date, "%Y-%m-%d").date()
+        else:
+            start_date = None
+
+        if end_date != 'null' and end_date:
+            end_date = datetime.datetime.strptime(end_date, "%Y-%m-%d").date()
+        else:
+            end_date = None
+
+
+        # Filter Manufacturing Orders (tot_tasks)
+        mo_domain = []
+        if start_date:
+            mo_domain.append(('date_start', '>=', start_date))
+        if end_date:
+            mo_domain.append(('date_start', '<=', end_date))
+        manufacturing_orders = request.env['mrp.production'].search(mo_domain)
+
+        # Filter Vendor Bills (tot_vendorbill)
+        bill_domain = [('move_type', '=', 'in_invoice'), ('state', '=', 'posted')]
+        if start_date:
+            bill_domain.append(('invoice_date', '>=', start_date))
+        if end_date:
+            bill_domain.append(('invoice_date', '<=', end_date))
+        vendor_bills = request.env['account.move'].search(bill_domain)
+
+        # Filter Invoices (tot_invoice)
+        invoice_domain = [('move_type', 'in', ['out_invoice', 'out_refund']), ('state', '=', 'posted')]
+        if start_date:
+            invoice_domain.append(('invoice_date', '>=', start_date))
+        if end_date:
+            invoice_domain.append(('invoice_date', '<=', end_date))
+        invoices = request.env['account.move'].search(invoice_domain)
+
+        # Filter Sale Orders (with date_order)
+        sale_order_domain = []
+        if start_date:
+            sale_order_domain.append(('date_order', '>=', start_date))
+        if end_date:
+            sale_order_domain.append(('date_order', '<=', end_date))
+        sale_orders = request.env['sale.order'].search(sale_order_domain)
+        
+        # Format expired sale orders (ambil hanya satu entri per sale order)
+        expired_sale_orders = []
+        for order in sale_orders:
+            expired_sale_orders.append({
+                'order_id': order.id,
+                'name': order.name,
+                'partner_name': order.partner_id.name,
+                'product_name': ', '.join(order.order_line.mapped('product_id.name')),  # Gabungkan nama produk
+                'product_qty': sum(order.order_line.mapped('product_uom_qty')),  # Total kuantitas produk
+                'expired_date': order.date_order.strftime('%Y-%m-%d') if order.date_order else '',
+            })
+
+
+        # Filter Manufacturing Orders with date_start
+        mo_domain = [('state', 'in', ['draft', 'confirmed', 'progress'])]
+        if start_date:
+            mo_domain.append(('date_start', '>=', start_date))
+        if end_date:
+            mo_domain.append(('date_start', '<=', end_date))
+        
+        manufacturing_orders = request.env['mrp.production'].search(mo_domain)
+        draft_manufacturing_orders = []
+        for mo in manufacturing_orders:
+            origin = mo.origin or ''
+            customer_name = ''
+            if mo.procurement_group_id and mo.procurement_group_id.sale_id:
+                customer_name = mo.procurement_group_id.sale_id.partner_id.name
+                
+            draft_manufacturing_orders.append({
+                'mo_id': mo.id,
+                'name': mo.name,
+                'product_name': mo.product_id.name,
+                'user_name': mo.user_id.name if mo.user_id else '',
+                'tanggal_spk': mo.create_date.strftime('%Y-%m-%d') if mo.create_date else '',
+                'product_qty': mo.product_qty,
+                'nama_customer': customer_name,
+                'origin': origin,
+                'state': mo.state,
+            })
+
+        # Filter Upcoming Deliveries with scheduled_date
+        delivery_domain = [('state', 'in', ['draft', 'waiting', 'confirmed', 'assigned'])]
+        if start_date:
+            delivery_domain.append(('scheduled_date', '>=', start_date))
+        if end_date:
+            delivery_domain.append(('scheduled_date', '<=', end_date))
+        
+        picking_type_ids = request.env['stock.picking.type'].search([('code', '=', 'outgoing')]).ids
+        if picking_type_ids:
+            delivery_domain.append(('picking_type_id', 'in', picking_type_ids))
+            
+        upcoming_deliveries = request.env['stock.picking'].search(delivery_domain)
+        upcoming_deliveries_data = []
+        
+        for picking in upcoming_deliveries:
+            product_names = []
+            total_qty = 0
+            for move in picking.move_ids:
+                product_names.append(move.product_id.name)
+                total_qty += move.product_uom_qty
+                
+            upcoming_deliveries_data.append({
+                'picking_id': picking.id,
+                'reference': picking.name,
+                'partner_name': picking.partner_id.name if picking.partner_id else '',
+                'product_names': ', '.join(product_names),
+                'total_quantity': total_qty,
+                'date_deadline': picking.date_deadline.strftime('%Y-%m-%d') if picking.date_deadline else '',
+                'state': picking.state,
+            })
+
+        # Filter Expired Invoices with invoice_date
+        invoice_domain = [('move_type', 'in', ['out_invoice', 'out_refund'])]
+        if start_date:
+            invoice_domain.append(('invoice_date', '>=', start_date))
+        if end_date:
+            invoice_domain.append(('invoice_date', '<=', end_date))
+        
+        expired_invoices = request.env['account.move'].search(invoice_domain)
+        expired_invoices_data = []
+        
+        for invoice in expired_invoices:
+            expired_invoices_data.append({
+                'invoice_id': invoice.id,
+                'name': invoice.name,
+                'partner_name': invoice.partner_id.name if invoice.partner_id else '',
+                'invoice_date': invoice.invoice_date.strftime('%Y-%m-%d') if invoice.invoice_date else '',
+                'invoice_date_due': invoice.invoice_date_due.strftime('%Y-%m-%d') if invoice.invoice_date_due else '',
+                'amount_total': invoice.amount_total,
+                'amount_total_in_currency_signed': invoice.amount_total_signed,
+                'payment_state': invoice.payment_state,
+            })
+
+
+        # Hitung total untuk KPI cards
+        return {
+            'total_tasks': len(manufacturing_orders),
+            'total_vendorbills': sum(vendor_bills.mapped('amount_total')),
+            'total_margin': sum(invoices.mapped('amount_total')),
+            'total_sale_orders': len(sale_orders),
+            'expired_sale_orders': expired_sale_orders,
+            'draft_manufacturing_orders': draft_manufacturing_orders,
+            'upcoming_deliveries': upcoming_deliveries_data,
+            'expired_invoices': expired_invoices_data,
+        }
+        # # Aktifkan kembali kode yang mengembalikan data terfilter
+        # return {
+        #     'total_tasks': len(manufacturing_orders),
+        #     'total_vendorbills': sum(vendor_bills.mapped('amount_total')),
+        #     'total_margin': sum(invoices.mapped('amount_total')),
+        #     'total_sale_orders': len(sale_orders),
+        #     'expired_sale_orders': expired_sale_orders.read(['name', 'partner_id', 'date_order']),
+        #     'draft_manufacturing_orders': draft_manufacturing_orders.read(['name', 'date_start', 'state']),
+        #     'upcoming_deliveries': upcoming_deliveries.read(['name', 'scheduled_date', 'state']),
+        #     'expired_invoices': expired_invoices.read(['name', 'invoice_date', 'amount_total']),
+        # }
+        
+    @http.route('/manufacturing/waste/comparison', type='json', auth='user')
+    def get_manufacturing_waste_comparison(self, **kw):
+        """
+        Mengambil data perbandingan waste (surplus_qty) antara buku A4 dan B5
+        berdasarkan product_id dari manufacturing orders dengan filter tanggal.
+        """
+        try:
+            # Extract date filter parameters if provided
+            data = kw.get('data', {})
+            start_date = data.get('start_date')
+            end_date = data.get('end_date')
+            
+            _logger.info(f"Waste comparison filter applied with start_date: {start_date}, end_date: {end_date}")
+            
+            # Inisialisasi hasil
+            result = {
+                'labels': ['A4', 'B5'],
+                'waste': [0.0, 0.0],
+                'color': ['#BE1B4B', '#1FF15B'],
+                'counts': [0, 0]
+            }
+
+            # Cari products dengan kode A4 dan B5
+            products = request.env['product.product'].search([
+                ('default_code', 'in', ['A4', 'B5'])
+            ])
+
+            # Buat dictionary untuk mapping product
+            product_map = {
+                p.default_code: p.id for p in products
+            }
+
+            _logger.info(f"Product mapping: {product_map}")
+
+            # Build domain for filtered MOs
+            domain = [
+                ('state', '=', 'done'),
+                ('surplus_qty', '>', 0.0)
+            ]
+            
+            # Add date filters if provided
+            if start_date and start_date != 'null':
+                try:
+                    start_date = datetime.datetime.strptime(start_date, "%Y-%m-%d").date()
+                    domain.append(('date_start', '>=', start_date))
+                except Exception as e:
+                    _logger.error(f"Error parsing start_date: {e}")
+                    
+            if end_date and end_date != 'null':
+                try:
+                    end_date = datetime.datetime.strptime(end_date, "%Y-%m-%d").date()
+                    domain.append(('date_start', '<=', end_date))
+                except Exception as e:
+                    _logger.error(f"Error parsing end_date: {e}")
+            
+            # Cari MO yang sudah selesai dan punya surplus dengan filter tanggal
+            mos = request.env['mrp.production'].search(domain)
+
+            _logger.info(f"Total MOs found with filters: {len(mos)}, domain: {domain}")
+
+            # Hitung total surplus untuk masing-masing tipe
+            for mo in mos:
+                if mo.product_id.id == product_map.get('A4'):
+                    result['waste'][0] += mo.surplus_qty
+                    result['counts'][0] += 1
+                    _logger.info(f"Added A4 surplus: {mo.surplus_qty}")
+                elif mo.product_id.id == product_map.get('B5'):
+                    result['waste'][1] += mo.surplus_qty
+                    result['counts'][1] += 1
+                    _logger.info(f"Added B5 surplus: {mo.surplus_qty}")
+
+            _logger.info(f"Final result with filters: {result}")
+            return result
+
+        except Exception as e:
+            _logger.error(f"Error in waste comparison: {str(e)}")
+            return {
+                'labels': ['A4', 'B5'],
+                'waste': [0.0, 0.0],
+                'color': ['#BE1B4B', '#1FF15B'],
+                'counts': [0, 0]
+            }
+            
     def get_total_invoices(self):
         """Calculate total amount of invoices with specific payment states."""
         domain = [
@@ -365,7 +542,7 @@ class ProjectFilter(http.Controller):
                     mp.product_qty,
                     COALESCE(rp.name, '') as nama_customer,
                     mp.state,
-                    COALESCE(so.name, '') as source_doc
+                    COALESCE(mp.origin, '') as origin 
                 FROM 
                     mrp_production mp
                 LEFT JOIN 

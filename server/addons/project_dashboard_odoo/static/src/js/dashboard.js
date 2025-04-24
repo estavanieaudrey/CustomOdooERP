@@ -16,6 +16,7 @@ export class ProjectDashboard extends Component {
 		this.project_doughnut = useRef("project_doughnut");
 		this.start_date = useRef("start_date");
 		this.end_date = useRef("end_date");
+		this.filterBtn = useRef("filterBtn");
 		this.tot_project = useRef("tot_project");
 		this.tot_employee = useRef("tot_employee");
 		this.tot_hrs = useRef("tot_hrs");
@@ -58,21 +59,28 @@ export class ProjectDashboard extends Component {
 	async mounted() {
 		// Pastikan elemen DOM tersedia sebelum memanggil fungsi
 		await this.render_project_task();
+    	await this._renderTables(); // Add this line
 		// await this.render_top_employees_graph();
 	}
 	/**
      * Render the project task chart.
      */
-	async render_project_task() {
+	async render_project_task(start_date = null, end_date = null) {
 		try {
-			console.log('Starting chart render');
+			console.log('Starting chart render with filters:', { start_date, end_date });
 			
 			if (!this.project_doughnut.el) {
 				console.error('Canvas element not found');
 				return;
 			}
 	
-			const result = await rpc('/manufacturing/waste/comparison');
+			// Pass the date filters to the RPC call
+			const result = await rpc('/manufacturing/waste/comparison', {
+				data: {
+					start_date: start_date,
+					end_date: end_date,
+				},
+			});
 			console.log('Data received:', result);
 	
 			if (!result || !result.labels || !result.waste || !result.color) {
@@ -106,13 +114,6 @@ export class ProjectDashboard extends Component {
 					responsive: true,
 					maintainAspectRatio: true,
 					plugins: {
-						title: {
-							display: true,
-							text: 'Perbandingan Surplus Produksi per Jenis Buku',
-							font: {
-								size: 16
-							}
-						},
 						legend: {
 							position: 'bottom',
 							display: true
@@ -141,56 +142,184 @@ export class ProjectDashboard extends Component {
 	/**
      * Event handler to apply filters based on user selections and update the dashboard data accordingly.
      */
-	async _onchangeFilter(ev) {
-		this.flag = 1
-		var start_date = this.start_date.el.value;
-		var end_date = this.end_date.el.value;
-		
-		if (!start_date) {
-			start_date = "null"
-		}
-		if (!end_date) {
-			end_date = "null"
-		}
-		
-		try {
-			const data = await this.rpc('/project/filter-apply', {
-				'data': {
-					'start_date': start_date,
-					'end_date': end_date,
-					'project': "null",
-					'employee': "null"
-				}
-			});
+	async _renderTables() {
 
-			if (data) {
-				this.tot_hrs = data['list_hours_recorded'] || [];
-				this.tot_employee = data['total_emp'] || [];
-				this.tot_project = data['total_project'] || [];
-				this.tot_mo = data['total_mo'] || [];
-				this.tot_so = data['total_so'] || [];
+		console.log('Rendering tables with data:', {
+			'expired_sale_orders': this.expired_sale_orders?.length || 0,
+			'draft_manufacturing_orders': this.draft_manufacturing_orders?.length || 0,
+			'upcoming_deliveries': this.upcoming_deliveries?.length || 0,
+			'expired_invoices': this.expired_invoices?.length || 0
+		});
 
-				if (this.tot_project.el) {
-					this.tot_project.el.innerHTML = (data['total_project'] || []).length;
-				}
-				if (this.tot_employee.el) {
-					this.tot_employee.el.innerHTML = (data['total_emp'] || []).length;
-				}
-				if (this.total_mo.el) {
-					this.total_mo.el.innerHTML = (data['total_mo'] || []).length;
-				}
-				if (this.tot_hrs.el) {
-					this.tot_hrs.el.innerHTML = 'Rp ' + this.formatToRupiah(Math.round(data['hours_recorded'] || 0));
-				}
-				if (this.tot_margin.el) {
-					this.tot_margin.el.innerHTML = 'Rp ' + this.formatToRupiah(Math.round(data['total_margin'] || 0));
-				}
-				if (this.total_so.el) {
-					this.total_so.el.innerHTML = (data['total_so'] || []).length;
-				}
+		// 1. Update expired sale orders table
+		const expiredSalesTable = document.querySelector('.expired-sale-orders-table tbody');
+		if (expiredSalesTable) {
+			expiredSalesTable.innerHTML = '';
+			if (this.expired_sale_orders && this.expired_sale_orders.length > 0) {
+				this.expired_sale_orders.forEach(order => {
+					const row = document.createElement('tr');
+					row.innerHTML = `
+						<td><a href="/web#id=${order.order_id}&model=sale.order&view_type=form" target="_blank">${order.name}</a></td>
+						<td>${order.partner_name || ''}</td>
+						<td>${order.product_name || ''}</td>
+						<td>${order.product_qty || ''}</td>
+						<td>${order.expired_date || ''}</td>
+					`;
+					expiredSalesTable.appendChild(row);
+				});
+			} else {
+				expiredSalesTable.innerHTML = '<tr><td colspan="5" class="text-center">No expired sale orders</td></tr>';
 			}
+		}
+		
+		// 2. Update draft manufacturing orders table
+		const draftMOTable = document.querySelector('.draft-manufacturing-orders-table tbody');
+		if (draftMOTable) {
+			draftMOTable.innerHTML = '';
+			if (this.draft_manufacturing_orders && this.draft_manufacturing_orders.length > 0) {
+				this.draft_manufacturing_orders.forEach(mo => {
+					console.log("MO data:", mo); // Debug log untuk melihat data yang diterima
+					const row = document.createElement('tr');
+					row.innerHTML = `
+						<td><a href="/web#id=${mo.mo_id}&model=mrp.production&view_type=form" target="_blank">${mo.name}</a></td>
+						<td>${mo.product_name || ''}</td>
+						<td>${mo.user_name || ''}</td>
+						<td>${mo.tanggal_spk || ''}</td>
+						<td>${mo.product_qty || ''}</td>
+						<td>${mo.nama_customer || ''}</td>
+						<td>${mo.origin || ''}</td>
+						<td>${this.getStatusBadge(mo.state) || ''}</td>
+					`;
+					draftMOTable.appendChild(row);
+				});
+			} else {
+				draftMOTable.innerHTML = '<tr><td colspan="8" class="text-center">No draft manufacturing orders</td></tr>';
+			}
+		}
+		
+		// 3. Update upcoming deliveries table
+		const upcomingDeliveriesTable = document.querySelector('.upcoming-deliveries-table tbody');
+		if (upcomingDeliveriesTable) {
+			upcomingDeliveriesTable.innerHTML = '';
+			if (this.upcoming_deliveries && this.upcoming_deliveries.length > 0) {
+				this.upcoming_deliveries.forEach(delivery => {
+					console.log("Delivery data:", delivery); // Debug untuk melihat data
+					const row = document.createElement('tr');
+					row.innerHTML = `
+						<td><a href="/web#id=${delivery.picking_id}&model=stock.picking&view_type=form" target="_blank">${delivery.reference || delivery.name || ''}</a></td>
+						<td>${delivery.partner_name || ''}</td>
+						<td>${delivery.product_names || ''}</td>
+						<td>${delivery.total_quantity || ''}</td>
+						<td>${delivery.date_deadline || delivery.scheduled_date || ''}</td>
+						<td>${this.getStatusBadge(delivery.state) || ''}</td>
+					`;
+					upcomingDeliveriesTable.appendChild(row);
+				});
+			} else {
+				upcomingDeliveriesTable.innerHTML = '<tr><td colspan="6" class="text-center">No upcoming deliveries</td></tr>';
+			}
+		}
+		
+		// 4. Update expired invoices table
+		const expiredInvoicesTable = document.querySelector('.expired-invoices-table tbody');
+		if (expiredInvoicesTable) {
+			expiredInvoicesTable.innerHTML = '';
+			if (this.expired_invoices && this.expired_invoices.length > 0) {
+				this.expired_invoices.forEach(invoice => {
+					console.log("Invoice data:", invoice); // Debug untuk melihat data
+					const row = document.createElement('tr');
+					row.innerHTML = `
+						<td><a href="/web#id=${invoice.invoice_id}&model=account.move&view_type=form" target="_blank">${invoice.name}</a></td>
+						<td>${invoice.invoice_date_due || ''}</td>
+						<td>${this.formatToRupiah(invoice.amount_total_in_currency_signed || 0)}</td>
+                		<td>${this.getPaymentStateBadge(invoice.payment_state || '')}</td>
+					`;
+					expiredInvoicesTable.appendChild(row);
+				});
+			} else {
+				expiredInvoicesTable.innerHTML = '<tr><td colspan="4" class="text-center">No expired invoices</td></tr>';
+			}
+		}
+	}
+	
+	// Tambahkan helper function untuk menampilkan status
+	getStatusBadge(state) {
+		const stateMapping = {
+			'draft': '<span class="badge bg-secondary">Draft</span>',
+			'waiting': '<span class="badge bg-info">Waiting</span>',
+			'confirmed': '<span class="badge bg-primary">Confirmed</span>',
+			'assigned': '<span class="badge bg-success">Ready</span>',
+			'done': '<span class="badge bg-success">Done</span>',
+			'cancel': '<span class="badge bg-danger">Cancelled</span>',
+			'progress': '<span class="badge bg-warning">In Progress</span>'
+		};
+		
+		return stateMapping[state] || `<span class="badge bg-secondary">${state}</span>`;
+	}
+
+	getPaymentStateBadge(state) {
+		const stateMapping = {
+			'paid': '<span class="badge bg-success">Paid</span>',
+			'in_payment': '<span class="badge bg-warning">In Payment</span>',
+			'not_paid': '<span class="badge bg-danger">Not Paid</span>',
+			'partial': '<span class="badge bg-info">Partial</span>',
+			'reversed': '<span class="badge bg-secondary">Reversed</span>',
+			'invoicing_legacy': '<span class="badge bg-secondary">Legacy</span>'
+		};
+		
+		return stateMapping[state] || `<span class="badge bg-secondary">${state}</span>`;
+	}
+
+	async _onchangeFilter(ev) {
+		const start_date = this.start_date.el.value || null;
+		const end_date = this.end_date.el.value || null;
+	
+		try {
+			console.log("Filter applied with start_date:", start_date, "end_date:", end_date);
+	
+			// Menampilkan loading indicator
+			this.isLoading = true;
+			
+			const data = await rpc('/project/filter-apply', {
+				data: {
+					start_date: start_date,
+					end_date: end_date,
+				},
+			});
+	
+			console.log("Data received from filter:", data);
+	
+			// Update dashboard elements
+			if (this.tot_task.el) {
+				this.tot_task.el.innerHTML = data.total_tasks || 0;
+			}
+			if (this.tot_hrs.el) {
+				this.tot_hrs.el.innerHTML = 'Rp ' + this.formatToRupiah(data.total_vendorbills || 0);
+			}
+			if (this.tot_margin.el) {
+				this.tot_margin.el.innerHTML = 'Rp ' + this.formatToRupiah(data.total_margin || 0);
+			}
+			if (this.total_so.el) {
+				this.total_so.el.innerHTML = data.total_sale_orders || 0;
+			}
+	
+			// Update the component's data properties with filtered data
+			this.expired_sale_orders = data.expired_sale_orders || [];
+			this.draft_manufacturing_orders = data.draft_manufacturing_orders || [];
+			this.upcoming_deliveries = data.upcoming_deliveries || [];
+			this.expired_invoices = data.expired_invoices || [];
+	
+			// Render tables with the new filtered data
+			await this._renderTables();
+			
+			// Re-render chart with filter parameters
+			await this.render_project_task(start_date, end_date);
+
+			// Matikan loading indicator
+			this.isLoading = false;
 		} catch (error) {
 			console.error('Error in filter application:', error);
+			this.isLoading = false;
 		}
 	}
 	/**

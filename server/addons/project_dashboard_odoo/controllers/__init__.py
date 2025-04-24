@@ -19,4 +19,4 @@
 #    If not, see <http://www.gnu.org/licenses/>.
 #
 ###############################################################################
-from . import project_dashboard_odoo, main
+from . import project_dashboard_odoo
