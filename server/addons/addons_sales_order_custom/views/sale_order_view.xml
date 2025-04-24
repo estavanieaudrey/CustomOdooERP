@@ -156,5 +156,24 @@
             </xpath>
         </field>
     </record>
+
+    <data>
+        <!-- Inherit the sale.order form view -->
+        <record id="view_sale_order_form_hide_tabs" model="ir.ui.view">
+            <field name="name">sale.order.form.hide.tabs</field>
+            <field name="model">sale.order</field>
+            <field name="inherit_id" ref="sale.view_order_form"/>
+            <field name="arch" type="xml">
+                <!-- Hide the Other Info tab -->
+                <xpath expr="//page[@name='other_information']" position="attributes">
+                    <attribute name="invisible">1</attribute>
+                </xpath>
+                <!-- Hide the Customer Signature tab -->
+                <xpath expr="//page[@name='customer_signature']" position="attributes">
+                    <attribute name="invisible">1</attribute>
+                </xpath>
+            </field>
+        </record>
+    </data>
 </odoo>
 
