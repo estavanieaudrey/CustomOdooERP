@@ -214,5 +214,18 @@
 <!--                </xpath>-->
 <!--            </field>-->
 <!--        </record>-->
+
+        <!-- Inherit untuk hide field yang tidak dibutuhkan (bawaan odoo)-->
+        <record id="view_mrp_production_form_hide_tabs" model="ir.ui.view">
+            <field name="name">mrp.production.form.hide.tabs</field>
+            <field name="model">mrp.production</field>
+            <field name="inherit_id" ref="mrp.mrp_production_form_view"/>
+            <field name="arch" type="xml">
+                <!-- Hide the Miscellaneous tab -->
+                <xpath expr="//page[@name='miscellaneous']" position="attributes">
+                    <attribute name="invisible">1</attribute>
+                </xpath>
+            </field>
+        </record>
     </data>
 </odoo>
