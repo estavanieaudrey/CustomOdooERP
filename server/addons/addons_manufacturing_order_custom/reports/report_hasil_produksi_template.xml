@@ -48,7 +48,7 @@
                     <div class="row mt32 mb32">
                         <div class="col-6">
                             <strong>Manufacturing Order:</strong>
-                            <span t-field="docs.name"/>
+                            <span t-esc="docs.production_id.name"/>
                         </div>
                         <div class="col-6">
                             <strong>Tanggal:</strong>
