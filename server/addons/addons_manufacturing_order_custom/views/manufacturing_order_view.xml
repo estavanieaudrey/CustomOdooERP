@@ -227,5 +227,30 @@
                 </xpath>
             </field>
         </record>
+
+        <!-- Inherit untuk hide field yang tidak dibutuhkan (bawaan odoo)-->
+        <record id="view_mrp_production_work_order_form_hide_tabs" model="ir.ui.view">
+            <field name="name">mrp.production.work.order.form.hide.tabs</field>
+            <field name="model">mrp.workorder</field>
+            <field name="inherit_id" ref="mrp.mrp_production_workorder_form_view_inherit"/>
+            <field name="arch" type="xml">
+                <!-- Hide the entire group containing Start Date and Expected Duration -->
+                <xpath expr="//group[.//field[@name='date_start']]" position="attributes">
+                    <attribute name="invisible">1</attribute>
+                </xpath>
+                <!-- Hide the Expected Duration field -->
+                <xpath expr="//field[@name='duration_expected']" position="attributes">
+                    <attribute name="invisible">1</attribute>
+                </xpath>
+                <!-- Hide the Time Tracking tab -->
+                <xpath expr="//page[@name='time_tracking']" position="attributes">
+                    <attribute name="invisible">1</attribute>
+                </xpath>
+                <!-- Hide the components tab -->
+                <xpath expr="//page[@name='components']" position="attributes">
+                    <attribute name="invisible">1</attribute>
+                </xpath>
+            </field>
+        </record>
     </data>
 </odoo>
