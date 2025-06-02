@@ -6,6 +6,7 @@
     'depends': [
         'purchase',  # Core purchase module
         'purchase_requisition',  # For managing purchase agreements
+        'addons_bom_custom',  # Custom BOM module
         'stock',  # For inventory management
         'mrp',  # For Bill of Materials (BOM)
         'sale',  # For sales integration

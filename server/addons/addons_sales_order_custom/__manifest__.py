@@ -3,7 +3,7 @@
     'version': '1.0',
     'author': 'Your Name',
     'category': 'Sales',
-    'depends': ['sale', 'sale_management', 'mrp', 'web', 'base'],
+    'depends': ['sale', 'addons_bom_custom', 'sale_management', 'sale_pdf_quote_builder', 'mrp', 'web', 'base'],
     'data': [
         'security/ir.model.access.csv',
         'views/sale_order_view.xml',
