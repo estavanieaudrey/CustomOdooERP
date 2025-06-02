@@ -4,6 +4,7 @@ import { useService } from "@web/core/utils/hooks";
 import { rpc } from "@web/core/network/rpc";
 import { _t } from "@web/core/l10n/translation";
 import { onMounted, useRef, useState } from "@odoo/owl";
+import { AlertDialog } from "@web/core/confirmation_dialog/confirmation_dialog";
 const { Component, onWillStart } = owl;
 
 export class ProjectDashboard extends Component {
@@ -13,6 +14,7 @@ export class ProjectDashboard extends Component {
 	setup() {
 		this.action = useService("action");
 		this.orm = useService("orm");
+		this.dialog = useService("dialog"); // Tambahkan dialog service
 		this.project_doughnut = useRef("project_doughnut");
 		this.start_date = useRef("start_date");
 		this.end_date = useRef("end_date");
@@ -270,9 +272,69 @@ export class ProjectDashboard extends Component {
 		return stateMapping[state] || `<span class="badge bg-secondary">${state}</span>`;
 	}
 
+	_onStartDateChange(ev) {
+		const startDate = ev.target.value;
+		const endDate = this.end_date.el.value;
+		
+		if (startDate && endDate) {
+			const startDateObj = new Date(startDate);
+			const endDateObj = new Date(endDate);
+			
+			if (endDateObj < startDateObj) {
+				this.end_date.el.value = '';
+				
+				// Gunakan AlertDialog langsung
+				this.dialog.add(AlertDialog, {
+					title: 'Peringatan',
+					body: 'End Date telah direset karena lebih awal dari Start Date',
+					confirmLabel: 'OK',
+				});
+			}
+		}
+	}
+
+	_onEndDateChange(ev) {
+		const endDate = ev.target.value;
+		const startDate = this.start_date.el.value;
+		
+		if (startDate && endDate) {
+			const startDateObj = new Date(startDate);
+			const endDateObj = new Date(endDate);
+			
+			if (endDateObj < startDateObj) {
+				ev.target.value = '';
+				
+				// Gunakan AlertDialog langsung
+				this.dialog.add(AlertDialog, {
+					title: 'Error Validasi',
+					body: 'End Date tidak boleh lebih awal dari Start Date!',
+					confirmLabel: 'OK',
+				});
+			}
+		}
+	}
+
 	async _onchangeFilter(ev) {
 		const start_date = this.start_date.el.value || null;
 		const end_date = this.end_date.el.value || null;
+
+		// Validasi tanggal
+		if (start_date && end_date) {
+			const startDateObj = new Date(start_date);
+			const endDateObj = new Date(end_date);
+			
+			if (endDateObj < startDateObj) {
+				this.dialog.add(AlertDialog, {
+					title: 'Error Validasi Tanggal',
+					body: 'End Date tidak boleh lebih awal dari Start Date!',
+					confirmLabel: 'OK',
+				});
+				
+				// Reset end date
+				this.end_date.el.value = '';
+				return;
+			}
+		}
 	
 		try {
 			console.log("Filter applied with start_date:", start_date, "end_date:", end_date);
@@ -286,6 +348,18 @@ export class ProjectDashboard extends Component {
 					end_date: end_date,
 				},
 			});
+
+			// Check untuk error dari backend
+			if (data.error) {
+				this.dialog.add(AlertDialog, {
+					title: 'Error Filter',
+					body: data.message || "Terjadi kesalahan dalam filter",
+					confirmLabel: 'OK',
+				});
+				this.end_date.el.value = '';
+				this.isLoading = false;
+				return;
+			}
 	
 			console.log("Data received from filter:", data);
 	
@@ -319,6 +393,22 @@ export class ProjectDashboard extends Component {
 			this.isLoading = false;
 		} catch (error) {
 			console.error('Error in filter application:', error);
+			// Tampilkan error dengan handling yang lebih baik
+			try {
+				if (this.env.services.dialog) {
+					this.env.services.dialog.add('web.AlertDialog', {
+						title: 'Error Sistem',
+						body: 'Terjadi kesalahan saat melakukan filter. Silakan coba lagi.',
+						confirmLabel: 'OK',
+					});
+				} else {
+					alert('Terjadi kesalahan saat melakukan filter. Silakan coba lagi.');
+				}
+			} catch (dialogError) {
+				console.error('Error showing dialog:', dialogError);
+				alert('Terjadi kesalahan saat melakukan filter. Silakan coba lagi.');
+			}
+
 			this.isLoading = false;
 		}
 	}
