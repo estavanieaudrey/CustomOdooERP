@@ -4,6 +4,9 @@ from odoo.exceptions import ValidationError
 from io import BytesIO
 import base64
 from datetime import date
+import logging
+_logger = logging.getLogger(__name__)
+
 
 # Class utama buat custom Sales Order - nambahin fitur2 untuk perjanjian jual beli
 class SaleOrderCustom(models.Model):
@@ -119,8 +122,14 @@ class SaleOrderCustom(models.Model):
     transfer_rekening_number = fields.Char(string="Nomor Rekening")
     transfer_rekening_branch = fields.Char(string="Cabang")
 
-    # === PASAL 4: Expired Date dan Tanda Tangan ===
-    expired_date = fields.Date(string="Expired Date")  # Tanggal kadaluarsa quotation
+    # === PASAL 4: Expired Date ===
+    expired_date = fields.Date(
+        string="Expired Date",
+        related="validity_date",
+        store=True,
+        readonly=False,
+        help="Tanggal kadaluarsa quotation (diambil dari Validity Date bawaan Odoo)"
+    )
     # customer_signature = fields.Binary(string="Tanda Tangan", attachment=True)  # Deprecated, pake is_signed
 
     # Field untuk pilih BoM yang akan dipakai sebagai sumber data
@@ -540,6 +549,9 @@ class SaleOrderCustom(models.Model):
 
     @api.onchange('expired_date')
     def _onchange_expired_date(self):
+        """
+        Validasi expired_date yang sudah tersync dengan validity_date
+        """
         if self.expired_date == date.today():
             return {
                 'warning': {
@@ -634,7 +646,91 @@ class SaleAdvancePaymentInv(models.TransientModel):
         readonly=True, 
         help="Maximum allowed amount"
     )
+    # Ubah field has_previous_dp agar tidak menggunakan default=True
+    has_previous_dp = fields.Boolean(
+        string="Has Previous Down Payment",
+        compute="_compute_has_previous_dp",
+        store=True  # Simpan nilai hasil compute
+    )
 
+    original_dp_percentage = fields.Float(
+        string="Original Down Payment Percentage",
+        compute="_compute_original_dp_percentage",
+        store=True
+    )
+
+    final_payment_percentage = fields.Float(
+        string="Final Payment Percentage",
+        default=10.0,  # Default ke 10%
+    )
+    
+    # Field baru untuk fixed amount di Skenario B
+    original_fixed_amount = fields.Float(
+        string="Original Fixed Amount",
+        compute="_compute_original_fixed_amount",
+        store=True,
+        help="Original fixed amount from previous down payment"
+    )
+    
+    @api.depends('sale_order_id', 'has_previous_dp')
+    def _compute_original_fixed_amount(self):
+        """
+        Ambil nilai fixed amount yang sudah dibuat sebelumnya
+        """
+        for record in self:
+            if record.sale_order_id and record.has_previous_dp:
+                # Cari invoice down payment sebelumnya
+                dp_invoices = record.sale_order_id.invoice_ids.filtered(
+                    lambda inv: inv.state == 'posted'
+                )
+                
+                if dp_invoices:
+                    # Ambil nilai nominal dari invoice pertama sebagai contoh
+                    # Sesuaikan dengan struktur data Anda
+                    record.original_fixed_amount = sum(dp_invoices.mapped('amount_total'))
+                else:
+                    record.original_fixed_amount = 0.0
+            else:
+                record.original_fixed_amount = 0.0
+
+    @api.depends('sale_order_id')
+    def _compute_has_previous_dp(self):
+        for record in self:
+            sale_order = record.sale_order_id
+            if sale_order:
+                # Logika sederhana: jika sudah ada invoice yang diposting, maka ini adalah Skenario B
+                has_previous_invoice = bool(sale_order.invoice_ids.filtered(lambda inv: inv.state == 'posted'))
+                record.has_previous_dp = has_previous_invoice
+                _logger.info(f"has_previous_dp for order {sale_order.name}: {record.has_previous_dp}")
+            else:
+                record.has_previous_dp = False
+
+    @api.depends('sale_order_id')
+    def _compute_original_dp_percentage(self):
+        """
+        Ambil nilai persentase DP yang sudah dibuat sebelumnya
+        """
+        for record in self:
+            if record.sale_order_id and record.has_previous_dp:
+                # Ambil dari sale_order.down_payment_percentage
+                record.original_dp_percentage = record.sale_order_id.down_payment_percentage
+            else:
+                record.original_dp_percentage = 0.0
+
+    @api.onchange('final_payment_percentage')
+    def _onchange_final_payment_percentage(self):
+        """
+        Update nominal berdasarkan persentase final yang dimasukkan
+        """
+        if self.advance_payment_method == 'percentage' and self.has_previous_dp:
+            sale_order = self.sale_order_id
+            if sale_order:
+                price_subtotal = sum(sale_order.order_line.mapped('price_subtotal'))
+                # Hitung nominal berdasarkan persentase final
+                self.nominal = (price_subtotal * self.final_payment_percentage) / 100
+                
+                # Override nilai amount (persentase) yang akan digunakan oleh metode standar
+                self.amount = self.final_payment_percentage
 
     def _compute_advance_payment_method_selection(self):
         """
@@ -701,20 +797,34 @@ class SaleAdvancePaymentInv(models.TransientModel):
             amount_to_invoice = self.price_subtotal - amount_invoiced
             
             if self.advance_payment_method == 'percentage':
-                # Down payment dengan persentase
-                self.amount = sale_order.down_payment_percentage
-                # Hitung nominal dari price_subtotal
-                self.nominal = (self.price_subtotal * self.amount) / 100
+                # Cek apakah skenario A atau B
+                if self.has_previous_dp:
+                    # Skenario B: Sudah ada invoice sebelumnya
+                    # Gunakan final_payment_percentage
+                    self.amount = self.final_payment_percentage
+                    self.nominal = (self.price_subtotal * self.final_payment_percentage) / 100
+                else:
+                    # Skenario A: Belum ada invoice sebelumnya
+                    # Gunakan down_payment_percentage dari sale order
+                    self.amount = sale_order.down_payment_percentage
+                    self.nominal = (self.price_subtotal * self.amount) / 100
+                
                 self.amount_to_invoice = amount_to_invoice
             
             elif self.advance_payment_method == 'fixed':
-                # Fixed amount: pake nominal yang diinput user
-                self.amount = 0.0  # Reset percentage amount
+                # Reset percentage amount
+                self.amount = 0.0
                 self.max_nominal = amount_to_invoice
                 self.amount_to_invoice = amount_to_invoice
                 
-                # Validasi nominal yang diinput gak boleh lebih dari max
-                if self.input_fixed_nominal:
+                # Cek apakah skenario A atau B
+                if self.has_previous_dp:
+                    # Skenario B: Sudah ada invoice sebelumnya
+                    # Set default value for input_fixed_nominal jika belum diisi
+                    if not self.input_fixed_nominal:
+                        self.input_fixed_nominal = amount_to_invoice / 2  # Set default 50% sebagai contoh
+                    
+                    # Validasi nominal yang diinput gak boleh lebih dari max
                     if self.input_fixed_nominal > self.max_nominal:
                         return {
                             'warning': {
@@ -723,6 +833,16 @@ class SaleAdvancePaymentInv(models.TransientModel):
                             }
                         }
                     self.nominal = self.input_fixed_nominal
+                else:
+                    # Skenario A: Fixed amount
+                    if self.fixed_amount > self.max_nominal:
+                        return {
+                            'warning': {
+                                'title': 'Warning',
+                                'message': f'Maximum allowed amount is {self.max_nominal}'
+                            }
+                        }
+                    self.nominal = self.fixed_amount or 0.0
                     
             elif self.advance_payment_method == 'delivery':
                 # Fetch delivery orders related to the sale order
@@ -739,6 +859,10 @@ class SaleAdvancePaymentInv(models.TransientModel):
                         move.sale_line_id.price_unit * move.quantity 
                         for move in self.delivery_order_id.move_ids_without_package
                     )
+                    # Batasi nominal tidak boleh lebih dari amount_to_invoice
+                    self.nominal = min(delivered_amount, amount_to_invoice)
+                    self.amount = 100
+                    self.amount_to_invoice = amount_to_invoice
                     
                     # Check if there are previous payments and compare amounts
                     if amount_invoiced > 0:
@@ -802,15 +926,24 @@ class SaleAdvancePaymentInv(models.TransientModel):
                     move.sale_line_id.price_unit * move.quantity 
                     for move in self.delivery_order_id.move_ids_without_package
                 )
-                
-                # Apply the same logic as in _onchange_advance_payment_method
-                if amount_invoiced > 0:
-                    if amount_to_invoice >= delivered_amount:
-                        self.nominal = delivered_amount
-                    else:
-                        self.nominal = max(0.0, delivered_amount - amount_invoiced)
+                # Batasi nominal tidak boleh lebih dari amount_to_invoice
+                if delivered_amount > amount_to_invoice:
+                    self.nominal = amount_to_invoice
                 else:
                     self.nominal = delivered_amount
+                
+                # Jika nominal masih 0, pastikan nominal diisi dengan amount_to_invoice
+                if self.nominal <= 0 and amount_to_invoice > 0:
+                    self.nominal = amount_to_invoice
+                
+                # Apply the same logic as in _onchange_advance_payment_method
+                # if amount_invoiced > 0:
+                #     if amount_to_invoice >= delivered_amount:
+                #         self.nominal = delivered_amount
+                #     else:
+                #         self.nominal = max(0.0, delivered_amount - amount_invoiced)
+                # else:
+                #     self.nominal = delivered_amount
 
     @api.model #Menetapkan nilai awal untuk wizard pembuatan invoice DP dengan mengambil data dari Sales Order, termasuk subtotal harga dan jumlah yang telah difakturkan.
     def default_get(self, fields):
@@ -912,50 +1045,30 @@ class SaleAdvancePaymentInv(models.TransientModel):
             else:
                 record.delivery_quantity = 0.0
                 
-
-    def create_invoices(self):
-        """
-        Override create_invoices to store nominal value in context before creating invoice
-        """
-        # Store the nominal in the context before invoice creation
-        if self.advance_payment_method == 'delivery' and self.delivery_order_id:
-            # Convert to context that will persist through the action
-            ctx = dict(self.env.context)
-            ctx.update({
-                'default_invoice_amount': self.nominal
-            })
-            self = self.with_context(ctx)
-        
-        return super(SaleAdvancePaymentInv, self).create_invoices()
-
     def _create_invoices(self, sale_orders):
         """
         Override method _create_invoices untuk custom invoice berdasarkan delivery
         """
-        # Panggil method asli dulu untuk membuat invoice
         invoices = super()._create_invoices(sale_orders)
-        
-        # Jika metode pembayaran berdasarkan delivery, update invoice
+
         if self.advance_payment_method == 'delivery' and self.delivery_order_id:
-            # Get the saved value from context or fall back to self.nominal
             invoice_amount = self.env.context.get('default_invoice_amount', self.nominal)
-            
-            # Check if invoice_amount is valid (prevent zero invoices)
+
             if not invoice_amount or invoice_amount == 0:
-                # If somehow still zero, recalculate it based on delivery order
                 sale_order_id = self.env.context.get('active_id')
                 if sale_order_id and self.delivery_order_id:
                     sale_order = self.env['sale.order'].browse(sale_order_id)
                     amount_invoiced = sum(sale_order.invoice_ids.mapped('amount_total'))
                     price_subtotal = sum(sale_order.order_line.mapped('price_subtotal'))
                     amount_to_invoice = price_subtotal - amount_invoiced
-                    
-                    # Recalculate the delivery amount
+
                     delivered_amount = sum(
-                        move.sale_line_id.price_unit * move.quantity 
+                        move.sale_line_id.price_subtotal
                         for move in self.delivery_order_id.move_ids_without_package
                     )
-                    
+
+                    invoice_amount = min(delivered_amount, amount_to_invoice)
+
                     if amount_invoiced > 0:
                         if amount_to_invoice >= delivered_amount:
                             invoice_amount = delivered_amount
@@ -963,42 +1076,428 @@ class SaleAdvancePaymentInv(models.TransientModel):
                             invoice_amount = max(0.0, delivered_amount - amount_invoiced)
                     else:
                         invoice_amount = delivered_amount
-            
-            # Update setiap invoice yang baru dibuat
+
             for invoice in invoices:
-                for line in invoice.invoice_line_ids:
-                    line.write({
-                        'price_unit': invoice_amount,
-                        'quantity': 1.0,
+                sale_order_id = invoice.invoice_origin and self.env['sale.order'].search([
+                    ('name', '=', invoice.invoice_origin)
+                ], limit=1)
+
+                invoice.invoice_line_ids.unlink()
+                invoice_line_data = {}
+
+                for move in self.delivery_order_id.move_ids_without_package:
+                    sale_line = move.sale_line_id
+                    if not sale_line:
+                        continue
+
+                    quantity = move.quantity if move.quantity > 0 else 1.0
+
+                    price_unit = sale_line.price_subtotal / sale_line.product_uom_qty if sale_line.product_uom_qty else sale_line.price_unit
+
+                    invoice_line = self.env['account.move.line'].create({
+                        'move_id': invoice.id,
+                        'product_id': move.product_id.id,
+                        'name': move.product_id.name,
+                        'price_unit': price_unit,
+                        'quantity': quantity,
+                        'delivery_quantity': quantity,
+                        'product_uom_id': move.product_uom.id,
+                        'tax_ids': [(6, 0, sale_line.tax_id.ids)],
+                        'account_id': move.product_id.property_account_income_id.id or
+                                    move.product_id.categ_id.property_account_income_categ_id.id,
                     })
-                    
-                    # Explicitly set price_subtotal
-                    line.price_subtotal = invoice_amount
-                    
-                # Trigger recompute amount untuk update total invoice
+
+                    invoice_line_data[sale_line.id] = invoice_line.id
+
                 invoice._compute_amount()
-        
+
+                # Temukan baris draft (qty 0 & price 0) untuk update
+                if sale_order_id:
+                    draft_lines = sale_order_id.order_line.filtered(
+                        lambda l: l.qty_invoiced == 0 and l.price_unit == 0.0
+                    )
+                    if draft_lines:
+                        draft_line = draft_lines[-1]  # Ambil baris paling akhir
+                        invoice_line = self.env['account.move.line'].browse(list(invoice_line_data.values())[-1])
+                        draft_line.write({
+                            'qty_invoiced': 1.0,
+                            'price_unit': invoice_line.price_subtotal,
+                        })
+
+                        # Update langsung ke database (jika perlu memaksa simpan)
+                        self.env.cr.execute("""
+                            UPDATE sale_order_line 
+                            SET qty_invoiced = %s,
+                                price_unit = %s
+                            WHERE id = %s
+                        """, (
+                            1.0,
+                            invoice_line.price_subtotal,
+                            draft_line.id
+                        ))
+                        draft_line.invalidate_recordset(['qty_invoiced', 'price_unit'])
+
+                # Hubungkan invoice line ke sale_line jika belum ada
+                if sale_order_id:
+                    for line in invoice.invoice_line_ids:
+                        if not line.sale_line_ids:
+                            sale_line = sale_order_id.order_line.filtered(
+                                lambda l: l.product_id.id == line.product_id.id
+                            )
+                            if sale_line:
+                                line.sale_line_ids = [(6, 0, [sale_line[0].id])]
+
+                if invoice.amount_total > amount_to_invoice:
+                    last_line = invoice.invoice_line_ids[-1]
+                    selisih = invoice.amount_total - amount_to_invoice
+                    last_line.quantity = max(0.1, last_line.quantity - (selisih / last_line.price_unit))
+                    invoice._compute_amount()
+
         return invoices
+
+        
+class AccountMoveLine(models.Model):
+    _inherit = 'account.move.line'
     
+    delivery_quantity = fields.Float(
+        string="Delivery Quantity",
+        help="Quantity from delivery order"
+    )
     
 class AccountMove(models.Model):
     _inherit = 'account.move'
 
+    # First, add the missing field definition
+    was_cancelled = fields.Boolean(
+        string="Was Previously Cancelled",
+        default=False,
+        help="Technical field to track if an invoice was previously cancelled"
+    )
+    
     remaining_amount = fields.Monetary(
         string="Remaining Amount",
         compute="_compute_remaining_amount",
         store=True,
         help="Amount to be paid after deducting the down payment."
     )
-
-    @api.depends('amount_total', 'invoice_line_ids')
+    
+    @api.depends('amount_total', 'invoice_line_ids', 'payment_state')
     def _compute_remaining_amount(self):
         for record in self:
+            # Calculate down payment amount (lines with 'down payment' in name)
             down_payment = sum(
                 line.price_subtotal for line in record.invoice_line_ids 
                 if line.name and isinstance(line.name, str) and 'down payment' in line.name.lower()
             )
-            record.remaining_amount = record.amount_total - down_payment
+            
+            # Calculate amount from delivery-based invoices (lines with delivery_quantity > 0)
+            delivery_based_amount = sum(
+                line.price_subtotal for line in record.invoice_line_ids
+                if line.delivery_quantity > 0
+            )
+            
+            # Check if this is a paid invoice
+            is_paid = record.payment_state in ['paid', 'partial']
+            
+            # All paid amounts and down payments should be deducted
+            total_deductions = down_payment + delivery_based_amount if is_paid else down_payment
+            
+            record.remaining_amount = record.amount_total - total_deductions
+            
+    def button_draft(self):
+        """Override button_draft to maintain special handling for cancelled invoices"""
+        # Store which invoices were in cancelled state before going to draft
+        self._track_previously_cancelled_invoices()
+        
+        # Update related sale order lines before changing the invoice state
+        for invoice in self:
+            # Handle both cancelled and posted invoices
+            if invoice.move_type in ('out_invoice', 'out_refund'):
+                # Find all related sale order lines
+                related_sale_lines = self.env['sale.order.line']
+                
+                # Method 1: Through invoice_lines relationship
+                for inv_line in invoice.invoice_line_ids:
+                    if inv_line.sale_line_ids:
+                        related_sale_lines |= inv_line.sale_line_ids
+                
+                # Method 2: Look for sale order lines referencing this invoice in their name
+                if invoice.name:
+                    name_pattern = invoice.name
+                    sale_lines_by_name = self.env['sale.order.line'].search([
+                        ('name', 'like', name_pattern),
+                        ('display_type', '=', False)
+                    ])
+                    related_sale_lines |= sale_lines_by_name
+                
+                # Method 3: For down payments specifically
+                down_payment_lines = self.env['sale.order.line'].search([
+                    ('name', 'like', 'Down Payment:'),
+                    ('order_id.invoice_ids', 'in', invoice.ids)
+                ])
+                related_sale_lines |= down_payment_lines
+                
+                # Method 4: For delivery-based invoices specifically
+                if invoice.state == 'posted':
+                    delivery_lines = self.env['sale.order.line'].search([
+                        ('name', 'like', 'Based On Delivery'),
+                        ('order_id.invoice_ids', 'in', invoice.ids)
+                    ])
+                    related_sale_lines |= delivery_lines
+                
+                # Update sale order line descriptions based on current invoice state
+                for sale_line in related_sale_lines:
+                    if invoice.state == 'cancel' and sale_line.name:
+                        # For cancelled invoices
+                        new_name = sale_line.name.replace(' [CANCELLED]', '')
+                        new_name = new_name.replace('(Cancelled)', '(Draft)')
+                        sale_line.name = new_name
+                    elif invoice.state == 'posted' and sale_line.name:
+                        # For posted invoices
+                        if 'Based On Delivery' in sale_line.name and '(Posted)' in sale_line.name:
+                            # Extract date if exists
+                            import re
+                            date_match = re.search(r'\d{2}/\d{2}/\d{4}', sale_line.name)
+                            date_part = f": {date_match.group(0)}" if date_match else ""
+                            
+                            # Change "Based On Delivery (Posted)" to "Down Payment: date (Draft)"
+                            new_name = f"Down Payment{date_part} (Draft)"
+                            sale_line.name = new_name
+                
+                # Additional handling for delivery-based invoices with origin
+                if invoice.invoice_origin:
+                    sale_order = self.env['sale.order'].search([
+                        ('name', '=', invoice.invoice_origin)
+                    ], limit=1)
+                    if sale_order:
+                        lines_to_update = sale_order.order_line.filtered(
+                            lambda l: l.name and 
+                            (('Down Payment' in l.name and invoice.state == 'cancel') or 
+                            ('Based On Delivery' in l.name and invoice.state == 'posted'))
+                        )
+                        for line in lines_to_update:
+                            # Check if this line corresponds to this invoice
+                            if invoice.name and invoice.name in line.name:
+                                if 'Based On Delivery' in line.name and '(Posted)' in line.name:
+                                    # Extract date if exists
+                                    import re
+                                    date_match = re.search(r'\d{2}/\d{2}/\d{4}', line.name)
+                                    date_part = f": {date_match.group(0)}" if date_match else ""
+                                    
+                                    # Convert to Down Payment format
+                                    new_name = f"Down Payment{date_part} (Draft)"
+                                    line.name = new_name
+                                elif invoice.state == 'cancel':
+                                    new_name = line.name.replace(' [CANCELLED]', '')
+                                    new_name = new_name.replace('(Cancelled)', '(Draft)')
+                                    line.name = new_name
+        
+        # Call the original method to complete the draft process
+        return super(AccountMove, self).button_draft()
+    
+    def _track_previously_cancelled_invoices(self):
+        """Store which invoices were in cancelled state before state change"""
+        for invoice in self:
+            if invoice.state == 'cancel':
+                # Using direct assign instead of write() to avoid triggering field recomputation
+                invoice.was_cancelled = True
+    
+    def button_cancel(self):
+        """Override button_cancel to update sale order lines when invoice is cancelled"""
+        # Call the original method first
+        result = super(AccountMove, self).button_cancel()
+        
+        # Now update the related sale order lines
+        for invoice in self:
+            # Only process if this is a customer invoice
+            if invoice.move_type in ('out_invoice', 'out_refund'):
+                # Find all related sale order lines
+                related_sale_lines = self.env['sale.order.line']
+                
+                # Method 1: Through invoice_lines relationship
+                for inv_line in invoice.invoice_line_ids:
+                    if inv_line.sale_line_ids:
+                        related_sale_lines |= inv_line.sale_line_ids
+                
+                # Method 2: Look for sale order lines referencing this invoice in their name
+                if invoice.name:
+                    name_pattern = invoice.name
+                    sale_lines_by_name = self.env['sale.order.line'].search([
+                        ('name', 'like', name_pattern),
+                        ('display_type', '=', False)
+                    ])
+                    related_sale_lines |= sale_lines_by_name
+                
+                # Method 3: For down payments specifically
+                down_payment_lines = self.env['sale.order.line'].search([
+                    ('name', 'like', 'Down Payment:'),
+                    ('order_id.invoice_ids', 'in', invoice.ids)
+                ])
+                related_sale_lines |= down_payment_lines
+                
+                # Update sale order line descriptions
+                for sale_line in related_sale_lines:
+                    if sale_line.name and 'draft' in sale_line.name.lower():
+                        # Replace "Draft" with "Cancelled"
+                        new_name = sale_line.name.replace('(Draft)', '(Cancelled)')
+                        # Add [CANCELLED] tag if not already present
+                        if '[CANCELLED]' not in new_name:
+                            new_name = f"{new_name} [CANCELLED]"
+                        sale_line.name = new_name
+                    elif sale_line.name and 'down payment' in sale_line.name.lower():
+                        # For Down Payment lines
+                        if '[CANCELLED]' not in sale_line.name:
+                            sale_line.name = f"{sale_line.name} [CANCELLED]"
+                
+                # Additional handling for delivery-based invoices
+                if invoice.invoice_origin:
+                    sale_order = self.env['sale.order'].search([
+                        ('name', '=', invoice.invoice_origin)
+                    ], limit=1)
+                    if sale_order:
+                        dp_lines = sale_order.order_line.filtered(
+                            lambda l: l.name and 'Down Payment' in l.name
+                        )
+                        for dp_line in dp_lines:
+                            # Check if this down payment line corresponds to this invoice
+                            if invoice.name and invoice.name in dp_line.name:
+                                dp_line.name = dp_line.name.replace('(Draft)', '(Cancelled)')
+                                if '[CANCELLED]' not in dp_line.name:
+                                    dp_line.name = f"{dp_line.name} [CANCELLED]"
+        
+        return result
+    
+    def action_post(self):
+        """Override action_post to update sale order lines when invoice is posted"""
+        # Call the original method first to ensure the invoice is properly posted
+        result = super(AccountMove, self).action_post()
+        
+        # Now update the related sale order lines
+        for invoice in self:
+            # Only process if this is a customer invoice
+            if invoice.move_type in ('out_invoice', 'out_refund'):
+                # Check if this invoice was created from delivery-based method
+                is_delivery_based = False
+                for line in invoice.invoice_line_ids:
+                    if hasattr(line, 'delivery_quantity') and line.delivery_quantity > 0:
+                        is_delivery_based = True
+                        break
+                
+                # Find all related sale order lines
+                related_sale_lines = self.env['sale.order.line']
+                
+                # Method 1: Through invoice_lines relationship
+                for inv_line in invoice.invoice_line_ids:
+                    if inv_line.sale_line_ids:
+                        related_sale_lines |= inv_line.sale_line_ids
+                
+                # Method 2: Look for sale order lines referencing this invoice in their name
+                if invoice.name:
+                    name_pattern = invoice.name
+                    sale_lines_by_name = self.env['sale.order.line'].search([
+                        ('name', 'like', name_pattern),
+                        ('display_type', '=', False)
+                    ])
+                    related_sale_lines |= sale_lines_by_name
+                
+                # Method 3: For down payments specifically
+                down_payment_lines = self.env['sale.order.line'].search([
+                    ('name', 'like', 'Down Payment:'),
+                    ('order_id.invoice_ids', 'in', invoice.ids)
+                ])
+                related_sale_lines |= down_payment_lines
+                
+                # Update sale order line descriptions
+                for sale_line in related_sale_lines:
+                    if sale_line.name:
+                        if 'down payment' in sale_line.name.lower() or 'draft' in sale_line.name.lower():
+                            # Extract the date part if it exists (e.g. "05/24/2025")
+                            import re
+                            date_match = re.search(r'\d{2}/\d{2}/\d{4}', sale_line.name)
+                            date_part = f" {date_match.group(0)}" if date_match else ""
+                            
+                            if is_delivery_based:
+                                # For delivery-based invoices
+                                new_name = f"Based On Delivery{date_part} (Posted)"
+                            else:
+                                # For regular down payments, just change Draft to Posted
+                                new_name = sale_line.name.replace('(Draft)', '(Posted)')
+                                
+                            sale_line.name = new_name
+                
+                # Additional handling for delivery-based invoices with origin
+                if invoice.invoice_origin:
+                    sale_order = self.env['sale.order'].search([
+                        ('name', '=', invoice.invoice_origin)
+                    ], limit=1)
+                    if sale_order and is_delivery_based:
+                        dp_lines = sale_order.order_line.filtered(
+                            lambda l: l.name and ('Down Payment' in l.name or '(Draft)' in l.name)
+                        )
+                        for dp_line in dp_lines:
+                            # Check if this down payment line corresponds to this invoice
+                            if invoice.name and invoice.name in dp_line.name:
+                                # Extract the date part if it exists
+                                import re
+                                date_match = re.search(r'\d{2}/\d{2}/\d{4}', dp_line.name)
+                                date_part = f" {date_match.group(0)}" if date_match else ""
+                                
+                                new_name = f"Based On Delivery{date_part} (Posted)"
+                                dp_line.name = new_name
+        
+        return result
+    
+    def unlink(self):
+        """Override unlink to remove related sale order lines when invoice is deleted"""
+        # Find related sale order lines before deleting the invoice
+        lines_to_delete = self.env['sale.order.line']
+        
+        for invoice in self:
+            # Only process if this is a customer invoice
+            if invoice.state == 'draft' and invoice.move_type in ('out_invoice', 'out_refund'):
+                # Find all related sale order lines
+                
+                # Method 1: Look for sale order lines referencing this invoice in their name
+                if invoice.name:
+                    name_pattern = invoice.name
+                    sale_lines_by_name = self.env['sale.order.line'].search([
+                        ('name', 'like', name_pattern),
+                        ('display_type', '=', False),
+                        '|', ('name', 'like', 'Down Payment:'), ('name', 'like', 'Based On Delivery')
+                    ])
+                    lines_to_delete |= sale_lines_by_name
+                
+                # Method 2: For down payments specifically
+                down_payment_lines = self.env['sale.order.line'].search([
+                    ('order_id.invoice_ids', 'in', invoice.ids),
+                    '|', ('name', 'like', 'Down Payment:'), ('name', 'like', 'Based On Delivery')
+                ])
+                lines_to_delete |= down_payment_lines
+                
+                # Method 3: For delivery-based invoices
+                if invoice.invoice_origin:
+                    sale_order = self.env['sale.order'].search([
+                        ('name', '=', invoice.invoice_origin)
+                    ], limit=1)
+                    if sale_order:
+                        # Find down payment or delivery-based lines in this invoice
+                        special_lines = sale_order.order_line.filtered(
+                            lambda l: l.name and invoice.name and invoice.name in l.name and
+                            (('Down Payment' in l.name) or ('Based On Delivery' in l.name))
+                        )
+                        lines_to_delete |= special_lines
+        
+        # Call the original unlink method to delete the invoices
+        result = super(AccountMove, self).unlink()
+        
+        # Now delete the sale order lines
+        if lines_to_delete:
+            # Use a protection to avoid errors if some lines are already deleted
+            existing_lines = lines_to_delete.exists()
+            if existing_lines:
+                existing_lines.unlink()
+        
+        return result
 
 
 class SaleOrderLine(models.Model):
