@@ -38,4 +38,6 @@
             parent="spreadsheet_dashboard.spreadsheet_dashboard_menu_root" 
             action="action_report_dashboard"
             sequence="10"/>
+
+    <function model="ir.ui.menu" name="_hide_my_dashboard"/>
 </odoo>

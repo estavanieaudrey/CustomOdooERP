@@ -1,17 +1,17 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
     <!-- Action for Project Dashboard-->
-    <record id="project_dashboard_action" model="ir.actions.client">
-        <field name="name">Dashboard</field>
+    <record id="project_dashboard_action_main" model="ir.actions.client">
+        <field name="name">Project Dashboard</field>
         <field name="tag">project_dashboard</field>
     </record>
 
-    <!-- Dashboard menu item -->
-    <menuitem id="project_menu_open_Dashboard"
-              name="Dashboard"
-              action="project_dashboard_action"
-              parent="project.menu_main_pm"
-              sequence="1"/>
+    <!-- Tambahkan menu baru di Dashboard > All Reports -->
+    <menuitem id="menu_project_dashboard_main"
+        name="Project Dashboard"
+        action="project_dashboard_action_main"
+        parent="spreadsheet_dashboard.spreadsheet_dashboard_menu_root"
+        sequence="15"/>  <!-- Sequence 15 untuk menempatkannya setelah menu Report dengan sequence 10 -->
 
     <!-- Dashboard Template -->
     <template id="project_dashboard_template" name="Project Dashboard">

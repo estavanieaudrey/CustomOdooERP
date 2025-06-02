@@ -120,6 +120,21 @@ class ProjectFilter(http.Controller):
             end_date = datetime.datetime.strptime(end_date, "%Y-%m-%d").date()
         else:
             end_date = None
+            
+        # Validasi tanggal - pastikan end_date tidak lebih awal dari start_date
+        if start_date and end_date and end_date < start_date:
+            return {
+                'error': True,
+                'message': 'End Date tidak boleh lebih awal dari Start Date!',
+                'total_tasks': 0,
+                'total_vendorbills': 0,
+                'total_margin': 0,
+                'total_sale_orders': 0,
+                'expired_sale_orders': [],
+                'draft_manufacturing_orders': [],
+                'upcoming_deliveries': [],
+                'expired_invoices': [],
+            }
 
 
         # Filter Manufacturing Orders (tot_tasks)

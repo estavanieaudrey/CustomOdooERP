@@ -17,12 +17,14 @@
                 <p style="margin-left: 20px;">Start Date :</p>
                 <p>
                     <input type="date" class="inner_select" id="start_date"
-                        name="start_date" t-ref="start_date"/>
+                        name="start_date" t-ref="start_date"
+                        t-on-change="_onStartDateChange"/>
                 </p>
                 <p>End Date :</p>
                 <p>
                     <input type="date" class="inner_select" id="end_date"
-                        name="end_date" t-ref="end_date"/>
+                        name="end_date" t-ref="end_date"
+                        t-on-change="_onEndDateChange"/>
                 </p>
                 <button class="btn btn-primary g-col-6 p-1"
                         t-on-click="_onchangeFilter"

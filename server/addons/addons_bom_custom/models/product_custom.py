@@ -1,6 +1,5 @@
 from odoo import models, fields, api
 
-from python.Lib.email.policy import default
 
 # Class untuk nambahin fitur custom di product template
 class ProductCustom(models.Model):
