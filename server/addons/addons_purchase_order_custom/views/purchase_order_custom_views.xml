@@ -36,4 +36,29 @@
             </xpath>
         </field>
     </record>
+
+    <!-- Inherit untuk hide field yang tidak dibutuhkan (bawaan odoo)-->
+    <record id="view_account_move_form_hide_tabs" model="ir.ui.view">
+        <field name="name">account.move.form.hide.tabs</field>
+        <field name="model">account.move</field>
+        <field name="inherit_id" ref="account.view_move_form"/>
+        <field name="arch" type="xml">
+            <!-- Hide the Bill Reference field -->
+            <xpath expr="//field[@name='ref']" position="attributes">
+                <attribute name="invisible">1</attribute>
+            </xpath>
+            <!-- Hide the Auto-complete field -->
+            <xpath expr="//field[@name='purchase_vendor_bill_id']" position="attributes">
+                <attribute name="invisible">1</attribute>
+            </xpath>
+            <!-- Hide the paymnt reference field -->
+            <xpath expr="//field[@name='payment_reference']" position="attributes">
+                <attribute name="invisible">1</attribute>
+            </xpath>
+            <!-- Hide the Recipient Bank field -->
+            <xpath expr="//field[@name='partner_bank_id']" position="attributes">
+                <attribute name="invisible">1</attribute>
+            </xpath>
+        </field>
+    </record>
 </odoo>
