@@ -120,13 +120,69 @@
         <field name="model">sale.advance.payment.inv</field>
         <field name="inherit_id" ref="sale.view_sale_advance_payment_inv"/>
         <field name="arch" type="xml">
-            <!-- Hide amount field except for percentage method -->
-            <xpath expr="//field[@name='amount']" position="attributes">
-                <!-- <attribute name="invisible">advance_payment_method != 'percentage'</attribute> -->
-                <attribute name="readonly">0</attribute>
+            <!-- Modifikasi field amount bawaan agar tersembunyi di Skenario B -->
+            <xpath expr="//label[@for='amount']" position="attributes">
+                <attribute name="invisible">advance_payment_method != 'percentage' or has_previous_dp</attribute>
             </xpath>
 
-            <!-- Add delivery order field -->
+            <xpath expr="//field[@name='amount']" position="attributes">
+                <attribute name="invisible">advance_payment_method != 'percentage' or has_previous_dp</attribute>
+                <attribute name="string">Down Payment (%)</attribute>
+            </xpath>
+
+            <!-- Field fixed_amount original (untuk Skenario A) -->
+            <xpath expr="//field[@name='fixed_amount']" position="attributes">
+                <attribute name="invisible">(advance_payment_method != 'fixed') or has_previous_dp</attribute>
+                <attribute name="string">Down Payment (Fixed)</attribute>
+            </xpath>
+
+            <!-- Tambahkan label manual untuk fixed_amount di Skenario A -->
+            <xpath expr="//field[@name='fixed_amount']" position="before">
+                <label for="fixed_amount" 
+                    string="Down Payment (Fixed)" 
+                    invisible="(advance_payment_method != 'fixed') or has_previous_dp"/>
+            </xpath>
+            
+            <!-- Tambahkan field untuk Skenario B (sudah ada invoice) -->
+            <xpath expr="//field[@name='amount']" position="after">
+                <field name="has_previous_dp" invisible="1"/>
+                
+                <!-- Original DP field - readonly (percentage mode) -->
+                <label for="original_dp_percentage" 
+                    string="Original Down Payment (%)"
+                    invisible="advance_payment_method != 'percentage' or not has_previous_dp"/>
+                <field name="original_dp_percentage" 
+                    readonly="1" 
+                    nolabel="1"
+                    invisible="advance_payment_method != 'percentage' or not has_previous_dp"/>
+                    
+                <!-- Final Payment field - editable (percentage mode) -->
+                <label for="final_payment_percentage" 
+                    string="Invoice Percentage (%)"
+                    invisible="advance_payment_method != 'percentage' or not has_previous_dp"/>
+                <field name="final_payment_percentage" 
+                    nolabel="1"
+                    invisible="advance_payment_method != 'percentage' or not has_previous_dp"/>
+                    
+                <!-- Original Fixed Amount - readonly (fixed mode) -->
+                <label for="original_fixed_amount" 
+                    string="Original Fixed Amount"
+                    invisible="advance_payment_method != 'fixed' or not has_previous_dp"/>
+                <field name="original_fixed_amount" 
+                    readonly="1" 
+                    nolabel="1"
+                    invisible="advance_payment_method != 'fixed' or not has_previous_dp"/>
+                    
+                <!-- Final Fixed Amount - editable (fixed mode) -->
+                <label for="input_fixed_nominal" 
+                    string="Invoice Fixed Amount"
+                    invisible="advance_payment_method != 'fixed' or not has_previous_dp"/>
+                <field name="input_fixed_nominal" 
+                    nolabel="1"
+                    invisible="advance_payment_method != 'fixed' or not has_previous_dp"/>
+            </xpath>
+            
+            <!-- Add delivery order field and related fields -->
             <xpath expr="//field[@name='advance_payment_method']" position="after">
                 <field name="sale_order_id" invisible="1"/>
                 <field name="delivery_order_id" 
@@ -151,8 +207,12 @@
         <field name="model">account.move</field>
         <field name="inherit_id" ref="account.view_move_form"/>
         <field name="arch" type="xml">
-            <xpath expr="//field[@name='amount_residual']" position="after">
+            <!-- <xpath expr="//field[@name='amount_residual']" position="after">
                 <field name="remaining_amount" readonly="1"/>
+            </xpath> -->
+            <!-- Tambahkan field delivery_quantity setelah quantity di invoice lines -->
+            <xpath expr="//field[@name='invoice_line_ids']/list/field[@name='quantity']" position="after">
+                <field name="delivery_quantity" optional="show" string="Delivery Qty"/>
             </xpath>
         </field>
     </record>
@@ -172,6 +232,7 @@
                 <xpath expr="//page[@name='customer_signature']" position="attributes">
                     <attribute name="invisible">1</attribute>
                 </xpath>
+                
             </field>
         </record>
         
@@ -185,11 +246,17 @@
                 <xpath expr="//page[@name='optional_products']" position="attributes">
                     <attribute name="invisible">1</attribute>
                 </xpath>
-                
-                <!-- Hapus bagian yang menyebabkan error -->
-                <!-- <xpath expr="//field[@name='sale_order_template_id']" position="attributes">
+            </field>
+        </record>
+
+        <record id="view_sale_order_hide_quote_builder" model="ir.ui.view">
+            <field name="name">sale.order.hide.quote.builder</field>
+            <field name="model">sale.order</field>
+            <field name="inherit_id" ref="sale_pdf_quote_builder.sale_order_form_inherit_sale_pdf_quote_builder"/>
+            <field name="arch" type="xml">
+                <xpath expr="//page[@name='pdf_quote_builder']" position="attributes">
                     <attribute name="invisible">1</attribute>
-                </xpath> -->
+                </xpath>
             </field>
         </record>
     </data>
