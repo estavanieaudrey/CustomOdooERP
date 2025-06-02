@@ -6,17 +6,19 @@
         <field name="arch" type="xml">
             <xpath expr="//group" position="inside">
                 <group>
-                    <field name="resi_number"/>
-                    <field name="container_number"/>
-                    <field name="container_arrival_date"/>
+                    <field name="resi_number" invisible="picking_type_code == 'incoming'"/>
+                    <field name="container_number" invisible="picking_type_code == 'incoming'"/>
+                    <field name="container_arrival_date" invisible="picking_type_code == 'incoming'"/>
                     <field name="manufacturing_order_id"/>
                     <field name="lot_producing_id" readonly="1"/>
-                    <field name="lot_id_stock"/>
+                    <!-- Revisi untuk menampilkan pada internal dan incoming transfers -->
+                    <field name="lot_id_stock" invisible="context.get('active_model') == 'ir.model.form' or picking_type_code not in ['internal', 'incoming']"/>  
                 </group>
             </xpath>
 
         </field>
     </record>
+
     <record id="view_picking_form_hide_print" model="ir.ui.view">
         <field name="name">stock.picking.form.hide.print</field>
         <field name="model">stock.picking</field>
@@ -32,12 +34,12 @@
         <field name="model">stock.picking</field>
         <field name="inherit_id" ref="stock.view_picking_form"/>
         <field name="arch" type="xml">
-            <xpath expr="//button[@name='do_print_picking']" position="after">
+            <xpath expr="//button[@name='do_print_picking']" position="after" >
                 <button name="%(addons_inventory_custom.action_report_delivery_slip_custom)d" 
                         string="Print Surat Jalan" 
                         type="action" 
                         class="btn-primary"
-                        invisible="state != 'done'"/>
+                        invisible="state != 'done' or picking_type_code == 'incoming'"/>
             </xpath>
         </field>
     </record>
