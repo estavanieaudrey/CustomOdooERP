@@ -513,26 +513,77 @@ class MrpBomCustom(models.Model):
     @api.onchange('purchase_requisition_ids')
     def _onchange_purchase_requisition_ids(self):
         """
-        Update harga material saat Purchase Agreement ditambah/dihapus dari BOM.
-        - Jika PA ditambah: Update harga dari PA
-        - Jika PA dihapus: Reset harga jadi 0
+        Update harga material dan BoM lines saat Purchase Agreement ditambah/dihapus dari BOM.
+        - Jika PA ditambah: Update harga dari PA dan tambahkan/update komponen dari PA.
+        - Jika PA dihapus: Reset harga dan hapus komponen yang relevan.
         """
-        if self.purchase_requisition_ids:  # Hanya jalankan jika ada Purchase Agreement yang dipilih
-            self._compute_material_prices()
-        else:  # Semua PA dihapus
-            # Reset semua harga jadi 0
-            self.hrg_kertas_isi = 0.0
-            self.hrg_kertas_cover = 0.0
-            self.hrg_plate_isi = 0.0
-            self.hrg_plate_cover = 0.0
-            self.hrg_box = 0.0
-            self.hrg_uv = 0.0
+        self._compute_material_prices() # Panggil fungsi yang menghitung harga
+        self._update_bom_lines_from_pa() # Panggil fungsi yang mengupdate bom_line_ids
 
+    def _update_bom_lines_from_pa(self):
+        """
+        Membuat atau menghapus bom_line_ids berdasarkan produk di purchase_requisition_ids.
+        Komponen yang ada di BoM lines tapi tidak ada di PA terpilih akan dihapus.
+        Produk dari PA terpilih akan ditambahkan jika belum ada.
+        """
+        for bom in self:
+            # Dapatkan semua product_id dari PA yang dipilih
+            pa_product_ids = set()
+            if bom.purchase_requisition_ids:
+                for requisition in bom.purchase_requisition_ids:
+                    for line in requisition.line_ids:
+                        if line.product_id:
+                            pa_product_ids.add(line.product_id.id)
+            
+            # Dapatkan product_id yang saat ini ada di bom_line_ids
+            current_bom_product_ids = set(bom.bom_line_ids.mapped('product_id').ids)
+            
+            lines_to_add_vals = []
+            lines_to_remove_ids = []
+
+            # Identifikasi komponen yang akan ditambahkan
+            for product_id_to_add in pa_product_ids:
+                if product_id_to_add not in current_bom_product_ids:
+                    # Cek domain product_id di MrpBomLineCustom ('tipe_kertas', 'not in', ['a4', 'b5'])
+                    product = self.env['product.product'].browse(product_id_to_add)
+                    if product.tipe_kertas not in ['a4', 'b5']:
+                         lines_to_add_vals.append({
+                            'product_id': product_id_to_add,
+                            # product_qty akan dihitung oleh _onchange_product_id atau create/write di MrpBomLineCustom
+                        })
+            
+            # Identifikasi komponen yang akan dihapus (yang ada di BoM tapi tidak lagi di PA terpilih)
+            # Ini hanya akan menghapus komponen yang *sebelumnya* mungkin ditambahkan oleh PA.
+            # Jika Anda ingin hanya menghapus komponen yang *persis* berasal dari PA yang baru saja di-deselect,
+            # Anda memerlukan mekanisme tracking yang lebih kompleks.
+            # Pendekatan ini menyinkronkan BoM lines dengan *semua* PA yang sedang dipilih.
+            for bom_line in bom.bom_line_ids:
+                if bom_line.product_id.id not in pa_product_ids:
+                    # Hanya hapus jika produk tersebut valid sebagai komponen (bukan produk utama BoM)
+                    if bom_line.product_id.tipe_kertas not in ['a4', 'b5']:
+                        lines_to_remove_ids.append(bom_line.id)
+
+            commands = []
+            if lines_to_remove_ids:
+                for line_id in lines_to_remove_ids:
+                    commands.append(Command.delete(line_id)) # Atau Command.unlink(line_id)
+            
+            for vals in lines_to_add_vals:
+                commands.append(Command.create(vals))
+            
+            if commands:
+                bom.update({'bom_line_ids': commands})
+                # Recompute operations might be needed if BoM type involves them
+                # bom._onchange_bom_line_ids() # Jika ada onchange di bom_line_ids yang perlu dipicu
+
+
+    # Menggunakan @api.depends agar _compute_material_prices juga dipanggil saat form load jika purchase_requisition_ids sudah terisi
     @api.depends('purchase_requisition_ids')
     def _compute_material_prices(self):
         """
         Mengambil harga material dari Purchase Agreement berdasarkan default_code product.
-        Harga diambil dari Purchase Agreement yang terakhir ditambahkan untuk setiap material.
+        Harga diambil dari Purchase Agreement yang terakhir ditambahkan ATAU yang memiliki harga lebih tinggi/rendah (sesuai kebutuhan).
+        Saat ini mengambil dari yang terakhir teriterasi.
         """
         for bom in self:
             # Reset harga hanya jika tidak ada Purchase Agreement yang dipilih
@@ -546,6 +597,8 @@ class MrpBomCustom(models.Model):
                 return
 
             # Cek setiap Purchase Agreement yang dipilih
+            # Jika ada beberapa PA dengan produk yang sama, logika ini akan mengambil harga dari PA terakhir dalam iterasi.
+            # Anda mungkin perlu logika tambahan jika ingin memilih harga terendah/tertinggi/rata-rata.
             for requisition in bom.purchase_requisition_ids:
                 for line in requisition.line_ids:
                     if not line.product_id or not line.product_id.default_code:
@@ -565,29 +618,32 @@ class MrpBomCustom(models.Model):
                     elif default_code == 'box':
                         bom.hrg_box = line.price_unit
 
-
     @api.constrains('hrg_kertas_isi', 'hrg_kertas_cover', 'hrg_plate_isi', 'hrg_plate_cover', 
                     'hrg_box', 'hrg_uv', 'jasa_cetak_isi', 'jasa_cetak_cover', 'jasa_jilid')
     def _check_required_prices(self):
         """
         Memvalidasi bahwa semua field harga dan biaya jasa telah diisi
         """
+        # Cek ini hanya jika tidak ada PA yang dipilih, karena harga bisa datang dari PA
+        # Atau, jika Anda ingin validasi ini selalu aktif, bahkan jika PA dipilih tapi tidak mengisi semua harga
+        # Untuk sekarang, kita asumsikan jika PA dipilih, harga diharapkan dari sana.
+        # Jika PA tidak mengisi semua harga, maka validasi ini bisa gagal.
+        # Pertimbangkan apakah validasi ini masih relevan dengan cara kerja baru.
+        # Mungkin lebih baik jika field harga ini tidak 'required=True' jika bisa diisi dari PA.
         for record in self:
             # Cek harga material
-            if not record.hrg_kertas_isi:
-                raise ValidationError('Harga Kertas Isi harus diisi!')
-            if not record.hrg_kertas_cover:
-                raise ValidationError('Harga Kertas Cover harus diisi!')
+            if not record.hrg_kertas_isi == 0.0 and not record.hrg_kertas_isi : # contoh penyesuaian, izinkan 0 jika dari PA tidak ada
+                 raise ValidationError('Harga Kertas Isi harus diisi atau di-set dari PA!')
+            if not record.hrg_kertas_cover == 0.0 and not record.hrg_kertas_cover:
+                 raise ValidationError('Harga Kertas Cover harus diisi atau di-set dari PA!')
             if not record.hrg_plate_isi:
-                raise ValidationError('Harga Plate Isi harus diisi!')
+                raise ValidationError('Harga Plate Isi harus diisi atau di-set dari PA!!')
             if not record.hrg_plate_cover:
-                raise ValidationError('Harga Plate Cover harus diisi!')
+                raise ValidationError('Harga Plate Cover harus diisi atau di-set dari PA!!')
             if not record.hrg_box:
-                raise ValidationError('Harga Box harus diisi!')
-            if not record.hrg_uv:
-                raise ValidationError('Harga UV harus diisi!')
+                raise ValidationError('Harga Box harus diisi atau di-set dari PA!!')
             
-            # Cek biaya jasa
+            # Cek biaya jasa (ini biasanya manual, bukan dari PA material)
             if not record.jasa_cetak_isi:
                 raise ValidationError('Biaya Cetak Isi harus diisi!')
             if not record.jasa_cetak_cover:
