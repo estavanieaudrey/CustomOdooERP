@@ -76,7 +76,7 @@
                     ketentuan-ketentuan sebagai berikut:
                 </p>
 
-                <h2 style="text-align: center;">PASAL 1<br/>RUANG LINGKUP PERJANJIAN
+                <h2 style="text-align: center; font-weight: bold;">PASAL 1<br/>RUANG LINGKUP PERJANJIAN
                 </h2>
                 <p>
                     <b>PIHAK KEDUA</b>
@@ -151,7 +151,19 @@
                             <tr>
                                 <td style="border: 1px solid #000; padding: 4px;">Design</td>
                                 <td style="border: 1px solid #000; padding: 4px;">
-                                    <t t-esc="docs.detail_design or '...'"/>
+                                    <t t-esc="docs.nama_design or '...'"/>
+                                </td>
+                            </tr>
+                             <tr>
+                                <td style="border: 1px solid #000; padding: 4px;">File</td>
+                                <td style="border: 1px solid #000; padding: 4px;">
+                                    <t t-if="docs.detail_design">
+                                        <span>disini: </span>
+                                        <t t-esc="docs.detail_design_name or 'design.pdf'"/>
+                                    </t>
+                                    <t t-else="">
+                                        <span>Tidak ada file design</span>
+                                    </t>
                                 </td>
                             </tr>
                             <tr>
@@ -176,7 +188,7 @@
                     </table>
                 </div>
 
-                <h2 style="text-align: center; margin-top: 12px;">PASAL 3<br/>BIAYA DAN CARA PEMBAYARAN
+                <h2 style="text-align: center; margin-top: 12px; font-weight: bold;">PASAL 3<br/>BIAYA DAN CARA PEMBAYARAN
                 </h2>
                 <p>
                     <b>PARA PIHAK</b>
@@ -258,7 +270,7 @@
                     berakhir.
                 </p>
 
-                <h2 style="text-align: center;">PASAL 5<br/>PENYELESAIAN PERSELISIHAN
+                <h2 style="text-align: center; font-weight: bold;">PASAL 5<br/>PENYELESAIAN PERSELISIHAN
                 </h2>
                 <p>Apabila terjadi perselisihan mengenai interprestasi maupun implementasi Perjanjian ini, maka <b>PARA
                     PIHAK

@@ -54,6 +54,7 @@
                             <field name="jenis_cetakan_cover"/>
                             <field name="jenis_jilid"/>
                             <field name="jenis_uv"/>
+                            <field name="nama_design"/>
                             <field name="detail_design" widget="binary" filename="detail_design_name"/>
                             <field name="detail_design_name" invisible="1"/>
                             <field name="detail_packing"/>

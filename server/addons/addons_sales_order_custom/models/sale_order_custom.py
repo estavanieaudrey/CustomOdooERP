@@ -46,6 +46,8 @@ class SaleOrderCustom(models.Model):
     )
     
     # Detail design (diubah dari Char menjadi Binary untuk upload file design)
+    nama_design = fields.Char(string="Design")
+    
     detail_design = fields.Binary(
         string="File Design",
         help="Upload file design dalam format JPG, PNG, atau PDF"
