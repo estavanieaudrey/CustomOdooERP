@@ -17,11 +17,6 @@
                             string="Generate All Invoice"
                             class="btn-primary"
                             icon="fa-pencil-square-o"/>
-                <!-- <button name="action_convert_to_sales_order"
-                        string="Confirm as Sales Order"
-                        type="object"
-                        class="btn-secondary"
-                        invisible="is_confirmed"/> -->
             </xpath>
 
             <xpath expr="//group" position="inside">
@@ -93,21 +88,23 @@
                 </notebook>
             </xpath>
 
-            <!-- Add a new group for remaining amount display -->
-            <!-- <xpath expr="//group[@name='sale_total']" position="after">
-                <div class="o_group"> -->
-                    <!-- Remaining Amount -->
-                    <!-- <div style="margin-bottom: 10px;">
-                        <span class="o_subtotal_label">Remaining Amount:</span>
-                        <field name="remaining_amount" widget="monetary" options="{'currency_field': 'currency_id'}" class="o_subtotal_amount"/>
-                    </div> -->
-                    <!-- Remaining Quantity -->
-                    <!-- <div style="margin-bottom: 10px;">
-                        <span class="o_subtotal_label">Remaining Quantity:</span>
-                        <field name="total_remaining_qty" class="o_subtotal_amount"/>
+            <xpath expr="//group[@name='sale_total']" position="before">
+                <group class="oe_subtotal_footer" colspan="2" name="price_summary">
+                    <!-- Amount Undiscounted - Price before discount -->
+                    <field name="amount_undiscounted" widget="monetary" options="{'currency_field': 'currency_id'}" 
+                        class="o_subtotal_amount" invisible="total_discount_value == 0"/>
+                    
+                    <!-- Only show discount section if there's an actual discount -->
+                    <label for="total_discount_value" string="Total Discount" invisible="total_discount_value == 0"/>
+                    <div class="d-flex" invisible="total_discount_value == 0">
+                        <field name="total_discount_value" widget="monetary" options="{'currency_field': 'currency_id'}" class="oe_inline"/>
+                        <span class="mx-1">-</span>
+                        <field name="total_discount_percentage" class="oe_inline"/>
+                        <span>%</span>
                     </div>
-                </div>
-            </xpath> -->
+                </group>
+            </xpath>
+
             <xpath expr="//group[@name='sale_total']" position="after">
                 <group class="oe_subtotal_footer" colspan="2" name="remaining_totals">
                     <!-- Remaining Amount -->
@@ -289,5 +286,6 @@
                 </xpath>
             </field>
         </record>
+        
     </data>
 </odoo>

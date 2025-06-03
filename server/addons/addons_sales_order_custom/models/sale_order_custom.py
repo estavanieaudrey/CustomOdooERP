@@ -681,8 +681,60 @@ class SaleOrderCustom(models.Model):
             
         return action
     
-
-
+    amount_undiscounted = fields.Monetary(
+        string='Amount Before Discount',
+        compute='_compute_amount_undiscounted',
+        store=True,
+    )
+    
+    total_discount_value = fields.Monetary(
+        string='Total Discount Value',
+        compute='_compute_discount_totals',
+        store=True,
+    )
+    
+    total_discount_percentage = fields.Float(
+        string='Total Discount Percentage',
+        compute='_compute_discount_totals',
+        store=True,
+        digits=(5, 2),
+    )
+    
+    @api.depends('order_line.price_unit', 'order_line.product_uom_qty')
+    def _compute_amount_undiscounted(self):
+        for order in self:
+            total = 0.0
+            for line in order.order_line:
+                total += line.price_unit * line.product_uom_qty
+            order.amount_undiscounted = total
+    
+    @api.depends('order_line.discount', 'order_line.price_unit', 'order_line.product_uom_qty')
+    def _compute_discount_totals(self):
+        for order in self:
+            total_discount = 0.0
+            total_before_discount = 0.0
+            
+            for line in order.order_line:
+                price = line.price_unit
+                qty = line.product_uom_qty
+                discount = line.discount / 100.0
+                
+                line_total_before = price * qty
+                line_discount_amount = line_total_before * discount
+                
+                total_discount += line_discount_amount
+                total_before_discount += line_total_before
+            
+            order.total_discount_value = total_discount
+            order.total_discount_percentage = 0.0 if total_before_discount == 0 else (total_discount / total_before_discount) * 100
+    
+    @api.depends('order_line.price_unit', 'order_line.product_uom_qty')
+    def _compute_amount_undiscounted(self):
+        for order in self:
+            total = 0.0
+            for line in order.order_line:
+                total += line.price_unit * line.product_uom_qty
+            order.amount_undiscounted = total
             
 # Class khusus buat handle Down Payment
 class SaleAdvancePaymentInv(models.TransientModel):
