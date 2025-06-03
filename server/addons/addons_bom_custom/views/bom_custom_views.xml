@@ -8,6 +8,11 @@
             <field name="inherit_id" ref="mrp.mrp_bom_line_view_form"/>
             <field name="arch" type="xml">
 
+                <xpath expr="//field[@name='product_id']" position="attributes">
+                    <attribute name="domain">[('tipe_kertas', 'not in', ['a4', 'b5'])]</attribute>
+                    <attribute name="options">{'no_create': true}</attribute>
+                </xpath>
+
                 <xpath expr="//group" position="inside">
                     <group string="Data Perhitungan HPP">
                         <field name="kebutuhan_rim_isi" readonly="1"/>
@@ -17,6 +22,7 @@
                         <field name="isi_box" readonly="1"/>
                     </group>
                 </xpath>
+
             </field>
         </record>
 
@@ -26,6 +32,19 @@
             <field name="model">mrp.bom</field>
             <field name="inherit_id" ref="mrp.mrp_bom_form_view"/>
             <field name="arch" type="xml">
+
+                <!-- Target the correct field in the components page -->
+                <xpath expr="//page[@name='components']//field[@name='bom_line_ids']/list//field[@name='product_id']" position="attributes">
+                    <attribute name="domain">[('tipe_kertas', 'not in', ['a4', 'b5'])]</attribute>
+                    <attribute name="options">{'no_create': true}</attribute>
+                </xpath>
+
+                <field name="product_tmpl_id" position="attributes">
+                    <attribute name="options">{'no_create': True, 'no_create_edit': True, 'no_quick_create': True}</attribute>
+                    <attribute name="context">{'default_tipe_kertas': 'a4', 'no_create': True, 'no_create_edit': True}</attribute>
+                    <attribute name="can_create">false</attribute>
+                    <attribute name="can_write">false</attribute>
+                </field>
 
                 <!-- Menambahkan Tab Baru di dalam Notebook -->
                 <xpath expr="//sheet/notebook" position="inside">
@@ -149,7 +168,7 @@
             </field>
         </record>
         <!-- Perbaikan untuk BOM Line (komponen BOM) -->
-        <record id="view_mrp_bom_line_form_custom" model="ir.ui.view">
+        <!-- <record id="view_mrp_bom_line_form_custom" model="ir.ui.view">
             <field name="name">mrp.bom.line.form.inherit</field>
             <field name="model">mrp.bom.line</field>
             <field name="inherit_id" ref="mrp.mrp_bom_line_view_form"/>
@@ -164,7 +183,7 @@
                     </group>
                 </xpath>
             </field>
-        </record>
+        </record> -->
         <!-- Inherit untuk hide field yang tidak dibutuhkan (bawaan odoo)-->
         <record id="view_mrp_bom_form_hide_tabs" model="ir.ui.view">
             <field name="name">mrp.bom.form.hide.tabs</field>
@@ -173,6 +192,10 @@
             <field name="arch" type="xml">
                 <!-- Hide the Product Variant field -->
                 <xpath expr="//field[@name='product_id']" position="attributes">
+                    <attribute name="invisible">1</attribute>
+                </xpath>
+                <!-- Hide the By-product tab -->
+                <xpath expr="//page[@name='by_products']" position="attributes">
                     <attribute name="invisible">1</attribute>
                 </xpath>
                 <!-- Hide the Operations tab -->
