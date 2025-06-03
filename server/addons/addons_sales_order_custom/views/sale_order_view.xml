@@ -41,7 +41,10 @@
                         <group>
                             <field name="draft_perjanjian" filename="draft_perjanjian_name"/>
                             <field name="is_signed"/>
-                            <field name="signature_date"/>
+                            <field name="signature_date" 
+                                invisible="not is_signed"
+                                required="is_signed"
+                                readonly="1"/>
                         </group>
                     </page>
 

@@ -406,6 +406,10 @@ class SaleOrderCustom(models.Model):
         for order in self:
             if not order.draft_perjanjian:
                 raise ValidationError("Upload Draft Perjanjian terlebih dahulu!")
+            
+            # Tambahkan validasi is_signed harus True
+            if not order.is_signed:
+                raise ValidationError("Perjanjian harus ditandatangani terlebih dahulu! Silakan centang 'Telah Ditandatangani'.")
                 
         # Lanjutin pake logic confirm yang udah ada
         res = super(SaleOrderCustom, self).action_confirm()
