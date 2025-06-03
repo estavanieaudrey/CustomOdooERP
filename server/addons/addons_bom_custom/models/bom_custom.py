@@ -4,7 +4,20 @@ from odoo.exceptions import ValidationError
 
 class MrpBomCustom(models.Model):
     _inherit = 'mrp.bom'
-
+    
+    # Override the default product_tmpl_id field to add domain filter
+    product_tmpl_id = fields.Many2one(
+        'product.template', 
+        string='Product',
+        required=True,
+        domain="[('tipe_kertas', 'in', ['a4', 'b5'])]",
+        check_company=True,
+        context={'default_tipe_kertas': 'a4', 'form_view_ref': 'product.product_template_form_view', 
+                'no_create': True, 'no_create_edit': True, 'no_quick_create': True},
+        # Use string representation for options to ensure it's properly passed
+        options='{"no_create": true, "no_create_edit": true, "no_open": false}'
+    )
+    
     # === SECTION: Fields untuk spesifikasi buku ===
     
     # Pilihan ukuran buku - B5 atau A4
