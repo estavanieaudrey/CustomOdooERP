@@ -736,6 +736,35 @@ class SaleOrderCustom(models.Model):
                 total += line.price_unit * line.product_uom_qty
             order.amount_undiscounted = total
             
+    def action_cancel(self):
+        """
+        Override action_cancel method to automatically cancel related manufacturing orders
+        when the sales order is cancelled.
+        """
+        # First, call the original method to cancel the sales order and delivery orders
+        res = super(SaleOrderCustom, self).action_cancel()
+        
+        # Find all manufacturing orders linked to this sales order
+        for order in self:
+            # Find manufacturing orders linked directly via 'mo_id' field
+            if order.mo_id and order.mo_id.state != 'cancel':
+                order.mo_id.action_cancel()
+            
+            # Also find manufacturing orders linked via 'sale_id' field
+            # (In case there are MOs not stored in mo_id but created with a reference to this sale order)
+            manufacturing_orders = self.env['mrp.production'].search([
+                ('sale_id', '=', order.id),
+                ('state', 'not in', ['done', 'cancel'])  # Don't try to cancel completed orders
+            ])
+            
+            # Cancel all found manufacturing orders that aren't already cancelled
+            if manufacturing_orders:
+                for mo in manufacturing_orders:
+                    mo.action_cancel()
+        
+        return res
+
+            
 # Class khusus buat handle Down Payment
 class SaleAdvancePaymentInv(models.TransientModel):
     """
