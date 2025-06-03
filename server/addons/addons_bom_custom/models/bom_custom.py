@@ -1,4 +1,4 @@
-from odoo import models, fields, api
+from odoo import models, fields, api, Command
 from odoo.exceptions import ValidationError
 
 
@@ -122,13 +122,13 @@ class MrpBomCustom(models.Model):
     hrg_kertas_cover = fields.Integer(string="Harga Kertas Cover (Rp)", required=True)
     hrg_plate_isi = fields.Integer(string="Harga Plate Isi (Rp)", required=True)
     hrg_plate_cover = fields.Integer(string="Harga Plate Cover (Rp)", required=True)
-    hrg_box = fields.Integer(string="Harga Box (Rp)", required=True)
-    hrg_uv = fields.Float(string="Harga UV (Rp)", required=True)
+    hrg_box = fields.Integer(string="Harga Box (Rp) /box", required=True)
 
     # === SECTION: Fields untuk biaya jasa ===
     jasa_cetak_isi = fields.Integer(string="Biaya Cetak Isi (Rp)", required=True)
     jasa_cetak_cover = fields.Integer(string="Biaya Cetak Cover (Rp)", required=True)
-    jasa_jilid = fields.Float(string="Biaya Jilid (Rp)", required=True)
+    jasa_jilid = fields.Float(string="Biaya Jilid (Rp) /hal", required=True)
+    hrg_uv = fields.Float(string="Harga UV (Rp) /cm", required=True)
 
     # === SECTION: Fields hasil perhitungan biaya bahan ===
     # Semua field ini dihitung otomatis (compute)
@@ -586,15 +586,15 @@ class MrpBomCustom(models.Model):
         Saat ini mengambil dari yang terakhir teriterasi.
         """
         for bom in self:
-            # Reset harga hanya jika tidak ada Purchase Agreement yang dipilih
+            # Reset harga terlebih dahulu
+            bom.hrg_kertas_isi = 0.0
+            bom.hrg_kertas_cover = 0.0
+            bom.hrg_plate_isi = 0.0
+            bom.hrg_plate_cover = 0.0
+            bom.hrg_box = 0.0
+
             if not bom.purchase_requisition_ids:
-                bom.hrg_kertas_isi = 0.0
-                bom.hrg_kertas_cover = 0.0
-                bom.hrg_plate_isi = 0.0
-                bom.hrg_plate_cover = 0.0
-                bom.hrg_box = 0.0
-                bom.hrg_uv = 0.0
-                return
+                return # Keluar jika tidak ada PA yang dipilih
 
             # Cek setiap Purchase Agreement yang dipilih
             # Jika ada beberapa PA dengan produk yang sama, logika ini akan mengambil harga dari PA terakhir dalam iterasi.
@@ -607,7 +607,7 @@ class MrpBomCustom(models.Model):
                     default_code = line.product_id.default_code.lower()
                     
                     # Update harga berdasarkan default_code
-                    if default_code == 'kertas_isi':  # Sesuaikan dengan default_code di product_custom.py
+                    if default_code == 'kertas_isi':
                         bom.hrg_kertas_isi = line.price_unit
                     elif default_code == 'kertas_cover':
                         bom.hrg_kertas_cover = line.price_unit
@@ -650,50 +650,151 @@ class MrpBomCustom(models.Model):
                 raise ValidationError('Biaya Cetak Cover harus diisi!')
             if not record.jasa_jilid:
                 raise ValidationError('Biaya Jilid harus diisi!')
+            if not record.hrg_uv: 
+                raise ValidationError('Harga UV harus diisi!')
 
-    # # Add warning messages for required fields
-    # @api.onchange('hrg_kertas_isi', 'hrg_kertas_cover', 'hrg_plate_isi', 'hrg_plate_cover', 
-    #             'hrg_box', 'hrg_uv', 'jasa_cetak_isi', 'jasa_cetak_cover', 'jasa_jilid')
-    # def _onchange_required_fields(self):
-    #     """Show warning for empty required fields"""
-    #     warning_fields = []
-        
-    #     if not self.hrg_kertas_isi:
-    #         warning_fields.append('Harga Kertas Isi')
-    #     if not self.hrg_kertas_cover:
-    #         warning_fields.append('Harga Kertas Cover')
-    #     if not self.hrg_plate_isi:
-    #         warning_fields.append('Harga Plate Isi')
-    #     if not self.hrg_plate_cover:
-    #         warning_fields.append('Harga Plate Cover')
-    #     if not self.hrg_box:
-    #         warning_fields.append('Harga Box')
-    #     if not self.hrg_uv:
-    #         warning_fields.append('Harga UV')
-    #     if not self.jasa_cetak_isi:
-    #         warning_fields.append('Biaya Cetak Isi')
-    #     if not self.jasa_cetak_cover:
-    #         warning_fields.append('Biaya Cetak Cover')
-    #     if not self.jasa_jilid:
-    #         warning_fields.append('Biaya Jilid')
 
-    #     if warning_fields:
-    #         return {
-    #             'warning': {
-    #                 'title': 'Field Wajib Diisi',
-    #                 'message': 'Silakan isi field berikut:\n' + '\n'.join(warning_fields)
-    #             }
-    #         }
-
-    @api.constrains('bom_line_ids')
+    @api.constrains('bom_line_ids', 'purchase_requisition_ids')
     def _check_bom_lines(self):
         """
-        Memvalidasi bahwa BOM memiliki minimal satu komponen sebelum disimpan
+        Memvalidasi bahwa BOM memiliki tepat satu komponen untuk setiap tipe material yang diperlukan,
+        baik dari BOM lines langsung atau dari Purchase Agreements.
+        Tipe material yang diperlukan: isi, cover, plate_isi, plate_cover, dan box.
         """
+        required_types = ['isi', 'cover', 'plate_isi', 'plate_cover', 'box']
+        
+        for bom in self:
+            # Get all component types in this BOM
+            component_types = {}
+            
+            # Check components from BOM lines
+            for line in bom.bom_line_ids:
+                if line.product_id:
+                    tipe_kertas = line.product_id.product_tmpl_id.tipe_kertas
+                    
+                    # Check for duplicates of the same type
+                    if tipe_kertas in component_types:
+                        raise ValidationError(f'Duplikat komponen dengan tipe yang sama ditemukan: {dict(line.product_id.product_tmpl_id._fields["tipe_kertas"].selection).get(tipe_kertas)}. Silakan hapus salah satu.')
+                    
+                    # Add this component type to our tracking
+                    component_types[tipe_kertas] = line.product_id.name
+            
+            # If Purchase Agreements are used, check for components there as well
+            if bom.purchase_requisition_ids:
+                for requisition in bom.purchase_requisition_ids:
+                    for line in requisition.line_ids:
+                        if line.product_id and line.product_id.product_tmpl_id.tipe_kertas:
+                            tipe_kertas = line.product_id.product_tmpl_id.tipe_kertas
+                            
+                            # Don't check for duplicates across PA lines - allow same material type in different PAs
+                            if tipe_kertas not in component_types:
+                                component_types[tipe_kertas] = line.product_id.name
+            
+            # Check for missing required component types
+            missing_types = []
+            for req_type in required_types:
+                if req_type not in component_types:
+                    # Get the human-readable label for this type
+                    type_label = dict(self.env['product.template']._fields['tipe_kertas'].selection).get(req_type)
+                    missing_types.append(type_label)
+            
+            if missing_types:
+                raise ValidationError(f'BOM harus memiliki tepat satu komponen untuk setiap tipe material berikut: {", ".join(missing_types)}. Material bisa berasal dari BOM Components atau Purchase Agreements.')
+        
+        
+    @api.onchange('jenis_cetakan_isi', 'jenis_cetakan_cover', 'gramasi_kertas_isi', 'gramasi_kertas_cover', 
+                'jmlh_halaman_buku', 'qty_buku', 'isi_box', 'waste_percentage', 'ukuran_kertas_cover',
+                'ukuran_buku')
+    def _onchange_bom_parameters(self):
+        """
+        When changing any BOM parameter that affects component quantities,
+        automatically update the quantities of all components.
+        """
+        if self.bom_line_ids:
+            waste_factor = 1 + (self.waste_percentage / 100)
+            
+            for line in self.bom_line_ids:
+                if line.product_id:
+                    product = line.product_id.product_tmpl_id
+                    
+                    # Update quantities based on component type
+                    if product.tipe_kertas == 'isi':
+                        # Calculate kertas isi quantity based on book parameters
+                        line.product_qty = (self.kebutuhan_rim_isi * self.kebutuhan_kg_isi) * waste_factor
+                    
+                    elif product.tipe_kertas == 'cover':
+                        # Calculate kertas cover quantity based on book parameters
+                        line.product_qty = (self.kebutuhan_rim_cover * self.kebutuhan_kg_cover) * waste_factor
+                    
+                    elif product.tipe_kertas == 'plate_isi':
+                        # Plate isi quantity based on print type
+                        if self.jenis_cetakan_isi == '1_sisi':
+                            line.product_qty = 4  # 4 plate CMYK
+                        elif self.jenis_cetakan_isi == '2_sisi':
+                            line.product_qty = 8  # 8 plate (2 sides)
+                    
+                    elif product.tipe_kertas == 'plate_cover':
+                        # Plate cover quantity based on print type
+                        if self.jenis_cetakan_cover == '1_sisi':
+                            line.product_qty = 4
+                        elif self.jenis_cetakan_cover == '2_sisi':
+                            line.product_qty = 8
+                    
+                    elif line.product_id.default_code == 'BOX':
+                        # Box quantity based on books per box and total quantity
+                        line.product_qty = (self.qty_buku * waste_factor) / self.isi_box if self.isi_box > 0 else 0.0
+
+    # Add this method to ensure values are saved when the record is written
+    def write(self, vals):
+        """Override write to ensure component quantities are updated when saving the record"""
+        result = super(MrpBomCustom, self).write(vals)
+        
+        # If any of these fields were changed, update component quantities
+        fields_to_check = ['jenis_cetakan_isi', 'jenis_cetakan_cover', 'gramasi_kertas_isi', 
+                          'gramasi_kertas_cover', 'jmlh_halaman_buku', 'qty_buku', 
+                          'isi_box', 'waste_percentage', 'ukuran_kertas_cover', 'ukuran_buku']
+        
+        if any(field in vals for field in fields_to_check):
+            self._update_component_quantities()
+            
+        return result
+    
+    def _update_component_quantities(self):
+        """Update component quantities based on current BOM parameters"""
         for bom in self:
             if not bom.bom_line_ids:
-                raise ValidationError('BOM harus memiliki minimal satu komponen! Silakan tambahkan material yang digunakan.')
-
+                continue
+                
+            waste_factor = 1 + (bom.waste_percentage / 100)
+            
+            for line in bom.bom_line_ids:
+                if not line.product_id:
+                    continue
+                    
+                product = line.product_id.product_tmpl_id
+                new_qty = line.product_qty  # Default to current value
+                
+                # Calculate new quantity based on component type
+                if product.tipe_kertas == 'isi':
+                    new_qty = (bom.kebutuhan_rim_isi * bom.kebutuhan_kg_isi) * waste_factor
+                elif product.tipe_kertas == 'cover':
+                    new_qty = (bom.kebutuhan_rim_cover * bom.kebutuhan_kg_cover) * waste_factor
+                elif product.tipe_kertas == 'plate_isi':
+                    if bom.jenis_cetakan_isi == '1_sisi':
+                        new_qty = 4
+                    elif bom.jenis_cetakan_isi == '2_sisi':
+                        new_qty = 8
+                elif product.tipe_kertas == 'plate_cover':
+                    if bom.jenis_cetakan_cover == '1_sisi':
+                        new_qty = 4
+                    elif bom.jenis_cetakan_cover == '2_sisi':
+                        new_qty = 8
+                elif line.product_id.default_code == 'BOX':
+                    new_qty = (bom.qty_buku * waste_factor) / bom.isi_box if bom.isi_box > 0 else 0.0
+                
+                # Update the quantity if it changed
+                if line.product_qty != new_qty:
+                    line.sudo().write({'product_qty': new_qty})
 
 class MrpBomLineCustom(models.Model):
     """
@@ -701,7 +802,16 @@ class MrpBomLineCustom(models.Model):
     Inherit dari mrp.bom.line bawaan Odoo.
     """
     _inherit = 'mrp.bom.line'
-
+    
+    # Override the product_id field with the domain filter
+    product_id = fields.Many2one(
+        'product.product',
+        'Component',
+        # Jika tipe_kertas ada di product.template:
+        domain="[('product_tmpl_id.tipe_kertas', 'not in', ['a4', 'b5'])]",
+        required=True
+    )
+    
     # Fields buat nyimpen hasil perhitungan kebutuhan material
     kebutuhan_rim_isi = fields.Float(string="Kebutuhan Rim Isi", compute="_compute_line_values", store=True)
     kebutuhan_kg_isi = fields.Float(string="Kebutuhan KG Isi", compute="_compute_line_values", store=True)
@@ -713,19 +823,17 @@ class MrpBomLineCustom(models.Model):
     qty_buku = fields.Integer(related='bom_id.qty_buku', string="Quantity Buku", store=True)
 
     # Function buat ngambil nilai kebutuhan dari BOM header
-    @api.depends('bom_id')
+    @api.depends('bom_id', 'bom_id.kebutuhan_rim_isi', 'bom_id.kebutuhan_kg_isi', 
+                 'bom_id.kebutuhan_rim_cover', 'bom_id.kebutuhan_kg_cover', 'bom_id.isi_box') # Menambahkan dependensi yang lebih spesifik
     def _compute_line_values(self):
-        """
-        Ngambil nilai-nilai kebutuhan material dari BOM header.
-        Ini dipake buat ngitung quantity komponen secara otomatis.
-        """
         for line in self:
             bom = line.bom_id
             line.kebutuhan_rim_isi = bom.kebutuhan_rim_isi
-            line.kebutuhan_kg_isi = bom.kebutuhan_kg_isi
+            line.kebutuhan_kg_isi = bom.kebutuhan_kg_isi # KG per Rim dari BoM
             line.kebutuhan_rim_cover = bom.kebutuhan_rim_cover
-            line.kebutuhan_kg_cover = bom.kebutuhan_kg_cover
-            line.isi_box = bom.isi_box
+            line.kebutuhan_kg_cover = bom.kebutuhan_kg_cover # KG per Rim dari BoM
+            line.isi_box = bom.isi_box # Diambil dari related, tapi compute memastikan tersimpan jika store=True
+
 
     # Function buat update quantity komponen otomatis
     @api.onchange('product_id')
