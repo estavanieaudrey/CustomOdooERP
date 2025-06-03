@@ -7,6 +7,7 @@ import base64
 from datetime import date
 import logging
 _logger = logging.getLogger(__name__)
+import os
 
 
 # Class utama buat custom Sales Order - nambahin fitur2 untuk perjanjian jual beli
@@ -44,9 +45,32 @@ class SaleOrderCustom(models.Model):
         store=True
     )
     
-    # Detail design (diisi manual sama user)
-    detail_design = fields.Char(string="Design")
-    
+    # Detail design (diubah dari Char menjadi Binary untuk upload file design)
+    detail_design = fields.Binary(
+        string="File Design",
+        help="Upload file design dalam format JPG, PNG, atau PDF"
+    )
+    detail_design_name = fields.Char(
+        string="Nama File Design",
+        help="Nama file design"
+    )
+
+    @api.constrains('detail_design', 'detail_design_name')
+    def _check_design_file_format(self):
+        """
+        Validasi untuk memastikan file design yang diupload adalah format yang valid.
+        """
+        valid_extensions = ['.jpg', '.jpeg', '.png', '.pdf']
+        
+        for record in self:
+            if record.detail_design and record.detail_design_name:
+                # Extract file extension properly
+                filename = record.detail_design_name.lower()
+                file_ext = os.path.splitext(filename)[1]
+                
+                if file_ext not in valid_extensions:
+                    raise ValidationError(f"File design harus dalam format JPG, PNG, atau PDF. Format yang diunggah: {file_ext}")    
+
     # Dropdown untuk jenis jilid (diambil dari BoM)
     # Perfect binding = jilid lem
     # Stitching = jilid kawat

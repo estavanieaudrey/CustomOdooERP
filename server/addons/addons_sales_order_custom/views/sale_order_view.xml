@@ -54,7 +54,8 @@
                             <field name="jenis_cetakan_cover"/>
                             <field name="jenis_jilid"/>
                             <field name="jenis_uv"/>
-                            <field name="detail_design" required="1"/>
+                            <field name="detail_design" widget="binary" filename="detail_design_name"/>
+                            <field name="detail_design_name" invisible="1"/>
                             <field name="detail_packing"/>
                         </group>
                     </page>
@@ -257,7 +258,7 @@
                 
             </field>
         </record>
-        
+
         <!-- Jika modul sale_management terinstal dan tab Optional Products ada -->
         <record id="view_sale_order_hide_optional_products" model="ir.ui.view">
             <field name="name">sale.order.hide.optional.products</field>
@@ -266,6 +267,9 @@
             <field name="arch" type="xml">
                 <!-- Menyembunyikan tab Optional Products -->
                 <xpath expr="//page[@name='optional_products']" position="attributes">
+                    <attribute name="invisible">1</attribute>
+                </xpath>
+                <xpath expr="//field[@name='sale_order_template_id']" position="attributes">
                     <attribute name="invisible">1</attribute>
                 </xpath>
             </field>
@@ -282,6 +286,4 @@
             </field>
         </record>
     </data>
-
-    
 </odoo>
