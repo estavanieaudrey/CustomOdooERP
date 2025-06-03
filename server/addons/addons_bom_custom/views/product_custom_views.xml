@@ -13,6 +13,20 @@
         </field>
     </record>
 
+    <record id="product_template_form_custom" model="ir.ui.view">
+        <field name="name">product.template.form.custom</field>
+        <field name="model">product.template</field>
+        <field name="inherit_id" ref="product.product_template_form_view"/>
+        <field name="arch" type="xml">
+            <!-- Menambahkan field tipe_kertas setelah field default_code -->
+            <xpath expr="//group" position="inside">
+                <group>
+                    <field name="tipe_kertas"/>
+                </group>
+            </xpath>
+        </field>
+    </record>
+
     <!-- Menambahkan field tipe_kertas ke form view product variant -->
     <record id="product_variant_form_custom" model="ir.ui.view">
         <field name="name">product.product.form.custom</field>

@@ -54,24 +54,28 @@ class ProductCustom(models.Model):
 class ProductProduct(models.Model):
     _inherit = 'product.product'
 
+    # Update this to match exactly with the ProductCustom class
     tipe_kertas = fields.Selection([
+        ('a4', 'A4'),               # Kertas ukuran A4
+        ('b5', 'B5'),               # Kertas ukuran B5
         ('isi', 'Kertas Isi'),      # Kertas untuk isi buku
         ('cover', 'Kertas Cover'),   # Kertas untuk cover buku
         ('plate_isi', 'Plate Isi'),  # Plate cetak untuk isi
         ('plate_cover', 'Plate Cover'), # Plate cetak untuk cover
+        ('box', 'Box')               # Box untuk packaging
     ], string='Tipe Kertas', default='isi')
 
     @api.onchange('tipe_kertas')
     def _onchange_tipe_kertas(self):
         """
         Update kode produk otomatis pas milih tipe kertas.
-        
-        Contoh:
-        - Pilih tipe 'Kertas Isi' -> kodenya jadi 'kertas_isi'
-        - Pilih tipe 'Kertas Cover' -> kodenya jadi 'kertas_cover'
         """
         if self.tipe_kertas:
-            if self.tipe_kertas == 'isi':
+            if self.tipe_kertas == 'a4':
+                self.default_code = 'A4'
+            elif self.tipe_kertas == 'b5':
+                self.default_code = 'B5'
+            elif self.tipe_kertas == 'isi':
                 self.default_code = 'kertas_isi'
             elif self.tipe_kertas == 'cover':
                 self.default_code = 'kertas_cover'
@@ -79,4 +83,6 @@ class ProductProduct(models.Model):
                 self.default_code = 'plate_isi'
             elif self.tipe_kertas == 'plate_cover':
                 self.default_code = 'plate_cover'
+            elif self.tipe_kertas == 'box':
+                self.default_code = 'box'
 
