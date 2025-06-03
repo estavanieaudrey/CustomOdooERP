@@ -1,6 +1,7 @@
 # Import library yang dibutuhin
 from odoo import models, fields, api
-from odoo.exceptions import ValidationError
+from odoo.exceptions import ValidationError, UserError
+from odoo.tools.translate import _
 from io import BytesIO
 import base64
 from datetime import date
@@ -135,7 +136,7 @@ class SaleOrderCustom(models.Model):
     # Field untuk pilih BoM yang akan dipakai sebagai sumber data
     bom_id = fields.Many2one(
         'mrp.bom', 
-        string="Bill of Materials", 
+        string="References of Bill of Materials", 
         help="Pilih BoM untuk mengambil data HPP."
     )
     
@@ -593,6 +594,63 @@ class SaleOrderCustom(models.Model):
     def _compute_total_remaining_qty(self):
         for order in self:
             order.total_remaining_qty = sum(line.remaining_qty for line in order.order_line)
+            
+    # Add a computed field to determine if the order is fully paid
+    is_fully_paid = fields.Boolean(
+        string="Is Fully Paid",
+        compute="_compute_is_fully_paid",
+        store=True,
+        help="Technical field to check if the order is fully paid"
+    )
+    
+    @api.depends('amount_total', 'invoice_ids', 'invoice_ids.state', 'invoice_ids.amount_total', 'invoice_ids.payment_state')
+    def _compute_is_fully_paid(self):
+        """
+        Compute whether the sale order has been fully paid
+        """
+        for order in self:
+            # Calculate posted invoice amounts
+            posted_invoice_total = sum(
+                invoice.amount_total 
+                for invoice in order.invoice_ids 
+                if invoice.state == 'posted'
+            )
+            
+            # Calculate total sale order amount
+            price_subtotal = sum(order.order_line.mapped('price_subtotal'))
+            
+            # Check if the total invoiced amount equals or exceeds the order subtotal
+            # Adding a small margin (0.01) to account for rounding differences
+            order.is_fully_paid = (posted_invoice_total >= (price_subtotal - 0.01))
+    
+    # Override the action_view_invoice method to disable the "Create Invoice" button
+    def action_view_invoice(self):
+        """
+        Override the standard method to check if the order is fully paid
+        before showing the invoice creation option
+        """
+        # Get the standard action dictionary
+        action = super(SaleOrderCustom, self).action_view_invoice()
+        
+        # Check if the order is fully paid
+        if self.is_fully_paid:
+            # Modify the context to exclude the 'create' option
+            if action.get('context'):
+                ctx = action.get('context')
+                if isinstance(ctx, str):
+                    # If context is a string (it might be in some cases)
+                    ctx_dict = eval(ctx)
+                    ctx_dict['show_create_button'] = False
+                    action['context'] = str(ctx_dict)
+                else:
+                    # If context is already a dict
+                    action['context'].update({'show_create_button': False})
+            
+            # Optional: Add a warning message
+            action['help'] = "This order has been fully invoiced. No more invoices can be created."
+            
+        return action
+    
 
 
             
@@ -765,8 +823,13 @@ class SaleAdvancePaymentInv(models.TransientModel):
         if sale_order_id:
             sale_order = self.env['sale.order'].browse(sale_order_id)
             
-            # Hitung total yang udah dibayar
-            amount_invoiced = sum(sale_order.invoice_ids.mapped('amount_total'))
+            # Hitung total yang udah dibayar - HANYA invoice dengan status 'posted'
+            amount_invoiced = sum(
+                invoice.amount_total 
+                for invoice in sale_order.invoice_ids 
+                if invoice.state == 'posted'
+            )
+        
             # Hitung total yang harus dibayar (amount to invoice)
             amount_to_invoice = sale_order.hpp_total - amount_invoiced
 
@@ -791,8 +854,13 @@ class SaleAdvancePaymentInv(models.TransientModel):
             # Ambil price_subtotal dari sale order line
             self.price_subtotal = sum(sale_order.order_line.mapped('price_subtotal'))
             
-            # Hitung total yang udah dibayar
-            amount_invoiced = sum(sale_order.invoice_ids.mapped('amount_total'))
+            # Hitung total yang udah dibayar - HANYA dari invoice dengan status 'posted'
+            amount_invoiced = sum(
+                invoice.amount_total 
+                for invoice in sale_order.invoice_ids 
+                if invoice.state == 'posted'
+            )
+            
             # Hitung total yang harus dibayar
             amount_to_invoice = self.price_subtotal - amount_invoiced
             
@@ -893,11 +961,32 @@ class SaleAdvancePaymentInv(models.TransientModel):
                 for line in draft_invoice.invoice_line_ids:
                     line.price_subtotal = self.nominal  # Update price_subtotal di invoice line
 
+    # Add constraint to validate amount field
+    @api.constrains('amount')
+    def _check_amount_percentage(self):
+        """
+        Validate that amount (percentage) does not exceed 100%
+        """
+        for record in self:
+            if record.advance_payment_method == 'percentage' and record.amount > 100:
+                raise ValidationError("Down payment percentage cannot exceed 100%.")
+    
+    
     @api.onchange('amount') #Menghitung ulang nominal DP saat jumlah persentase berubah untuk memastikan nilai DP selalu sesuai dengan total harga produksi.
     def _onchange_amount(self):
         """
-        Update nominal saat amount (percentage) berubah
+        Update nominal when amount (percentage) changes
+        Validate that amount doesn't exceed 100%
         """
+        if self.advance_payment_method == 'percentage' and self.amount > 100:
+            self.amount = 100.0
+            return {
+                'warning': {
+                    'title': 'Warning',
+                    'message': 'Down payment percentage cannot exceed 100%. Value has been set to 100%.'
+                }
+            }
+            
         sale_order_id = self.env.context.get('active_id')
         if sale_order_id and self.advance_payment_method == 'percentage':
             sale_order = self.env['sale.order'].browse(sale_order_id)
@@ -917,8 +1006,14 @@ class SaleAdvancePaymentInv(models.TransientModel):
             if sale_order_id:
                 sale_order = self.env['sale.order'].browse(sale_order_id)
                 
-                # Calculate invoiced amount
-                amount_invoiced = sum(sale_order.invoice_ids.mapped('amount_total'))
+                # Calculate invoiced amount - HANYA invoice dengan status 'posted'
+                amount_invoiced = sum(
+                    invoice.amount_total 
+                    for invoice in sale_order.invoice_ids 
+                    if invoice.state == 'posted'
+                )
+            
+                # Calculate total amount to invoice
                 amount_to_invoice = self.price_subtotal - amount_invoiced
                 
                 # Calculate delivered amount
@@ -958,10 +1053,23 @@ class SaleAdvancePaymentInv(models.TransientModel):
             # Ambil price_subtotal dari sale order line
             price_subtotal = sum(sale_order.order_line.mapped('price_subtotal'))
             
-            # Hitung total yang udah dibayar
-            amount_invoiced = sum(sale_order.invoice_ids.mapped('amount_total'))
+            # Hitung total yang udah dibayar - HANYA dari invoice dengan status 'posted'
+            amount_invoiced = sum(
+                invoice.amount_total 
+                for invoice in sale_order.invoice_ids 
+                if invoice.state == 'posted'
+            )
+            
             # Hitung total yang harus dibayar
             amount_to_invoice = price_subtotal - amount_invoiced
+            
+            # Check if the order is fully paid (within a small rounding error)
+            is_fully_paid = (amount_to_invoice <= 0.01)
+            
+            if is_fully_paid:
+                # Raise warning if the order is already fully paid
+                raise UserError(_("This order is already fully invoiced. No more invoices can be created."))
+            
             
             # Set nilai default
             res.update({
@@ -1154,7 +1262,7 @@ class SaleAdvancePaymentInv(models.TransientModel):
                     invoice._compute_amount()
 
         return invoices
-
+    
         
 class AccountMoveLine(models.Model):
     _inherit = 'account.move.line'

@@ -207,16 +207,32 @@
         <field name="model">account.move</field>
         <field name="inherit_id" ref="account.view_move_form"/>
         <field name="arch" type="xml">
-            <!-- <xpath expr="//field[@name='amount_residual']" position="after">
-                <field name="remaining_amount" readonly="1"/>
-            </xpath> -->
             <!-- Tambahkan field delivery_quantity setelah quantity di invoice lines -->
             <xpath expr="//field[@name='invoice_line_ids']/list/field[@name='quantity']" position="after">
                 <field name="delivery_quantity" optional="show" string="Delivery Qty"/>
             </xpath>
+            <xpath expr="//field[@name='invoice_line_ids']" position="attributes">
+                <attribute name="readonly">state in ['draft', 'posted', 'cancel']</attribute>
+            </xpath>
         </field>
     </record>
 
+    <record id="view_move_form_hide_other_info" model="ir.ui.view">
+        <field name="name">account.move.form.hide.other.info</field>
+        <field name="model">account.move</field>
+        <field name="inherit_id" ref="account.view_move_form"/>
+        <field name="arch" type="xml">
+            <!-- Hide the first Other Info tab for invoices/refunds -->
+            <xpath expr="//page[@id='other_tab']" position="attributes">
+                <attribute name="invisible">1</attribute>
+            </xpath>
+            
+            <!-- Hide the second Other Info tab for journal entries -->
+            <xpath expr="//page[@id='other_tab_entry']" position="attributes">
+                <attribute name="invisible">1</attribute>
+            </xpath>
+        </field>
+    </record>
     <data>
         <!-- Inherit the sale.order form view -->
         <record id="view_sale_order_form_hide_tabs" model="ir.ui.view">
@@ -224,6 +240,7 @@
             <field name="model">sale.order</field>
             <field name="inherit_id" ref="sale.view_order_form"/>
             <field name="arch" type="xml">
+                
                 <!-- Hide the Other Info tab -->
                 <xpath expr="//page[@name='other_information']" position="attributes">
                     <attribute name="invisible">1</attribute>
@@ -231,6 +248,11 @@
                 <!-- Hide the Customer Signature tab -->
                 <xpath expr="//page[@name='customer_signature']" position="attributes">
                     <attribute name="invisible">1</attribute>
+                </xpath>
+
+                <!-- Make order lines readonly in specific states -->
+                <xpath expr="//field[@name='order_line']" position="attributes">
+                    <attribute name="readonly">state in ['sale', 'done', 'cancel']</attribute>
                 </xpath>
                 
             </field>
@@ -263,4 +285,3 @@
 
     
 </odoo>
-
