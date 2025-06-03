@@ -8,6 +8,14 @@ class PurchaseRequisitionLine(models.Model):
     Nambahin fitur hitung harga per satuan di PA lines.
     """
     _inherit = 'purchase.requisition.line'
+    
+    # Override product_qty field to set default to 1
+    product_qty = fields.Float(
+        string='Quantity', 
+        default=1.0,
+        readonly=True,
+        digits='Product Unit of Measure'
+    )
 
     # Field buat nyimpen total harga
     price_total = fields.Float(
@@ -16,6 +24,14 @@ class PurchaseRequisitionLine(models.Model):
         compute='_compute_price_total',
         store=True
     )
+    
+    @api.onchange('product_id')
+    def _onchange_product_id(self):
+        """
+        Set quantity to 1 whenever product is changed
+        """
+        if self.product_id:
+            self.product_qty = 1.0
 
     @api.depends('price_unit', 'product_qty')
     def _compute_price_total(self):
@@ -41,7 +57,28 @@ class PurchaseRequisition(models.Model):
     Nambahin fitur sinkronisasi dengan BoM.
     """
     _inherit = 'purchase.requisition'
-
+    
+    # Override user_id field to set default value and make it readonly
+    user_id = fields.Many2one(
+        'res.users', 
+        string='Purchase Representative',
+        default=lambda self: self.env.user,
+        readonly=True,
+        states={'draft': [('readonly', False)]},  # Only editable in draft state for admin
+        tracking=True
+    )
+    
+    # Override picking_type_id to make it readonly but still readable
+    picking_type_id = fields.Many2one(
+        'stock.picking.type',
+        string='Operation Type',
+        required=True,
+        readonly=True,  # Always readonly
+        domain=[('code', '=', 'incoming')],
+        tracking=True,
+        default=lambda self: self._get_default_picking_type()
+    )
+    
     # Link ke Bill of Materials
     # Dipake buat ngambil quantity dari BoM
     bom_id = fields.Many2one(
@@ -49,6 +86,24 @@ class PurchaseRequisition(models.Model):
         string="Bill of Materials",
         help="Pilih BoM untuk sinkronisasi quantity produk"
     )
+    
+    @api.model
+    def create(self, vals):
+        """
+        Override create method to ensure user_id is always set
+        """
+        # Always set the current user if not provided
+        if 'user_id' not in vals:
+            vals['user_id'] = self.env.user.id
+            
+        return super(PurchaseRequisition, self).create(vals)
+    
+    def _get_default_picking_type(self):
+        """Get default picking type for the current user's company"""
+        warehouse = self.env['stock.warehouse'].search([
+            ('company_id', '=', self.env.company.id)
+        ], limit=1)
+        return warehouse.in_type_id.id if warehouse else False
 
     @api.onchange('bom_id')
     def _onchange_bom_id(self):

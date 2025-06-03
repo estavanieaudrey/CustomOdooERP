@@ -5,14 +5,33 @@
             <field name="model">purchase.requisition</field>
             <field name="inherit_id" ref="purchase_requisition.view_purchase_requisition_form"/>
             <field name="arch" type="xml">
-                <xpath expr="//group" position="inside">
+                <!-- <xpath expr="//group" position="inside">
                     <group>
                         <field name="bom_id" string="Bill Of Material"/>
                     </group>
+                </xpath> -->
+
+                <!-- Make user_id field readonly and force show in form -->
+                <xpath expr="//field[@name='user_id']" position="attributes">
+                    <attribute name="readonly">1</attribute>
+                    <attribute name="force_save">1</attribute>
+                    <attribute name="options">{'no_create': True, 'no_open': True}</attribute>
                 </xpath>
+
+                <!-- Make picking_type_id field readonly but still readable -->
+                <xpath expr="//field[@name='picking_type_id']" position="replace">
+                    <field name="picking_type_id" readonly="1" force_save="1" widget="many2one_readonly" />
+                </xpath>
+
                 <!-- Menambahkan field ke dalam list view -->
                 <xpath expr="//notebook/page[@name='products']/field[@name='line_ids']/list" position="inside">
                     <field name="price_total" string="Price Total" optional="show"/>
+                </xpath>
+
+                <!-- Make product_qty readonly in the embedded tree view -->
+                <xpath expr="//field[@name='line_ids']/list/field[@name='product_qty']" position="attributes">
+                    <attribute name="readonly">1</attribute>
+                    <attribute name="force_save">1</attribute>
                 </xpath>
             </field>
         </record>
