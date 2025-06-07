@@ -26,12 +26,11 @@
                             <field name="bom_id" options="{'no_create': True}"/>
                             <field name="ukuran_buku"/>
                             <field name="jmlh_halaman_buku"/>
-                            <field name="jasa_jilid"/>
                             <field name="isi_box"/>
                             <field name="qty_buku"/>
+                            <field name="ppn"/>
                             <field name="hpp_per_unit"/>
                             <field name="hpp_total"/>
-                            <field name="ppn"/>
                         </group>
                         <group>
                             <field name="draft_perjanjian" filename="draft_perjanjian_name"/>
@@ -39,7 +38,8 @@
                             <field name="signature_date" 
                                 invisible="not is_signed"
                                 required="is_signed"
-                                readonly="1"/>
+                                readonly="1"
+                                force_save="1"/>
                         </group>
                     </page>
 

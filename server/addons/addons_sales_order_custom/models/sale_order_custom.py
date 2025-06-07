@@ -188,11 +188,6 @@ class SaleOrderCustom(models.Model):
         string="Jumlah Halaman Buku", 
         readonly=True
     )
-    jasa_jilid = fields.Float(
-        related="bom_id.jasa_jilid", 
-        string="Biaya Jilid", 
-        readonly=True
-    )
     isi_box = fields.Integer(
         related="bom_id.isi_box", 
         string="Isi Box", 
@@ -402,6 +397,9 @@ class SaleOrderCustom(models.Model):
         1. Validasi draft perjanjian
         2. Auto-create MO
         """
+        # Simpan signature_date sebelum confirm untuk masing-masing order
+        signature_dates = {order.id: order.signature_date for order in self}
+
         # Cek dulu ada draft perjanjiannya gak
         for order in self:
             if not order.draft_perjanjian:
@@ -414,6 +412,21 @@ class SaleOrderCustom(models.Model):
         # Lanjutin pake logic confirm yang udah ada
         res = super(SaleOrderCustom, self).action_confirm()
         
+        # Kembalikan signature_date yang hilang
+        for order in self:
+            if order.id in signature_dates and signature_dates[order.id]:
+                # Update signature_date langsung ke database untuk memastikan perubahan tersimpan
+                self.env.cr.execute("""
+                    UPDATE sale_order 
+                    SET signature_date = %s
+                    WHERE id = %s
+                """, (
+                    signature_dates[order.id],
+                    order.id
+                ))
+                # Refresh value dari database
+                order.invalidate_recordset(['signature_date'])
+    
         # Bikin draft Manufacturing Order
         for order in self:
             if order.bom_id:
