@@ -693,7 +693,7 @@ class MrpWorkorderCustom(models.Model):
         ('join_cetak_cover_dan_isi', 'Join Cetak Cover dan Isi'),
         ('pemotongan_akhir', 'Pemotongan Akhir'),
         ('packing_buku', 'Packing Buku kedalam Box'),
-    ], string="Work Center Step", required=True)
+    ], string="Work Center Step", required=False)
 
     # Fields buat ngatur visibility di form
     # Ini pake compute biar field muncul/ilang sesuai step yang dipilih
