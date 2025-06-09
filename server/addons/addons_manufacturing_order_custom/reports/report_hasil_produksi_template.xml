@@ -1,205 +1,199 @@
 <odoo>
     <template id="report_laporan_hasil_produksi">
         <t t-call="web.basic_layout">
-            <div class="page" style="margin-left: 40px; margin-right: 40px; text-align: justify;">
-                <!-- Company Letterhead -->
-                <div style="width:1000px; padding-bottom:30px; ">
-                    <!-- Logo -->
-                    <div style="width:300px; float:left; margin-left: 20px;">
-                        <img src="/addons_sales_order_custom/static/img/logo_company_1.png" alt="Company Logo"
-                            style="height: 150px;"/>
-                    </div>
-                    <!-- Address Details -->
-                    <div style="width: 300px; float: right; text-align: left; line-height: 1.2; margin: 0; padding-top: 30px;">
-                        <p style="margin: 0;">
-                            <strong>
-                                <span t-field="docs.company_id.name"/>
-                            </strong>
-                        </p>
-                        <p style="margin: 0;">
-                            <span t-field="docs.company_id.street"/>
-                        </p>
-                        <p style="margin: 0;">
-                            <span t-field="docs.company_id.city"/>,
-                            <span t-field="docs.company_id.state_id.name"/>
-                        </p>
-                        <p style="margin: 0;">
-                            <span t-field="docs.company_id.country_id.name"/>
-                        </p>
-                        <p style="margin: 0;">
-                            <span t-field="docs.company_id.mobile"/>
-                        </p>
-                        <p style="margin: 0;">
-                            <span t-field="docs.company_id.phone"/>
-                        </p>
-                    </div>
-
-                </div>
-
-                <!--                <hr style="border: 1px solid #000; margin: 10px 0;"/>-->
-                <p style="text-align: center;">
-                    ________________________________________________________________________________________________________________________________________________
-                </p>
-
-
-                <div class="page" style="margin-left: 20px; margin-right: 20px; text-align: justify;">
-                    <h2 style="padding-top: 20px; padding-bottom: 10px; text-align: center;">Laporan Hasil Produksi</h2>
-
-                    <div class="row mt32 mb32">
-                        <div class="col-6">
-                            <strong>Manufacturing Order:</strong>
-                            <span t-esc="docs.production_id.name"/>
+            <t t-foreach="docs" t-as="doc">
+                <div class="page" style="margin-left: 40px; margin-right: 40px; text-align: justify;">
+                    <div style="width:1000px; padding-bottom:30px; ">
+                        <div style="width:300px; float:left; margin-left: 20px;">
+                            <img src="/addons_sales_order_custom/static/img/logo_company_1.png" alt="Company Logo"
+                                style="height: 150px;"/>
                         </div>
-                        <div class="col-6">
-                            <strong>Tanggal:</strong>
-                            <span t-esc="context_timestamp(datetime.datetime.now()).strftime('%Y-%m-%d')"/>
+                        <div style="width: 300px; float: right; text-align: left; line-height: 1.2; margin: 0; padding-top: 30px;">
+                            <p style="margin: 0;">
+                                <strong>
+                                    <span t-field="doc.company_id.name"/>
+                                </strong>
+                            </p>
+                            <p style="margin: 0;">
+                                <span t-field="doc.company_id.street"/>
+                            </p>
+                            <p style="margin: 0;">
+                                <span t-field="doc.company_id.city"/>,
+                                <span t-field="doc.company_id.state_id.name"/>
+                            </p>
+                            <p style="margin: 0;">
+                                <span t-field="doc.company_id.country_id.name"/>
+                            </p>
+                            <p style="margin: 0;">
+                                <span t-field="doc.company_id.mobile"/>
+                            </p>
+                            <p style="margin: 0;">
+                                <span t-field="doc.company_id.phone"/>
+                            </p>
                         </div>
                     </div>
 
-                    <table class="table table-bordered">
-                        <thead>
-                            <tr>
-                                <th>Deskripsi</th>
-                                <th>Jumlah</th>
-                                <th>Catatan</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr>
-                                <td>Total Hasil Produksi Cover</td>
-                                <td>
-                                    <span t-field="docs.hasil_produksi_cover_total"/>
-                                </td>
-                                <td>
-                                    <t t-set="cover_wo" t-value="docs.production_id.workorder_ids.filtered(lambda w: w.work_center_step == 'produksi_cetak_cover')"/>
-                                    <span t-field="cover_wo.catatan_per_workorder" t-if="cover_wo"/>
-                                </td>
-                            </tr>
-                            <tr>
-                                <td>Total Kirim ke UV</td>
-                                <td>
-                                    <span t-field="docs.qty_kirim_ke_uv_total"/>
-                                </td>
-                                <td>
-                                    <t t-set="uv_kirim_wo" t-value="docs.production_id.workorder_ids.filtered(lambda w: w.work_center_step == 'mengirimkan_ke_uv_varnish')"/>
-                                    <span t-field="uv_kirim_wo.catatan_per_workorder" t-if="uv_kirim_wo"/>
-                                </td>
-                            </tr>
-                            <tr>
-                                <td>Total Terima dari UV</td>
-                                <td>
-                                    <span t-field="docs.qty_terima_dari_uv_total"/>
-                                </td>
-                                <td>
-                                    <t t-set="uv_terima_wo" t-value="docs.production_id.workorder_ids.filtered(lambda w: w.work_center_step == 'menerima_dari_uv_varnish')"/>
-                                    <span t-field="uv_terima_wo.catatan_per_workorder" t-if="uv_terima_wo"/>
-                                </td>
-                            </tr>
-                            <tr>
-                                <td>Total Hasil Produksi Isi</td>
-                                <td>
-                                    <span t-field="docs.hasil_produksi_isi_total"/>
-                                </td>
-                                <td>
-                                    <t t-set="isi_wo" t-value="docs.production_id.workorder_ids.filtered(lambda w: w.work_center_step == 'produksi_cetak_isi')"/>
-                                    <span t-field="isi_wo.catatan_per_workorder" t-if="isi_wo"/>
-                                </td>
-                            </tr>
-                            <tr>
-                                <td>Total Hasil Join Cetak Isi</td>
-                                <td>
-                                    <span t-field="docs.hasil_join_cetak_isi_total"/>
-                                </td>
-                                <td>
-                                    <t t-set="join_wo" t-value="docs.production_id.workorder_ids.filtered(lambda w: w.work_center_step == 'join_cetak_cover_dan_isi')"/>
-                                    <span t-field="join_wo.catatan_per_workorder" t-if="join_wo"/>
-                                </td>
-                            </tr>
-                            <tr>
-                                <td>Total Hasil Pemotongan Akhir</td>
-                                <td>
-                                    <span t-field="docs.hasil_pemotongan_akhir_total"/>
-                                </td>
-                                <td>
-                                    <t t-set="potong_wo" t-value="docs.production_id.workorder_ids.filtered(lambda w: w.work_center_step == 'pemotongan_akhir')"/>
-                                    <span t-field="potong_wo.catatan_per_workorder" t-if="potong_wo"/>
-                                </td>
-                            </tr>
-                            <tr>
-                                <td>Total Buku yang Masuk ke Dalam Box</td>
-                                <td>
-                                    <span t-field="docs.qty_realita_buku_total"/>
-                                </td>
-                                <td>
-                                    <t t-set="packing_wo" t-value="docs.production_id.workorder_ids.filtered(lambda w: w.work_center_step == 'packing_buku')"/>
-                                    <span t-field="packing_wo.catatan_per_workorder" t-if="packing_wo"/>
-                                </td>
-                            </tr>
-                        </tbody>
-                    </table>
+                    <p style="text-align: center;">
+                        ________________________________________________________________________________________________________________________________________________
+                    </p>
 
-                    <!-- Waste Calculation Table -->
-                    <h4 class="mt32">Perhitungan Waste</h4>
-                    <table class="table table-bordered">
-                        <thead>
+                    <div class="page" style="margin-left: 20px; margin-right: 20px; text-align: justify;">
+                        <h2 style="padding-top: 20px; padding-bottom: 10px; text-align: center;">Laporan Hasil Produksi</h2>
+
+                        <div class="row mt32 mb32">
+                            <div class="col-6">
+                                <strong>Manufacturing Order:</strong>
+                                <span t-esc="doc.name"/>
+                            </div>
+                            <div class="col-6">
+                                <strong>Tanggal:</strong>
+                                <span t-esc="context_timestamp(datetime.datetime.now()).strftime('%Y-%m-%d')"/>
+                            </div>
+                        </div>
+
+                        <table class="table table-bordered">
+                            <thead>
+                                <tr>
+                                    <th>Deskripsi</th>
+                                    <th>Jumlah</th>
+                                    <th>Catatan</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>Total Hasil Produksi Cover</td>
+                                    <td>
+                                        <span t-field="doc.hasil_produksi_cover_total"/>
+                                    </td>
+                                    <td>
+                                        <t t-set="cover_wo" t-value="doc.workorder_ids.filtered(lambda w: w.work_center_step == 'produksi_cetak_cover')"/>
+                                        <span t-field="cover_wo.catatan_per_workorder" t-if="cover_wo"/>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td>Total Kirim ke UV</td>
+                                    <td>
+                                        <span t-field="doc.qty_kirim_ke_uv_total"/>
+                                    </td>
+                                    <td>
+                                        <t t-set="uv_kirim_wo" t-value="doc.workorder_ids.filtered(lambda w: w.work_center_step == 'mengirimkan_ke_uv_varnish')"/>
+                                        <span t-field="uv_kirim_wo.catatan_per_workorder" t-if="uv_kirim_wo"/>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td>Total Terima dari UV</td>
+                                    <td>
+                                        <span t-field="doc.qty_terima_dari_uv_total"/>
+                                    </td>
+                                    <td>
+                                        <t t-set="uv_terima_wo" t-value="doc.workorder_ids.filtered(lambda w: w.work_center_step == 'menerima_dari_uv_varnish')"/>
+                                        <span t-field="uv_terima_wo.catatan_per_workorder" t-if="uv_terima_wo"/>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td>Total Hasil Produksi Isi</td>
+                                    <td>
+                                        <span t-field="doc.hasil_produksi_isi_total"/>
+                                    </td>
+                                    <td>
+                                        <t t-set="isi_wo" t-value="doc.workorder_ids.filtered(lambda w: w.work_center_step == 'produksi_cetak_isi')"/>
+                                        <span t-field="isi_wo.catatan_per_workorder" t-if="isi_wo"/>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td>Total Hasil Join Cetak Isi</td>
+                                    <td>
+                                        <span t-field="doc.hasil_join_cetak_isi_total"/>
+                                    </td>
+                                    <td>
+                                        <t t-set="join_wo" t-value="doc.workorder_ids.filtered(lambda w: w.work_center_step == 'join_cetak_cover_dan_isi')"/>
+                                        <span t-field="join_wo.catatan_per_workorder" t-if="join_wo"/>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td>Total Hasil Pemotongan Akhir</td>
+                                    <td>
+                                        <span t-field="doc.hasil_pemotongan_akhir_total"/>
+                                    </td>
+                                    <td>
+                                        <t t-set="potong_wo" t-value="doc.workorder_ids.filtered(lambda w: w.work_center_step == 'pemotongan_akhir')"/>
+                                        <span t-field="potong_wo.catatan_per_workorder" t-if="potong_wo"/>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td>Total Buku yang Masuk ke Dalam Box</td>
+                                    <td>
+                                        <span t-field="doc.qty_realita_buku_total"/>
+                                    </td>
+                                    <td>
+                                        <t t-set="packing_wo" t-value="doc.workorder_ids.filtered(lambda w: w.work_center_step == 'packing_buku')"/>
+                                        <span t-field="packing_wo.catatan_per_workorder" t-if="packing_wo"/>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+
+                        <h4 class="mt32">Perhitungan Waste</h4>
+                        <table class="table table-bordered">
+                            <thead>
+                                <tr>
+                                    <th>Deskripsi</th>
+                                    <th>Nilai</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>Selisih Quantity Buku</td>
+                                    <td>
+                                        <span t-field="doc.selisih_qty_buku"/>
+                                        <t t-if="doc.selisih_qty_buku > 0">
+                                            <span class="text-success">(Surplus)</span>
+                                        </t>
+                                        <t t-elif="doc.selisih_qty_buku &lt; 0">
+                                            <span class="text-danger">(Defisit)</span>
+                                        </t>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td>Status</td>
+                                    <td>
+                                        <t t-if="doc.warning_message">
+                                            <span t-att-class="'text-success' if 'tercukupi' in doc.warning_message else 'text-danger'">
+                                                <span t-field="doc.warning_message"/>
+                                            </span>
+                                        </t>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+
+                        <table style="width: 100%; text-align: left; border: none; border-collapse: separate; margin-top: 50px;">
                             <tr>
-                                <th>Deskripsi</th>
-                                <th>Nilai</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr>
-                                <td>Selisih Quantity Buku</td>
-                                <td>
-                                    <span t-field="docs.selisih_qty_buku"/>
-                                    <t t-if="docs.selisih_qty_buku &gt; 0">
-                                        <span class="text-success">(Surplus)</span>
-                                    </t>
-                                    <t t-elif="docs.selisih_qty_buku &lt; 0">
-                                        <span class="text-danger">(Defisit)</span>
-                                    </t>
+                                <td style="width: 50%; vertical-align: top; border: ;">
+                                    <b>Pembuat:</b>
+                                    <p style="margin-top: 80px;">
+                                        <t t-esc="doc.user_id.name"/>
+                                    </p>
+                                </td>
+                                <td style="width: 50%; vertical-align: top; border: none;">
+                                    <b>Menyetujui:</b>
+                                    <p style="margin-top: 80px;">____________________________</p>
                                 </td>
                             </tr>
-                            <tr>
-                                <td>Status</td>
-                                <td>
-                                    <t t-if="docs.warning_message">
-                                        <span t-att-class="'text-success' if 'tercukupi' in docs.warning_message else 'text-danger'">
-                                            <span t-field="docs.warning_message"/>
-                                        </span>
-                                    </t>
-                                </td>
-                            </tr>
-                        </tbody>
-                    </table>
-
-
-                    <table style="width: 100%; text-align: left; border: none; border-collapse: separate;">
-                        <tr>
-                            <td style="width: 50%; vertical-align: top; border: ;">
-                                <b>Pembuat:</b>
-                                <p style="margin-top: 80px;">
-                                    <t t-esc="docs.production_id.user_id.name"/>
-                                </p>
-                            </td>
-                            <td style="width: 50%; vertical-align: top; border: none;">
-                                <b>Menyetujui:</b>
-                                <p style="margin-top: 80px;">____________________________</p>
-                            </td>
-                        </tr>
-                    </table>
+                        </table>
+                    </div>
                 </div>
-            </div>
+            </t>
         </t>
     </template>
 
     <record id="action_report_laporan_hasil_produksi" model="ir.actions.report">
         <field name="name">Laporan Hasil Produksi</field>
-        <field name="model">mrp.workorder</field>
+        <field name="model">mrp.production</field>
         <field name="report_type">qweb-pdf</field>
         <field name="report_name">addons_manufacturing_order_custom.report_laporan_hasil_produksi</field>
         <field name="report_file">addons_manufacturing_order_custom.report_laporan_hasil_produksi</field>
-        <field name="binding_model_id" ref="model_mrp_workorder"/>
+        <field name="binding_model_id" ref="mrp.model_mrp_production"/>
         <field name="binding_type">report</field>
     </record>
 </odoo>

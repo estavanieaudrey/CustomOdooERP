@@ -673,8 +673,107 @@ class MrpProductionCustom(models.Model):
     #
     #     return result
 
-    
+    # Di dalam kelas MrpProductionCustom (tambahkan kode ini di mana saja di dalam kelas)
 
+    # === SECTION: Fields dan Functions untuk Laporan Hasil Produksi ===
+
+    # Fields untuk rekap total hasil produksi dari semua work orders
+    hasil_produksi_cover_total = fields.Float(
+        string="Total Hasil Produksi Cover",
+        compute="_compute_aggregated_results",
+        store=False
+    )
+    qty_kirim_ke_uv_total = fields.Float(
+        string="Total Kirim ke UV",
+        compute="_compute_aggregated_results",
+        store=False
+    )
+    qty_terima_dari_uv_total = fields.Float(
+        string="Total Terima dari UV",
+        compute="_compute_aggregated_results",
+        store=False
+    )
+    hasil_produksi_isi_total = fields.Float(
+        string="Total Hasil Produksi Isi",
+        compute="_compute_aggregated_results",
+        store=False
+    )
+    hasil_join_cetak_isi_total = fields.Float(
+        string="Total Hasil Join Cetak Isi",
+        compute="_compute_aggregated_results",
+        store=False
+    )
+    hasil_pemotongan_akhir_total = fields.Float(
+        string="Total Hasil Pemotongan Akhir",
+        compute="_compute_aggregated_results",
+        store=False
+    )
+    qty_realita_buku_total = fields.Float(
+        string="Total Buku yang Masuk ke Dalam Box",
+        compute="_compute_aggregated_results",
+        store=False
+    )
+    selisih_qty_buku = fields.Float(
+        string="Selisih Qty Buku",
+        compute="_compute_aggregated_results", # Ikut dihitung bersamaan
+        store=False
+    )
+    warning_message = fields.Char(
+        string="Warning Message",
+        compute="_compute_aggregated_results", # Ikut dihitung bersamaan
+        store=False
+    )
+
+    @api.depends(
+        'workorder_ids.hasil_produksi_cover',
+        'workorder_ids.qty_kirim_ke_uv',
+        'workorder_ids.qty_terima_dari_uv',
+        'workorder_ids.hasil_produksi_isi',
+        'workorder_ids.hasil_join_cetak_isi',
+        'workorder_ids.hasil_pemotongan_akhir',
+        'workorder_ids.qty_realita_buku',
+        'bom_id.qty_buku'
+    )
+    def _compute_aggregated_results(self):
+        """
+        Ngitung total hasil produksi dari semua work orders untuk Laporan.
+        """
+        for production in self:
+            workorders = production.workorder_ids
+
+            # Jumlahkan semua hasil per step
+            production.hasil_produksi_cover_total = sum(workorders.mapped('hasil_produksi_cover'))
+            production.qty_kirim_ke_uv_total = sum(workorders.mapped('qty_kirim_ke_uv'))
+            production.qty_terima_dari_uv_total = sum(workorders.mapped('qty_terima_dari_uv'))
+            production.hasil_produksi_isi_total = sum(workorders.mapped('hasil_produksi_isi'))
+            production.hasil_join_cetak_isi_total = sum(workorders.mapped('hasil_join_cetak_isi'))
+            production.hasil_pemotongan_akhir_total = sum(workorders.mapped('hasil_pemotongan_akhir'))
+            production.qty_realita_buku_total = sum(workorders.mapped('qty_realita_buku'))
+
+            # Hitung selisih dan warning message
+            expected_qty = production.bom_id.qty_buku
+            if expected_qty and production.qty_realita_buku_total:
+                selisih = production.qty_realita_buku_total - expected_qty
+                production.selisih_qty_buku = selisih
+                if selisih < 0:
+                    production.warning_message = "Permintaan buku tidak tercukupi!"
+                elif selisih > 0:
+                    production.warning_message = "Permintaan buku tercukupi!"
+                else:
+                    production.warning_message = "Jumlah buku sesuai permintaan."
+            else:
+                production.selisih_qty_buku = 0.0
+                production.warning_message = "Data belum lengkap."
+
+    def action_generate_laporan_produksi(self):
+        """
+        Generate Laporan Hasil Produksi dalam bentuk PDF dari Manufacturing Order.
+        """
+        # Memastikan hanya satu record yang diproses untuk report
+        self.ensure_one()
+        return self.env.ref(
+            'addons_manufacturing_order_custom.action_report_laporan_hasil_produksi'
+        ).report_action(self)
 
 # untuk mengedit custom quantity di bagian work order di Manufacturing Order
 class MrpWorkorderCustom(models.Model):
@@ -1069,29 +1168,6 @@ class MrpWorkorderCustom(models.Model):
         # Update quantity setelah work order dimulai
         self._update_qty_producing(self.qty_production - self.qty_produced)
         return res
-    
-    
-    # def button_start(self):
-    #     """
-    #     Override button_start to auto-finish middle work orders.
-    #     Only first and last work orders will remain in 'started' state.
-    #     """
-    #     res = super(MrpWorkorderCustom, self).button_start()
-        
-    #     # Get all work orders for this MO, ordered by sequence
-    #     all_work_orders = self.production_id.workorder_ids.sorted(lambda w: w.sequence)
-        
-    #     # If there are at least 3 work orders (to have middle ones)
-    #     if len(all_work_orders) >= 3:
-    #         # Get index of current work order
-    #         current_index = list(all_work_orders).index(self)
-            
-    #         # If this is a middle work order (not first or last)
-    #         if 0 < current_index < len(all_work_orders) - 1:
-    #             # Auto finish the work order
-    #             self.button_finish()
-            
-    #     return res
 
 
     # Fields buat nyimpen total hasil produksi dari semua work orders
@@ -1150,14 +1226,14 @@ class MrpWorkorderCustom(models.Model):
             workorder.hasil_pemotongan_akhir_total = sum(workorders.mapped('hasil_pemotongan_akhir'))
             workorder.qty_realita_buku_total = sum(workorders.mapped('qty_realita_buku'))
 
-    def action_generate_laporan_produksi(self):
-        """
-        Generate Laporan Hasil Produksi dalam bentuk PDF.
-        Berisi rekap semua hasil produksi dari setiap step.
-        """
-        return self.env.ref(
-            'addons_manufacturing_order_custom.action_report_laporan_hasil_produksi'
-        ).report_action(self)
+    # def action_generate_laporan_produksi(self):
+    #     """
+    #     Generate Laporan Hasil Produksi dalam bentuk PDF.
+    #     Berisi rekap semua hasil produksi dari setiap step.
+    #     """
+    #     return self.env.ref(
+    #         'addons_manufacturing_order_custom.action_report_laporan_hasil_produksi'
+    #     ).report_action(self)
 
     def button_finish(self):
         """

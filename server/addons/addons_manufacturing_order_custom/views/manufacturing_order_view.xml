@@ -12,9 +12,14 @@
                             string="Nota Permintaan Barang"
                             class="btn-primary"
                             icon="fa-pencil-square-o"/>
-                    <button name="action_generate_spk"
+                     <button name="action_generate_spk"
                             type="object"
                             string="Surat Perintah Kerja"
+                            class="btn-primary"
+                            icon="fa-pencil-square-o"/>
+                    <button name="action_generate_laporan_produksi"
+                            type="object"
+                            string="Laporan Hasil Produksi"
                             class="btn-primary"
                             icon="fa-pencil-square-o"/>
                 </xpath>
@@ -166,12 +171,12 @@
                 <xpath expr="//notebook" position="inside">
                     <page string="Rekap Hasil Produksi">
                         <!-- Add button at the top of the page -->
-                        <button 
+                        <!-- <button 
                             name="action_generate_laporan_produksi" 
                             string="Generate Laporan Hasil Produksi" 
                             type="object" 
                             class="oe_highlight"
-                        />
+                        /> -->
                         
                         <group string="Rekap Hasil Produksi">
                             <field name="hasil_produksi_cover_total" readonly="1" string="Total Hasil Produksi Cover"/>
