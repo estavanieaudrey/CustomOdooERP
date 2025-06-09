@@ -16,6 +16,7 @@
     'data': [
         'views/inventory_custom_views.xml',
         'reports/inventory_custom_template.xml',
+        'reports/inventory_deliveryslip_template.xml',
         'actions/inventory_custom_action.xml',
     ],
     'installable': True,

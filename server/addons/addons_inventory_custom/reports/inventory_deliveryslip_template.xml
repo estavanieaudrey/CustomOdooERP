@@ -1,0 +1,190 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <template id="addons_inventory_custom.final_delivery_document">
+        <t t-call="web.html_container">
+            <t t-set="o" t-value="o.with_context(lang=o.partner_id.lang or 'en_US')"/>
+
+            <div class="header">
+                 <div style="margin: 0 20px;">
+                    <div style="width:100%; padding-bottom:15px; display: table; border-bottom: 2px solid black;">
+                        <div style="display: table-row;">
+                            <div style="width: 30%; display: table-cell; vertical-align: middle;">
+                                <img t-if="o.company_id.logo" t-att-src="image_data_uri(o.company_id.logo)" style="max-height: 100px;" alt="Company Logo"/>
+                            </div>
+                            <div style="width: 70%; display: table-cell; text-align: left; line-height: 1.4; vertical-align: top; padding-left: 20px;">
+                                <h3 t-field="o.company_id.name" style="margin-top: 0; margin-bottom: 5px;"/>
+                                <span t-field="o.company_id.street"/><br/>
+                                <span t-field="o.company_id.city"/>, <span t-field="o.company_id.state_id.name"/><br/>
+                                Telp: <span t-field="o.company_id.phone"/> | Mobile: <span t-field="o.company_id.mobile"/>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="article o_report_layout_standard" style="font-size: 14px;">
+                <div class="page">
+                    <div class="row mt-4">
+                        <div class="col-7" name="address_custom">
+                            <strong style="font-size: 15px;">Delivery Address:</strong>
+                            <div style="font-size: 15px; line-height: 1.4;">
+                                <div t-if="o.should_print_delivery_address()">
+                                    <div t-field="o.move_ids[0].partner_id"
+                                        t-options='{"widget": "contact", "fields": ["address", "name"], "no_marker": True}'/>
+                                </div>
+                                 <div t-elif="o.picking_type_id.code != 'internal' and o.picking_type_id.warehouse_id.partner_id">
+                                     <div t-field="o.picking_type_id.warehouse_id.partner_id"
+                                        t-options='{"widget": "contact", "fields": ["address", "name"], "no_marker": True}'/>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="col-5 text-end">
+                            <p style="font-size: 16px; font-weight: bold; text-decoration: underline; margin-bottom: 2px;">SURAT JALAN</p>
+                            <p style="font-size: 15px; margin-top: 0px;"><span t-field="o.name"/></p>
+                        </div>
+                    </div>
+
+                    <div id="informations" class="row my-4">
+                        <div t-if="o.origin" class="col-auto" name="div_origin">
+                            <strong>Order:</strong>
+                            <p t-field="o.origin" class="m-0"/>
+                        </div>
+                        <div t-if="o.state" class="col-auto" name="div_sched_date">
+                            <strong>Shipping Date:</strong>
+                            <p t-if="o.state == 'done'" t-field="o.date_done" class="m-0" t-options='{"format": "dd-MM-yyyy HH:mm"}'/>
+                            <p t-else="" t-field="o.scheduled_date" class="m-0" t-options='{"format": "dd-MM-yyyy HH:mm"}'/>
+                        </div>
+                    </div>
+
+                    <table class="table table-sm" t-if="o.state!='done'" name="stock_move_table">
+                        <thead>
+                            <tr>
+                                <th name="th_sm_product"><strong>Product</strong></th>
+                                <th name="th_sm_ordered" class="text-end"><strong>Ordered</strong></th>
+                                <th name="th_sm_quantity" class="text-end"><strong>Delivered</strong></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <t t-set="lines" t-value="o.move_ids.filtered(lambda x: x.product_uom_qty)"/>
+                            <tr t-foreach="lines" t-as="move">
+                                <td>
+                                    <span t-field="move.product_id"/>
+                                    <p t-if="move.description_picking and move.description_picking != move.product_id.name and move.description_picking != move.product_id.display_name">
+                                        <span t-field="move.description_picking"/>
+                                    </p>
+                                </td>
+                                <td class="text-end">
+                                    <span t-field="move.product_uom_qty"/>
+                                    <span t-field="move.product_uom" groups="uom.group_uom"/>
+                                </td>
+                                <td class="text-end">
+                                    <span t-field="move.quantity"/>
+                                    <span t-field="move.product_uom" groups="uom.group_uom"/>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                    <table class="table table-sm mt-4" t-elif="o.move_line_ids and o.state=='done'" name="stock_move_line_table">
+                        <t t-set="has_serial_number" t-value="o.move_line_ids.mapped('lot_id')" groups="stock.group_lot_on_delivery_slip"/>
+                        <thead>
+                            <tr>
+                                <th name="th_sml_product"><strong>Product</strong></th>
+                                <th name="th_sml_qty_ordered" class="text-center" t-if="not has_serial_number"><strong>Ordered</strong></th>
+                                <th name="lot_serial" t-else=""><strong>Lot/Serial Number</strong></th>
+                                <th name="th_sml_quantity" class="text-center"><strong>Delivered</strong></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <t t-if="o.has_packages" name="has_packages">
+                                <t t-set="packages" t-value="o.move_line_ids.mapped('result_package_id')"/>
+                                <t t-foreach="packages" t-as="package">
+                                    <t t-call="stock.stock_report_delivery_package_section_line"/>
+                                    <t t-set="package_move_lines" t-value="o.move_line_ids.filtered(lambda l: l.result_package_id == package)"/>
+                                    <t t-if="has_serial_number">
+                                        <tr t-foreach="package_move_lines" t-as="move_line">
+                                            <t t-call="stock.stock_report_delivery_has_serial_move_line"/>
+                                        </tr>
+                                    </t>
+                                    <t t-else="">
+                                        <t t-set="aggregated_lines" t-value="package_move_lines._get_aggregated_product_quantities(strict=True)"/>
+                                        <t t-call="stock.stock_report_delivery_aggregated_move_lines"/>
+                                    </t>
+                                </t>
+                                <t t-set="move_lines" t-value="o.move_line_ids.filtered(lambda l: not l.result_package_id)"/>
+                                <t t-set="aggregated_lines" t-value="o.move_line_ids._get_aggregated_product_quantities(except_package=True)"/>
+                                <t t-if="move_lines or aggregated_lines" name="no_package_move_lines">
+                                    <t t-call="stock.stock_report_delivery_no_package_section_line" name="no_package_section"/>
+                                    <t t-if="has_serial_number">
+                                        <tr t-foreach="move_lines" t-as="move_line">
+                                            <t t-call="stock.stock_report_delivery_has_serial_move_line"/>
+                                        </tr>
+                                    </t>
+                                    <t t-elif="aggregated_lines">
+                                        <t t-call="stock.stock_report_delivery_aggregated_move_lines"/>
+                                    </t>
+                                </t>
+                            </t>
+                            <t t-else="">
+                                <t t-if="has_serial_number">
+                                    <tr t-foreach="o.move_line_ids" t-as="move_line">
+                                        <t t-call="stock.stock_report_delivery_has_serial_move_line"/>
+                                    </tr>
+                                </t>
+                                <t t-else="" name="aggregated_move_lines">
+                                    <t t-set="aggregated_lines" t-value="o.move_line_ids._get_aggregated_product_quantities()"/>
+                                    <t t-call="stock.stock_report_delivery_aggregated_move_lines"/>
+                                </t>
+                            </t>
+                        </tbody>
+                    </table>
+
+                    <t t-set="backorders" t-value="o.backorder_ids.filtered(lambda x: x.state not in ('done', 'cancel'))"/>
+                    <div t-if="backorders and backorders.ids">
+                        <p class="mt-5">
+                            <strong>Remaining quantities not yet delivered:</strong>
+                        </p>
+                        <table class="table table-sm" name="stock_backorder_table">
+                            <thead>
+                                <tr>
+                                    <th name="th_sb_product"><strong>Product</strong></th>
+                                    <th name="th_sb_quantity" class="text-end"><strong>Quantity</strong></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr t-foreach="backorders.mapped('move_ids').filtered(lambda x: x.product_uom_qty)" t-as="bo_line">
+                                    <td>
+                                        <span t-field="bo_line.product_id"/>
+                                        <p t-if="bo_line.description_picking and bo_line.description_picking != bo_line.product_id.name and bo_line.description_picking != bo_line.product_id.display_name">
+                                            <span t-field="bo_line.description_picking"/>
+                                        </p>
+                                    </td>
+                                    <td class="text-end">
+                                        <span t-field="bo_line.product_uom_qty"/>
+                                        <span t-field="bo_line.product_uom" groups="uom.group_uom"/>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <div class="footer o_standard_footer">
+                <div class="text-center">
+                    <div class="text-muted">
+                        Page <span class="page"/> / <span class="topage"/>
+                    </div>
+                </div>
+            </div>
+        </t>
+    </template>
+
+    <template id="addons_inventory_custom.hijack_deliveryslip_call" inherit_id="stock.report_deliveryslip">
+      <xpath expr="//t[@t-call='stock.report_delivery_document']" position="attributes">
+        <attribute name="t-call">addons_inventory_custom.final_delivery_document</attribute>
+      </xpath>
+    </template>
+
+</odoo>
